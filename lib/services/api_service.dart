@@ -1,14 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
 import '../config/constants.dart';
 import '../models/craft_attributes.dart';
 import '../models/pricing_corridor.dart';
 import '../models/catalog_item.dart';
-import '../data/mock_data.dart';
+import 'bhashini_service.dart';
 
 /// Response from the catalog processing pipeline.
 class CatalogProcessResult {
@@ -46,74 +44,11 @@ abstract class ApiService {
     StageCallback? onStageComplete,
   });
 
-  /// Factory — reads USE_MOCK_DATA from .env
   Future<Map<String, dynamic>> publishToOndc({
     required CatalogItem item,
     required PricingCorridor pricing,
     required int availableQuantity,
   });
-
-  factory ApiService() {
-    if (AppConstants.useMockData) {
-      return MockApiService();
-    }
-    return LiveApiService();
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK IMPLEMENTATION
-// ─────────────────────────────────────────────────────────────────────────────
-
-class MockApiService implements ApiService {
-  @override
-  Future<Map<String, dynamic>> publishToOndc({
-    required CatalogItem item,
-    required PricingCorridor pricing,
-    required int availableQuantity,
-  }) async {
-    await Future.delayed(const Duration(seconds: 1, milliseconds: 500));
-    return {
-      'status': 'PUBLISHED',
-      'catalog_id': item.id,
-      'message': 'Mock successful publish'
-    };
-  }
-
-  int _mockIndex = 0;
-
-  @override
-  Future<CatalogProcessResult> processCatalog({
-    required String imagePath,
-    required String audioPath,
-    StageCallback? onStageComplete,
-  }) async {
-    // Rotate through mock payloads so each demo shows something different
-    final payload = MockData.catalogs[_mockIndex % MockData.catalogs.length];
-    _mockIndex++;
-
-    // Stage 0: Image processing (studio matting)
-    await Future.delayed(AppConstants.mockStage1Delay);
-    onStageComplete?.call(0);
-
-    // Stage 1: Voice transcription + NLP
-    await Future.delayed(AppConstants.mockStage2Delay);
-    onStageComplete?.call(1);
-
-    // Stage 2: Pricing calculation
-    await Future.delayed(AppConstants.mockStage3Delay);
-    onStageComplete?.call(2);
-
-    return CatalogProcessResult(
-      titleEn: payload.titleEn,
-      titleHi: payload.titleHi,
-      descriptionEn: payload.descriptionEn,
-      descriptionHi: payload.descriptionHi,
-      craftAttributes: payload.craftAttributes,
-      pricing: payload.pricing,
-      studioImagePath: null,
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -167,113 +102,139 @@ class LiveApiService implements ApiService {
     required String audioPath,
     StageCallback? onStageComplete,
   }) async {
-    final pipeline = _resolvePipeline();
-
-    switch (pipeline) {
-      case 'ai4bharat':
-      case 'bhashini':
-        // Path 1 & 2: delegate to self-hosted FastAPI backend
-        return _processViaBackend(
-          imagePath: imagePath,
-          audioPath: audioPath,
-          onStageComplete: onStageComplete,
-        );
-
-      case 'groq':
-      default:
-        // Path 3: Groq Whisper → Gemini (direct from Flutter client)
-        return _processViaGroqGemini(
-          imagePath: imagePath,
-          audioPath: audioPath,
-          onStageComplete: onStageComplete,
-        );
-    }
+    return _processViaBhashini(
+      imagePath: imagePath,
+      audioPath: audioPath,
+      onStageComplete: onStageComplete,
+    );
   }
 
-  // ── Pipeline selector ───────────────────────────────────────────────────
 
-  String _resolvePipeline() {
-    final pref = AppConstants.voicePipeline;
-    if (pref == 'auto') {
-      // Auto: use Groq if key is available, else try backend
-      return AppConstants.groqApiKey.isNotEmpty ? 'groq' : 'ai4bharat';
-    }
-    return pref;
-  }
+  // ── Bhashini Cloud (direct client-side calls, no backend) ────────
 
-  // ── Path 3: Groq Whisper + Gemini (direct client-side calls) ───────────
+  final BhashiniService _bhashiniService = BhashiniService();
 
-  Future<CatalogProcessResult> _processViaGroqGemini({
+  Future<CatalogProcessResult> _processViaBhashini({
     required String imagePath,
     required String audioPath,
     StageCallback? onStageComplete,
   }) async {
-    _assertKey('GROQ_API_KEY', AppConstants.groqApiKey);
+    _assertKey('BHASHINI_API_KEY', AppConstants.bhashiniApiKey);
     _assertKey('GEMINI_API_KEY', AppConstants.geminiApiKey);
 
-    // Stage 0: mark image processing started (studio compositing runs in
-    // parallel inside CatalogController; we just advance the stepper)
+    // Stage 0: image processing (runs in parallel via CatalogController)
     onStageComplete?.call(0);
 
-    // ── Step 1: Transcribe audio via Groq Whisper ──
-    final transcript = await _transcribeWithGroq(audioPath);
+    // ── Step 1: Bhashini ASR — audio → Hindi transcript ──
+    final hindiTranscript = await _bhashiniService.transcribe(audioPath);
+    debugPrint('[Bhashini] ASR transcript: $hindiTranscript');
 
-    // Stage 1: voice transcription done
+    // ── Step 2: Bhashini NMT — Hindi → English (so Gemini can extract reliably) ──
+    final englishTranscript = await _bhashiniService.translate(
+      hindiTranscript,
+      sourceLanguage: 'hi',
+      targetLanguage: 'en',
+    );
+    debugPrint('[Bhashini] NMT hi→en: $englishTranscript');
+
+    // Stage 1: transcription + translation done
     onStageComplete?.call(1);
 
-    // ── Step 2: Extract catalog JSON + Hindi translation via Gemini ──
-    final extracted = await _extractWithGemini(transcript);
+    // ── Step 3: Gemini — structured catalog JSON extraction from English text ──
+    final extracted = await _extractWithGemini(englishTranscript);
 
-    // Stage 2: entity extraction / pricing done
+    // ── Step 4: Bhashini NMT — English description → Hindi (for readback TTS) ──
+    final descEn = extracted['descriptor']?['long_desc'] as String? ?? '';
+    String descHi = '';
+    if (descEn.isNotEmpty) {
+      try {
+        descHi = await _bhashiniService.translate(
+          descEn,
+          sourceLanguage: 'en',
+          targetLanguage: 'hi',
+        );
+      } catch (_) {
+        // Non-fatal: fall back to Gemini's own Hindi description tag
+        descHi = _getTagValue(extracted, 'translation_hi', 'long_desc') ?? '';
+      }
+    } else {
+      descHi = _getTagValue(extracted, 'translation_hi', 'long_desc') ?? '';
+    }
+
+    // Stage 2: extraction + pricing done
     onStageComplete?.call(2);
 
-    return _resultFromGeminiJson(extracted);
+    return _resultFromBhashiniExtraction(extracted, descHi: descHi);
   }
 
-  /// POST audio to Groq Whisper-Large-v3 → returns Hindi transcript string.
-  Future<String> _transcribeWithGroq(String audioPath) async {
-    late final List<int> bytes;
-    if (kIsWeb) {
-      final res = await http.get(Uri.parse(audioPath));
-      bytes = res.bodyBytes;
-    } else {
-      bytes = await File(audioPath).readAsBytes();
-    }
+  CatalogProcessResult _resultFromBhashiniExtraction(
+    Map<String, dynamic> j, {
+    required String descHi,
+  }) {
+    final materialsStr = _getTagValue(j, 'craft_attributes', 'materials') ?? '';
+    final materialsList = materialsStr
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
-    // Determine content-type from extension
-    final ext = kIsWeb ? 'webm' : audioPath.split('.').last.toLowerCase();
-    final mimeType = ext == 'wav' ? MediaType('audio', 'wav')
-        : ext == 'webm' ? MediaType('audio', 'webm')
-        : ext == 'mp4' ? MediaType('audio', 'mp4')
-        : MediaType('audio', 'm4a'); // default AAC
+    final laborDays =
+        _parseInt(_getTagValue(j, 'pricing_inputs', 'labor_days')) ?? 0;
+    final rawCost =
+        _parseInt(_getTagValue(j, 'pricing_inputs', 'raw_material_cost')) ?? 0;
 
-    final request = http.MultipartRequest(
-      'POST',
-      Uri.parse('https://api.groq.com/openai/v1/audio/transcriptions'),
+    final pricing = PricingCorridor.compute(
+      rawMaterialCost: rawCost,
+      laborDays: laborDays,
     );
-    request.headers['Authorization'] = 'Bearer ${AppConstants.groqApiKey}';
-    request.files.add(
-      http.MultipartFile.fromBytes(
-        'file',
-        bytes,
-        filename: 'audio.$ext',
-        contentType: mimeType,
+
+    return CatalogProcessResult(
+      titleEn: j['descriptor']?['name'] as String?,
+      titleHi: _getTagValue(j, 'translation_hi', 'name'),
+      descriptionEn: j['descriptor']?['long_desc'] as String?,
+      descriptionHi: descHi.isNotEmpty
+          ? descHi
+          : _getTagValue(j, 'translation_hi', 'long_desc'),
+      craftAttributes: CraftAttributes(
+        category: _getTagValue(j, 'craft_attributes', 'category'),
+        materials: materialsList,
+        laborDays: laborDays,
+        clusterLocation:
+            _getTagValue(j, 'craft_attributes', 'cluster_location'),
+        artisanName:
+            _getTagValue(j, 'statutory_info', 'manufacturer_name'),
+        countryOfOrigin:
+            _getTagValue(j, 'statutory_info', 'country_of_origin'),
+        netQuantity: _getTagValue(j, 'statutory_info', 'net_quantity'),
+        genericName: _getTagValue(j, 'statutory_info', 'generic_name'),
       ),
+      pricing: pricing,
     );
-    request.fields['model'] = 'whisper-large-v3';
-    request.fields['language'] = 'hi'; // force Hindi; handles Hinglish
-    request.fields['response_format'] = 'text'; // plain string, no JSON wrapper
-
-    final streamed = await request.send().timeout(AppConstants.apiTimeout);
-    final body = await streamed.stream.bytesToString();
-
-    if (streamed.statusCode != 200) {
-      throw Exception('Groq ASR failed (${streamed.statusCode}): $body');
-    }
-    return body.trim();
   }
 
-  /// POST transcript to Gemini for structured extraction → returns JSON map.
+  /// Navigates the Gemini ONDC tag list structure: tags[code=groupCode].list[code=code].value
+  static String? _getTagValue(
+    Map<String, dynamic> j,
+    String groupCode,
+    String code,
+  ) {
+    final tags = j['tags'] as List?;
+    if (tags == null) return null;
+    for (final tagGroup in tags) {
+      if (tagGroup is Map && tagGroup['code'] == groupCode) {
+        final list = tagGroup['list'] as List?;
+        if (list != null) {
+          for (final item in list) {
+            if (item is Map && item['code'] == code) {
+              return item['value']?.toString();
+            }
+          }
+        }
+      }
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>> _extractWithGemini(String transcript) async {
     final model = AppConstants.geminiModel;
     final key = AppConstants.geminiApiKey;
@@ -322,155 +283,6 @@ class LiveApiService implements ApiService {
     return jsonDecode(text) as Map<String, dynamic>;
   }
 
-  CatalogProcessResult _resultFromGeminiJson(Map<String, dynamic> j) {
-    final materialsList = (j['materials'] as List?)
-            ?.map((e) => e.toString())
-            .toList() ??
-        [];
-
-    final rawCost = _parseInt(j['raw_material_cost_inr']) ?? 500;
-    final laborDays = _parseInt(j['labor_days']) ?? 3;
-
-    final pricing = PricingCorridor.compute(
-      rawMaterialCost: rawCost,
-      laborDays: laborDays,
-    );
-
-    return CatalogProcessResult(
-      titleEn: j['title_en'] as String?,
-      titleHi: j['title_hi'] as String?,
-      descriptionEn: j['description_en'] as String?,
-      descriptionHi: j['description_hi'] as String?,
-      craftAttributes: CraftAttributes(
-        category: j['craft_category'] as String?,
-        materials: materialsList,
-        laborDays: laborDays,
-        clusterLocation: j['cluster_location'] as String?,
-      ),
-      pricing: pricing,
-    );
-  }
-
-  // ── Path 1 & 2: Backend passthrough ────────────────────────────────────
-
-  Future<CatalogProcessResult> _processViaBackend({
-    required String imagePath,
-    required String audioPath,
-    StageCallback? onStageComplete,
-  }) async {
-    final uri = Uri.parse(
-      '${AppConstants.backendUrl}/api/v1/catalog/process',
-    );
-
-    final request = http.MultipartRequest('POST', uri)
-      ..fields['language'] = 'hi-IN'
-      ..headers['bypass-tunnel-reminder'] = 'true';
-
-    if (kIsWeb) {
-      final imgRes = await http.get(Uri.parse(imagePath));
-      final audioRes = await http.get(Uri.parse(audioPath));
-      request.files.add(http.MultipartFile.fromBytes('image', imgRes.bodyBytes, filename: 'image.jpg'));
-      request.files.add(http.MultipartFile.fromBytes('audio', audioRes.bodyBytes, filename: 'audio.webm'));
-    } else {
-      request.files.add(await http.MultipartFile.fromPath('image', imagePath));
-      request.files.add(await http.MultipartFile.fromPath('audio', audioPath));
-    }
-
-    // Optional Bhashini auth header for Path 2
-    if (AppConstants.bhashiniApiKey.isNotEmpty) {
-      request.headers['X-Bhashini-Key'] = AppConstants.bhashiniApiKey;
-    }
-
-    onStageComplete?.call(0);
-
-    final streamed = await request.send().timeout(AppConstants.apiTimeout);
-    final body = await streamed.stream.bytesToString();
-
-    if (streamed.statusCode != 200) {
-      throw Exception('Backend failed (${streamed.statusCode}): $body');
-    }
-
-    final j = jsonDecode(body) as Map<String, dynamic>;
-
-    onStageComplete?.call(1);
-    onStageComplete?.call(2);
-
-    String? getTagValue(String groupCode, String code) {
-      final tags = j['tags'] as List?;
-      if (tags == null) return null;
-      for (final tagGroup in tags) {
-        if (tagGroup is Map && tagGroup['code'] == groupCode) {
-          final list = tagGroup['list'] as List?;
-          if (list != null) {
-            for (final item in list) {
-              if (item is Map && item['code'] == code) {
-                return item['value']?.toString();
-              }
-            }
-          }
-        }
-      }
-      return null;
-    }
-
-    final materialsStr = getTagValue('craft_attributes', 'materials') ?? '';
-    final materialsList = materialsStr
-        .split(',')
-        .map((e) => e.trim())
-        .where((e) => e.isNotEmpty)
-        .toList();
-
-    final titleEn = j['descriptor']?['name'] as String?;
-    final titleHi = getTagValue('translation_hi', 'name');
-    final descriptionEn = j['descriptor']?['long_desc'] as String?;
-    final descriptionHi = getTagValue('translation_hi', 'long_desc');
-    
-    final laborDays = _parseInt(getTagValue('pricing_inputs', 'labor_days')) ?? 0;
-
-    final images = j['descriptor']?['images'] as List?;
-    final rawStudioUrl = (images != null && images.isNotEmpty) ? images.first as String? : null;
-    final fullStudioUrl = rawStudioUrl != null ? '${AppConstants.backendUrl}$rawStudioUrl' : null;
-
-    final pricing = PricingCorridor(
-      rawMaterialCost: _parseInt(getTagValue('pricing_inputs', 'raw_material_cost')) ?? 0,
-      laborDays: laborDays,
-      itemsProduced: _parseInt(getTagValue('pricing_inputs', 'items_produced')) ?? 1,
-      sellerProposedPrice: _parseInt(getTagValue('pricing_inputs', 'seller_proposed_price')) ?? 0,
-      dailyWageRate: AppConstants.defaultDailyWageRate,
-      overheadPercent: AppConstants.overheadPercent,
-      floorPrice: _parseInt(j['price']?['value']) ?? 0,
-      fairPrice: 0,
-      premiumPrice: _parseInt(j['price']?['maximum_value']) ?? 0,
-    );
-
-    return CatalogProcessResult(
-      titleEn: titleEn,
-      titleHi: titleHi,
-      descriptionEn: descriptionEn,
-      descriptionHi: descriptionHi,
-      craftAttributes: CraftAttributes(
-        category: getTagValue('craft_attributes', 'category'),
-        materials: materialsList,
-        laborDays: laborDays,
-        clusterLocation: getTagValue('craft_attributes', 'cluster_location'),
-        categoryId: j['category_id'] as String?,
-        fulfillmentId: j['fulfillment_id'] as String?,
-        locationId: j['location_id'] as String?,
-        quantity: j['quantity']?['available']?['count'] as int? ?? 1,
-        timeToShip: j['@ondc/org/time_to_ship'] as String?,
-        returnable: j['@ondc/org/returnable'] as bool? ?? true,
-        cancellable: j['@ondc/org/cancellable'] as bool? ?? true,
-        availableOnCod: j['@ondc/org/available_on_cod'] as bool? ?? true,
-        returnWindow: j['@ondc/org/return_window'] as String?,
-        countryOfOrigin: getTagValue('statutory_info', 'country_of_origin'),
-        netQuantity: getTagValue('statutory_info', 'net_quantity'),
-        genericName: getTagValue('statutory_info', 'generic_name'),
-        artisanName: getTagValue('statutory_info', 'manufacturer_name'),
-      ),
-      pricing: pricing,
-      studioImagePath: fullStudioUrl,
-    );
-  }
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -492,7 +304,7 @@ class LiveApiService implements ApiService {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GEMINI SYSTEM INSTRUCTION (Path 3)
+// GEMINI SYSTEM INSTRUCTION
 // ─────────────────────────────────────────────────────────────────────────────
 
 const String _geminiSystemInstruction = '''

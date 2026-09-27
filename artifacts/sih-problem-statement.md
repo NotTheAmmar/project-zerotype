@@ -1,4 +1,3 @@
-# Smart India Hackathon — Problem Statement
 
 ## Problem Statement Details
 

@@ -1,7 +1,6 @@
 # KalaKriti AI (कलाकृति AI): Prototype Technical Specification
 
 **Document Version:** 1.0.0-MVP  
-**Smart India Hackathon 2026 \| Problem Statement ID:** SIH26090  
 **Target Ministry:** Ministry of Social Justice and Empowerment (MoSJE)  
 **Platform Architecture:** Cross-Platform Mobile Client (Flutter) + Headless REST Engine  
 
@@ -12,7 +11,6 @@ The prototype isolates and validates the core user ingestion journey—the Magic
 
 ### Scope Comparison
 
-| Functional Domain | Hackathon Prototype Scope (Internal MVP) | Final Target System (SIH Finale) |
 |---|---|---|
 | **Visual Capture & Matting** | Camera capture & gallery picking; studio background substitution simulation with before/after comparison. | Real-time on-device BiRefNet INT8 neural matting, shadow synthesis, and illumination normalization. |
 | **Voice Processing** | Local 15-second audio capture; waveform visualization; Groq Whisper-Large-v3 transcription → Gemini 2.5 Flash structured extraction → `flutter_tts` Hindi readback. | Dialect-level Bhashini ASR / AI4Bharat IndicConformer across 22 scheduled languages with automated background loom-noise suppression and Indic-Parler-TTS natural voice readback. |
@@ -104,7 +102,6 @@ To ensure operational viability for weavers and rural artisans who may have call
 ---
 
 ## Data Models & Service Architecture
-The prototype decouples the frontend client from the heavy AI microservice via a clean abstraction layer, supporting immediate hackathon demonstration via a mock toggle while permitting seamless backend API integration.
 
 ### Unified Catalog Entity Schema
 The data exchanged between the ingestion interface and the catalog storage layer contains:
@@ -129,7 +126,6 @@ The data exchanged between the ingestion interface and the catalog storage layer
 
 ---
 
-## Internal Hackathon Evaluation & Live Demonstration Walkthrough
 This step-by-step demonstration script is structured to highlight design feasibility, technical depth, and alignment with the MoSJE brief within a standard 3-minute pitch window:
 
 ### Step 1: The Context & Problem Hook (0:00 – 0:30)
@@ -154,6 +150,5 @@ This step-by-step demonstration script is structured to highlight design feasibi
   * Tap the Speaker icon: Demonstrate the app reading back the generated title, material breakdown, and recommended price out loud in Hindi.
   * Showcase the 3-Tier Fair-Price Corridor, explaining to the judges how statutory daily artisan wages are guaranteed against intermediary price exploitation.
 
-### Step 5: Judging Alignment & Hackathon Rubric Close (2:45 – 3:00)
 * Conclude with the scalable system architecture: Emphasize that the client is built using Flutter for cross-platform availability, ready to syndicate listings across the decentralized ONDC network using open Beckn protocols.
 * Summarize total computational efficiency: Low inferencing overhead designed to keep per-catalog operational costs under ₹0.07 (Groq Whisper ₹0.039 + Gemini Flash ₹0.023, or ₹0 on free tiers).

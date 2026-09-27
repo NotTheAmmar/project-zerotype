@@ -2,9 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
+import '../config/constants.dart';
 import '../models/catalog_item.dart';
 import '../services/api_service.dart';
 import '../services/audio_service.dart';
+import '../services/bhashini_service.dart';
 import '../services/storage_service.dart';
 import 'pricing_controller.dart';
 
@@ -106,16 +108,50 @@ class CatalogController extends ChangeNotifier {
     notifyListeners();
   }
 
+  final BhashiniService _bhashiniService = BhashiniService();
+
   Future<void> speakReadback() async {
     if (_currentItem == null || _isSpeaking) return;
     _isSpeaking = true;
     notifyListeners();
 
-    await _audioService.speakCatalogSummary(
-      titleHi: _currentItem!.titleHi,
-      fairPrice: _currentItem!.pricing?.fairPrice,
-      category: _currentItem!.craftAttributes?.category,
-    );
+    if (AppConstants.bhashiniApiKey.isNotEmpty) {
+      // Build a concise readback sentence in Hindi
+      final parts = <String>[];
+      final cat = _currentItem!.craftAttributes?.category;
+      final titleHi = _currentItem!.titleHi;
+      final price = _currentItem!.pricing?.fairPrice;
+      if (cat != null) parts.add('यह उत्पाद $cat की श्रेणी में है।');
+      if (titleHi != null) parts.add(titleHi);
+      if (price != null) {
+        parts.add('इसकी अनुशंसित बाज़ार कीमत $price रुपये है।');
+      }
+      parts.add('क्या आप इसे ONDC पर प्रकाशित करना चाहते हैं?');
+      final readbackText = parts.join(' ');
+
+      try {
+        final audioPath = await _bhashiniService.synthesize(
+          readbackText,
+          sourceLanguage: 'hi',
+          gender: 'female',
+        );
+        await _audioService.playFile(audioPath);
+      } catch (e) {
+        debugPrint('[BhashiniTTS] failed, falling back to device TTS: $e');
+        // Graceful fallback to device flutter_tts
+        await _audioService.speakCatalogSummary(
+          titleHi: _currentItem!.titleHi,
+          fairPrice: _currentItem!.pricing?.fairPrice,
+          category: _currentItem!.craftAttributes?.category,
+        );
+      }
+    } else {
+      await _audioService.speakCatalogSummary(
+        titleHi: _currentItem!.titleHi,
+        fairPrice: _currentItem!.pricing?.fairPrice,
+        category: _currentItem!.craftAttributes?.category,
+      );
+    }
 
     _isSpeaking = false;
     notifyListeners();
@@ -199,6 +235,7 @@ class CatalogController extends ChangeNotifier {
   @override
   void dispose() {
     _audioService.stopTts();
+    _bhashiniService.dispose();
     super.dispose();
   }
 }

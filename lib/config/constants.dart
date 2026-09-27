@@ -15,22 +15,25 @@ class AppConstants {
   static String get geminiModel =>
       dotenv.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash';
 
-  // Groq (Whisper-Large-v3, Path 3 ASR)
-  static String get groqApiKey => dotenv.env['GROQ_API_KEY'] ?? '';
 
-  // Bhashini (Path 2)
+  // Bhashini (Bhashini Cloud)
+  // BHASHINI_API_KEY     = inference API key (Authorization header for Dhruva)
+  // BHASHINI_ULCA_KEY    = ULCA / udyat key (pipeline config lookup)
+  // BHASHINI_USER_ID     = numeric user ID shown in Bhashini dashboard
+  // BHASHINI_PIPELINE_ID = pipeline supporting ASR+NMT+TTS+Transliteration
   static String get bhashiniApiKey => dotenv.env['BHASHINI_API_KEY'] ?? '';
   static String get bhashiniUlcaKey => dotenv.env['BHASHINI_ULCA_KEY'] ?? '';
   static String get bhashiniApiUrl =>
       dotenv.env['BHASHINI_API_URL'] ??
       'https://dhruva-api.bhashini.gov.in';
+  static String get bhashiniUserId => dotenv.env['BHASHINI_USER_ID'] ?? '';
+  // Default pipeline that covers ASR + NMT + TTS + Transliteration for Hindi
+  static String get bhashiniPipelineId =>
+      dotenv.env['BHASHINI_PIPELINE_ID'] ?? '64392f96daac500b55c543cd';
 
-  // Voice pipeline selector: "groq" | "bhashini" | "ai4bharat" | "auto"
-  // "auto" = groq if key present, else backend
-  static String get voicePipeline =>
       dotenv.env['VOICE_PIPELINE']?.toLowerCase() ?? 'auto';
 
-  // Backend (Path 1 & 2 — Kaggle FastAPI via localtunnel)
+  // Backend (Kaggle FastAPI via localtunnel for Image Processing)
   // ── BPP Backend (ONDC Beckn Provider Platform) ────────────────────
   static String get bppBackendUrl {
     final url = dotenv.env['BPP_BACKEND_URL'] ?? 'http://localhost:8000';

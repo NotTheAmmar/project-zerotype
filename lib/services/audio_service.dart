@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
@@ -35,12 +37,12 @@ class AudioService {
     String? path;
     if (!kIsWeb) {
       final tempDir = await getTemporaryDirectory();
-      path = '${tempDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      path = '${tempDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
     }
 
     await _recorder.start(
       RecordConfig(
-        encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
+        encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.wav,
         sampleRate: AppConstants.audioSampleRate,
         numChannels: 1,
       ),
@@ -78,6 +80,17 @@ class AudioService {
 
   Future<void> stopPlayback() async {
     await _player.stop();
+  }
+
+  /// Plays a base64-encoded WAV/audio returned by Bhashini TTS.
+  /// Decodes and writes to a temp file, then plays it.
+  Future<void> playBase64Audio(String base64Audio) async {
+    final bytes = base64Decode(base64Audio);
+    final dir = await getTemporaryDirectory();
+    final path =
+        '${dir.path}/bhashini_tts_${DateTime.now().millisecondsSinceEpoch}.wav';
+    await File(path).writeAsBytes(bytes);
+    await playFile(path);
   }
 
   // ── TTS Readback ─────────────────────────────────────────────────────────

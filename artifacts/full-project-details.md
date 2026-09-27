@@ -1,7 +1,6 @@
 # Project Proposal: KalaKriti AI (कलाकृति AI)
 ## Autonomous Voice-First Studio & Decentralized Commerce Engine for Marginalized Artisans
 
-**Smart India Hackathon 2026 | Problem Statement ID: SIH26090**  
 **Ministry:** Ministry of Social Justice and Empowerment (MoSJE), Department of Social Justice and Empowerment  
 **Category:** Software | **Theme:** Heritage & Culture  
 **Team Name:** LetEmCook  
@@ -183,7 +182,6 @@ $$P_{prem} = P_{fair} \times 1.20$$
 
 ## Implementation Roadmap
 
-### Phase 1: Prototype Validation (Current Internal Hackathon Baseline)
 - Complete Flutter client implementation of the 4-step wizard (Camera viewfinder, audio recorder, loading shimmer, catalog card preview).  
 - Deployment of FastAPI mock endpoints with structured Indian handicraft payloads (Chanderi silk, terracotta, brass filigree).  
 - Verification of on-device camera framing, audio capture buffers, and audio readback simulation.  
@@ -200,7 +198,6 @@ $$P_{prem} = P_{fair} \times 1.20$$
 
 ## Key References
 
-- **Ministry of Social Justice and Empowerment (MoSJE):** Problem Statement Guidelines for SIH26090.  
 - **Sattva Knowledge Institute & ONDC (2022):** Ecosystem Study on Unlocking Digital Commerce for Indian Artisans and Weavers.  
 - **Ministry of Textiles (MoT):** Fourth All-India Handloom Census (2019–2020).  
 - **Digital Empowerment Foundation (DEF):** Enhancing Livelihood of Artisans and Weavers in Knowledge Economy.  
