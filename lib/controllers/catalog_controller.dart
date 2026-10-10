@@ -35,18 +35,11 @@ class CatalogController extends ChangeNotifier {
 
   ProcessingStage get stage => _stage;
   CatalogItem? get currentItem => _currentItem;
-  CatalogItem? get item => _currentItem;
   bool get showStudioImage => _showStudioImage;
   bool get isSpeaking => _isSpeaking;
   bool get isPublishing => _isPublishing;
   bool get publishSuccess => _publishSuccess;
   String? get errorMessage => _errorMessage;
-
-  void setItem(CatalogItem item) {
-    _currentItem = item;
-    _stage = ProcessingStage.done;
-    notifyListeners();
-  }
 
   /// Main pipeline: takes captured image + recorded audio → produces CatalogItem
   Future<void> processCatalog({
@@ -171,20 +164,14 @@ class CatalogController extends ChangeNotifier {
   }
 
   /// Publish to ONDC via the BPP backend.
-  Future<void> publishToOndc([
-    PricingController? pricingCtrl,
-    int availableQuantity = 1,
-  ]) async {
+  Future<void> publishToOndc(PricingController pricingCtrl) async {
     if (_currentItem == null || _isPublishing) return;
     _isPublishing = true;
     _publishSuccess = false;
     _errorMessage = null;
     notifyListeners();
 
-    final pricing = pricingCtrl?.corridor ?? _currentItem?.pricing;
-    final qty = pricingCtrl?.availableQuantity ?? availableQuantity;
-
-    if (pricing == null || pricing.floorPrice <= 0 || pricing.fairPrice <= 0) {
+    if (pricingCtrl.corridor.floorPrice <= 0 || pricingCtrl.corridor.fairPrice <= 0 || pricingCtrl.corridor.premiumPrice <= 0) {
       _errorMessage = 'मूल्य 0 से अधिक होना चाहिए / Price must be greater than ₹0 before publishing';
       _isPublishing = false;
       notifyListeners();
@@ -194,8 +181,8 @@ class CatalogController extends ChangeNotifier {
     try {
       final response = await _apiService.publishToOndc(
         item: _currentItem!,
-        pricing: pricing,
-        availableQuantity: qty,
+        pricing: pricingCtrl.corridor,
+        availableQuantity: pricingCtrl.availableQuantity,
       );
 
       if (response['status'] == 'PUBLISHED') {

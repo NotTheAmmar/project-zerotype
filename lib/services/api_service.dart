@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-
 import '../config/constants.dart';
 import '../models/craft_attributes.dart';
 import '../models/pricing_corridor.dart';
 import '../models/catalog_item.dart';
-import '../data/mock_data.dart'; //delete
 import 'bhashini_service.dart';
 
 /// Response from the catalog processing pipeline.
@@ -52,65 +49,6 @@ abstract class ApiService {
     required PricingCorridor pricing,
     required int availableQuantity,
   });
-
-  factory ApiService() {
-    if (AppConstants.useMockData) {
-      return MockApiService();
-    }
-    return LiveApiService();
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// MOCK IMPLEMENTATION
-// ─────────────────────────────────────────────────────────────────────────────
-
-class MockApiService implements ApiService {
-  @override
-  Future<Map<String, dynamic>> publishToOndc({
-    required CatalogItem item,
-    required PricingCorridor pricing,
-    required int availableQuantity,
-  }) async {
-    await Future.delayed(const Duration(seconds: 1, milliseconds: 500));
-    return {
-      'status': 'PUBLISHED',
-      'catalog_id': item.id,
-      'message': 'Mock successful publish',
-    };
-  }
-
-  int _mockIndex = 0;
-
-  @override
-  Future<CatalogProcessResult> processCatalog({
-    required String imagePath,
-    required String audioPath,
-    StageCallback? onStageComplete,
-  }) async {
-    final payload = MockData.catalogs[_mockIndex % MockData.catalogs.length];
-    _mockIndex++;
-
-    await Future.delayed(AppConstants.mockStage1Delay);
-    onStageComplete?.call(0);
-
-    await Future.delayed(AppConstants.mockStage2Delay);
-    onStageComplete?.call(1);
-
-    await Future.delayed(AppConstants.mockStage3Delay);
-    onStageComplete?.call(2);
-
-    return CatalogProcessResult(
-      titleEn: payload.titleEn,
-      titleHi: payload.titleHi,
-      descriptionEn: payload.descriptionEn,
-      descriptionHi: payload.descriptionHi,
-      craftAttributes: payload.craftAttributes,
-      pricing: payload.pricing,
-      studioImagePath: payload.studioImagePath ?? payload.rawImagePath,
-      audioReadbackPath: null,
-    );
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -125,12 +63,11 @@ class LiveApiService implements ApiService {
     required int availableQuantity,
   }) async {
     final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/publish');
-
+    
     final body = {
       'catalog_id': item.id,
       'artisan_name': item.craftAttributes?.artisanName ?? 'KalaKriti Artisan',
-      'cluster_name':
-          item.craftAttributes?.clusterLocation ?? 'Chanderi Handloom Cluster',
+      'cluster_name': item.craftAttributes?.clusterLocation ?? 'Chanderi Handloom Cluster',
       'title_en': item.titleEn ?? '',
       'title_hi': item.titleHi ?? '',
       'description_en': item.descriptionEn ?? '',
@@ -142,29 +79,20 @@ class LiveApiService implements ApiService {
       'floor_price': pricing.floorPrice.toDouble(),
       'fair_price': pricing.fairPrice.toDouble(),
       'premium_price': pricing.premiumPrice.toDouble(),
-      'studio_image_url':
-          item.studioImagePath ??
-          'https://images.unsplash.com/photo-1610030469983-98e550d6193c',
+      'studio_image_url': item.studioImagePath ?? 'https://images.unsplash.com/photo-1610030469983-98e550d6193c',
       'available_qty': availableQuantity,
     };
 
-    final response = await http
-        .post(
-          uri,
-          headers: {
-            'Content-Type': 'application/json',
-            'bypass-tunnel-reminder': 'true',
-          },
-          body: jsonEncode(body),
-        )
-        .timeout(AppConstants.apiTimeout);
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json', 'bypass-tunnel-reminder': 'true'},
+      body: jsonEncode(body),
+    ).timeout(AppConstants.apiTimeout);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
-      throw Exception(
-        'Publish failed (${response.statusCode}): ${response.body}',
-      );
+      throw Exception('Publish failed (${response.statusCode}): ${response.body}');
     }
   }
 
@@ -180,6 +108,7 @@ class LiveApiService implements ApiService {
       onStageComplete: onStageComplete,
     );
   }
+
 
   // ── Bhashini Cloud (direct client-side calls, no backend) ────────
 
@@ -270,13 +199,12 @@ class LiveApiService implements ApiService {
         category: _getTagValue(j, 'craft_attributes', 'category'),
         materials: materialsList,
         laborDays: laborDays,
-        clusterLocation: _getTagValue(
-          j,
-          'craft_attributes',
-          'cluster_location',
-        ),
-        artisanName: _getTagValue(j, 'statutory_info', 'manufacturer_name'),
-        countryOfOrigin: _getTagValue(j, 'statutory_info', 'country_of_origin'),
+        clusterLocation:
+            _getTagValue(j, 'craft_attributes', 'cluster_location'),
+        artisanName:
+            _getTagValue(j, 'statutory_info', 'manufacturer_name'),
+        countryOfOrigin:
+            _getTagValue(j, 'statutory_info', 'country_of_origin'),
         netQuantity: _getTagValue(j, 'statutory_info', 'net_quantity'),
         genericName: _getTagValue(j, 'statutory_info', 'generic_name'),
       ),
@@ -320,17 +248,13 @@ class LiveApiService implements ApiService {
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
             'system_instruction': {
-              'parts': [
-                {'text': _geminiSystemInstruction},
-              ],
+              'parts': [{'text': _geminiSystemInstruction}],
             },
             'contents': [
               {
                 'role': 'user',
-                'parts': [
-                  {'text': transcript},
-                ],
-              },
+                'parts': [{'text': transcript}],
+              }
             ],
             'generationConfig': {
               'responseMimeType': 'application/json',
@@ -349,9 +273,8 @@ class LiveApiService implements ApiService {
     final body = jsonDecode(response.body) as Map<String, dynamic>;
 
     // Navigate Gemini response envelope
-    final text =
-        (body['candidates'] as List?)?.first['content']['parts']?.first['text']
-            as String?;
+    final text = (body['candidates'] as List?)
+        ?.first['content']['parts']?.first['text'] as String?;
 
     if (text == null || text.isEmpty) {
       throw Exception('Gemini returned empty extraction response.');
@@ -359,6 +282,7 @@ class LiveApiService implements ApiService {
 
     return jsonDecode(text) as Map<String, dynamic>;
   }
+
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 

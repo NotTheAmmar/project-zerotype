@@ -13,11 +13,7 @@ import 'services/storage_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await dotenv.load(fileName: '.env');
-  } catch (_) {
-    // .env is optional when running mock mode
-  }
+  await dotenv.load(fileName: '.env');
 
   final imageService = ImageService();
   final audioService = AudioService();
