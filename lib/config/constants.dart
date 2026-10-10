@@ -15,7 +15,6 @@ class AppConstants {
   static String get geminiModel =>
       dotenv.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash';
 
-
   // Bhashini (Bhashini Cloud)
   // BHASHINI_API_KEY     = inference API key (Authorization header for Dhruva)
   // BHASHINI_ULCA_KEY    = ULCA / udyat key (pipeline config lookup)
@@ -24,15 +23,13 @@ class AppConstants {
   static String get bhashiniApiKey => dotenv.env['BHASHINI_API_KEY'] ?? '';
   static String get bhashiniUlcaKey => dotenv.env['BHASHINI_ULCA_KEY'] ?? '';
   static String get bhashiniApiUrl =>
-      dotenv.env['BHASHINI_API_URL'] ??
-      'https://dhruva-api.bhashini.gov.in';
+      dotenv.env['BHASHINI_API_URL'] ?? 'https://dhruva-api.bhashini.gov.in';
   static String get bhashiniUserId => dotenv.env['BHASHINI_USER_ID'] ?? '';
   // Default pipeline that covers ASR + NMT + TTS + Transliteration for Hindi
   static String get bhashiniPipelineId =>
       dotenv.env['BHASHINI_PIPELINE_ID'] ?? '64392f96daac500b55c543cd';
-
+  static String get voicePipeline => //delete
       dotenv.env['VOICE_PIPELINE']?.toLowerCase() ?? 'auto';
-
   // Backend (Kaggle FastAPI via localtunnel for Image Processing)
   // ── BPP Backend (ONDC Beckn Provider Platform) ────────────────────
   static String get bppBackendUrl {

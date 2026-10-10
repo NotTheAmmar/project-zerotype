@@ -1,16 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/catalog_controller.dart';
-import '../../controllers/capture_controller.dart';
-import '../../controllers/voice_controller.dart';
-import '../../controllers/pricing_controller.dart';
-import '../widgets/before_after_toggle.dart';
-import '../widgets/craft_chip.dart';
-import '../widgets/price_gauge.dart';
-import '../widgets/stepper_input.dart';
+import '../../data/mock_data.dart';
+import '../../models/catalog_item.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -20,561 +15,1289 @@ class CatalogScreen extends StatefulWidget {
 }
 
 class _CatalogScreenState extends State<CatalogScreen> {
-  bool _seeded = false;
+  int _quantity = 1;
+  int _selectedThumb = 0;
+  bool _isPlayingAudio = false;
+  bool _isPublishing = false;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Set _seeded synchronously so this block never runs twice,
-    // but defer the actual notifyListeners() call to after the frame —
-    // calling seedFromExtracted directly here causes "setState during build"
-    // because didChangeDependencies fires inside _firstBuild.
-    if (!_seeded) {
-      final item = context.read<CatalogController>().currentItem;
-      if (item != null) {
-        _seeded = true;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            // Start at 0 so the artisan enters their actual costs
-            context.read<PricingController>().seedFromExtracted(
-              rawMaterialCost: item.pricing?.rawMaterialCost ?? 0,
-              laborDays: item.pricing?.laborDays ?? 0,
-              itemsProduced: item.pricing?.itemsProduced ?? 1,
-              sellerProposedPrice: item.pricing?.sellerProposedPrice ?? 0,
-            );
-          }
-        });
-      }
-    }
-  }
+  final List<String> _thumbnails = [
+    'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1603555501371-55110eb2df43?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=800&q=80',
+  ];
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<CatalogController, PricingController>(
-      builder: (context, catalogCtrl, pricingCtrl, _) {
-        final item = catalogCtrl.currentItem;
-        if (item == null) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+    final catalogCtrl = context.watch<CatalogController>();
+    final item = catalogCtrl.item ?? MockData.terracottaDiya;
 
-        final attrs = item.craftAttributes;
-        final pricing = pricingCtrl.corridor;
+    final fairPrice = item.pricing?.fairPrice ?? 300;
+    final mrp = item.mrp ?? (fairPrice * 1.33).round();
+    final discountPercent = (((mrp - fairPrice) / mrp) * 100).round();
 
-        return Scaffold(
-          backgroundColor: AppColors.surfaceLight,
-          body: SafeArea(
-            child: Column(
+    return Scaffold(
+      backgroundColor: AppColors.warmCream,
+      appBar: _buildAppBar(context),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── Artisan Preview Ribbon ────────────────────────────────────
+            _buildArtisanRibbon(),
+
+            // ── Scrollable Content ────────────────────────────────────────
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Hero Image Section
+                    _buildImageSection(item),
+                    const SizedBox(height: 14),
+
+                    // 2. Title & Pricing Card
+                    _buildTitleAndPriceCard(item, fairPrice, mrp, discountPercent),
+                    const SizedBox(height: 14),
+
+                    // 3. About this craft Card
+                    _buildAboutCraftCard(item),
+                    const SizedBox(height: 14),
+
+                    // 4. Meet the Artisan Card
+                    _buildMeetArtisanCard(item),
+                    const SizedBox(height: 14),
+
+                    // 5. Product Specifications Card
+                    _buildSpecificationsCard(item),
+                    const SizedBox(height: 14),
+
+                    // 6. Fulfilment & Delivery Card
+                    _buildDeliveryCard(),
+                    const SizedBox(height: 14),
+
+                    // 7. Buyer Interface Simulation
+                    _buildBuyerSimulation(),
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Sticky Bottom Action Bar ──────────────────────────────────
+            _buildBottomActionBar(context, catalogCtrl, item),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── AppBar ─────────────────────────────────────────────────────────────────
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+        onPressed: () {
+          if (Navigator.canPop(context)) {
+            Navigator.pop(context);
+          } else {
+            Navigator.pushReplacementNamed(context, AppRoutes.explore);
+          }
+        },
+      ),
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.secondaryTerracotta.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(
+              Icons.temple_hindu_rounded,
+              color: AppColors.secondaryTerracotta,
+              size: 16,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Product Detail',
+            style: AppTextStyles.label.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+      centerTitle: true,
+      actions: [
+        IconButton(
+          icon: const Icon(Icons.share_outlined, color: AppColors.textPrimary),
+          onPressed: () {},
+        ),
+        Container(
+          margin: const EdgeInsets.only(right: 14),
+          width: 32,
+          height: 32,
+          decoration: const BoxDecoration(
+            color: AppColors.primaryTeal,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.person_rounded, color: Colors.white, size: 18),
+        ),
+      ],
+    );
+  }
+
+  // ── Artisan Ribbon ─────────────────────────────────────────────────────────
+  Widget _buildArtisanRibbon() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      color: const Color(0xFF8E4D32),
+      child: Row(
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+              color: AppColors.tertiarySaffron,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Artisan Preview Mode • This is how customers see your craft on BazaarSetu',
+              style: AppTextStyles.caption.copyWith(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              'Draft v1.2',
+              style: AppTextStyles.caption.copyWith(
+                color: Colors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 1. Hero Image Section ──────────────────────────────────────────────────
+  Widget _buildImageSection(CatalogItem item) {
+    final imagePath = item.studioImagePath ?? item.rawImagePath;
+    final isLocal = imagePath != null && !imagePath.startsWith('http');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        children: [
+          // Main Image
+          Container(
+            height: 260,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                // ── Top bar ─────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
+                if (isLocal && File(imagePath).existsSync())
+                  Image.file(File(imagePath), fit: BoxFit.cover)
+                else
+                  Image.network(
+                    _thumbnails[_selectedThumb % _thumbnails.length],
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: AppColors.surfaceContainer,
+                      child: const Center(
+                        child: Icon(Icons.image_outlined, size: 40, color: AppColors.textSecondary),
+                      ),
+                    ),
                   ),
+
+                // Top Left Badges: Handmade + AI-Listed
+                Positioned(
+                  top: 10,
+                  left: 10,
                   child: Row(
                     children: [
-                      IconButton(
-                        icon: const Icon(Icons.arrow_back_rounded),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      const Spacer(),
-                      Text('Catalog Card', style: AppTextStyles.subhead),
-                      const Spacer(),
-                      // TTS speaker button
-                      IconButton(
-                        icon: Icon(
-                          catalogCtrl.isSpeaking
-                              ? Icons.volume_off_rounded
-                              : Icons.volume_up_rounded,
-                          color: AppColors.actionGreen,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF674000).withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(6),
                         ),
-                        iconSize: 28,
-                        onPressed: catalogCtrl.isSpeaking
-                            ? catalogCtrl.stopReadback
-                            : catalogCtrl.speakReadback,
-                        tooltip: 'सुनें / Listen',
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.handyman_rounded, color: Colors.white, size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Handmade',
+                              style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryTeal.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.auto_awesome, color: Colors.white, size: 12),
+                            const SizedBox(width: 4),
+                            Text(
+                              'AI-Listed',
+                              style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
 
-                // ── Scrollable content ───────────────────────────────────
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.screenH,
+                // Top Right Heart Button
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      shape: BoxShape.circle,
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: const Icon(
+                      Icons.favorite_border_rounded,
+                      color: AppColors.secondaryTerracotta,
+                      size: 18,
+                    ),
+                  ),
+                ),
+
+                // Bottom Right Counter Chip
+                Positioned(
+                  bottom: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.65),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Before/After photo toggle
-                        BeforeAfterToggle(
-                          rawImagePath: item.rawImagePath,
-                          studioImagePath: item.studioImagePath,
-                          showStudio: catalogCtrl.showStudioImage,
-                          onToggle: catalogCtrl.togglePhotoView,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // Product title (Hindi + English)
-                        if (item.titleHi != null) ...[
-                          Text(item.titleHi!, style: AppTextStyles.headline),
-                          const SizedBox(height: AppSpacing.xs),
-                        ],
-                        if (item.titleEn != null) ...[
-                          Text(item.titleEn!,
-                              style: AppTextStyles.body
-                                  .copyWith(color: AppColors.textSecondary)),
-                          const SizedBox(height: AppSpacing.lg),
-                        ],
-
-                        // ── Description — full, both languages ──────────
-                        if (item.descriptionHi != null ||
-                            item.descriptionEn != null) ...[
-                          Text('विवरण / Description',
-                              style: AppTextStyles.label),
-                          const SizedBox(height: AppSpacing.sm),
-                          if (item.descriptionHi != null) ...[
-                            Text(
-                              item.descriptionHi!,
-                              style: AppTextStyles.body,
-                            ),
-                            const SizedBox(height: AppSpacing.sm),
-                          ],
-                          if (item.descriptionEn != null) ...[
-                            Text(
-                              item.descriptionEn!,
-                              style: AppTextStyles.body.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: AppSpacing.lg),
-                        ],
-
-                        // Craft attribute chips
-                        if (attrs != null) ...[
-                          if (attrs.category != null)
-                            CraftChip(
-                              icon: Icons.category_rounded,
-                              label: 'Category / श्रेणी',
-                              value: attrs.category!,
-                            ),
-                          const SizedBox(height: AppSpacing.xs),
-                          if (attrs.dimensions != null) ...[
-                            CraftChip(
-                              icon: Icons.straighten_rounded,
-                              label: 'Dimensions / माप',
-                              value: attrs.dimensions!,
-                            ),
-                            const SizedBox(height: AppSpacing.xs),
-                          ],
-                          if (attrs.materials.isNotEmpty)
-                            CraftChip(
-                              icon: Icons.fiber_manual_record_rounded,
-                              label: 'Materials / सामग्री',
-                              value: attrs.materials.join(', '),
-                              color: AppColors.warningAmber,
-                            ),
-                          const SizedBox(height: AppSpacing.xs),
-                          if (attrs.laborDays != null)
-                            CraftChip(
-                              icon: Icons.schedule_rounded,
-                              label: 'Labour / कार्य दिवस',
-                              value: '${attrs.laborDays} days',
-                              color: AppColors.pricePremium,
-                            ),
-                          if (attrs.clusterLocation != null) ...[
-                            const SizedBox(height: AppSpacing.xs),
-                            CraftChip(
-                              icon: Icons.location_on_rounded,
-                              label: 'Cluster / क्लस्टर',
-                              value: attrs.clusterLocation!,
-                              color: AppColors.priceFloor,
-                            ),
-                          ],
-                          const SizedBox(height: AppSpacing.lg),
-
-                          // ── ONDC Fulfillment & Logistics ────────────────
-                          Text('ONDC Logistics & Statutory', style: AppTextStyles.label),
-                          const SizedBox(height: AppSpacing.sm),
-                          Wrap(
-                            spacing: AppSpacing.xs,
-                            runSpacing: AppSpacing.xs,
-                            children: [
-                              if (attrs.timeToShip != null)
-                                CraftChip(
-                                  icon: Icons.local_shipping_rounded,
-                                  label: 'Ready to Ship',
-                                  value: attrs.timeToShip!.replaceAll('PT', '').replaceAll('H', ' Hours'),
-                                  color: AppColors.actionGreen,
-                                ),
-                              if (attrs.returnable)
-                                CraftChip(
-                                  icon: Icons.assignment_return_rounded,
-                                  label: 'Returns',
-                                  value: attrs.returnWindow?.replaceAll('P', '').replaceAll('D', ' Days') ?? 'Yes',
-                                  color: AppColors.actionGreen,
-                                ),
-                              if (attrs.quantity > 0)
-                                CraftChip(
-                                  icon: Icons.inventory_2_rounded,
-                                  label: 'In Stock',
-                                  value: '${attrs.quantity} units',
-                                ),
-                              if (attrs.countryOfOrigin != null)
-                                CraftChip(
-                                  icon: Icons.public_rounded,
-                                  label: 'Origin',
-                                  value: attrs.countryOfOrigin!,
-                                ),
-                              if (attrs.genericName != null)
-                                CraftChip(
-                                  icon: Icons.label_rounded,
-                                  label: 'Commodity',
-                                  value: attrs.genericName!,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                        ],
-
-                        // ── Pricing adjustment inputs ──────────────────
-                        Text('मूल्य समायोजन / Adjust Pricing',
-                            style: AppTextStyles.label),
-                        const SizedBox(height: AppSpacing.sm),
-                        StepperInput(
-                          label: 'Raw Material Cost / कच्चा माल',
-                          unit: '₹',
-                          value: pricingCtrl.rawMaterialCost,
-                          step: 50,
-                          onIncrement: () =>
-                              pricingCtrl.incrementRawMaterial(step: 50),
-                          onDecrement: () =>
-                              pricingCtrl.decrementRawMaterial(step: 50),
-                          onDirectEdit: (v) => pricingCtrl.setRawMaterialCost(v),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        StepperInput(
-                          label: 'Available Quantity / उपलब्ध मात्रा',
-                          unit: 'pcs',
-                          value: pricingCtrl.availableQuantity,
-                          onIncrement: pricingCtrl.incrementQuantity,
-                          onDecrement: pricingCtrl.decrementQuantity,
-                          onDirectEdit: (v) => pricingCtrl.setAvailableQuantity(v),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        StepperInput(
-                          label: 'Labour Days / कार्य दिवस',
-                          unit: 'days',
-                          value: pricingCtrl.laborDays,
-                          onIncrement: pricingCtrl.incrementLaborDays,
-                          onDecrement: pricingCtrl.decrementLaborDays,
-                          onDirectEdit: (v) => pricingCtrl.setLaborDays(v),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        StepperInput(
-                          label: 'Items in Set / कुल मात्रा',
-                          unit: 'items',
-                          value: pricingCtrl.itemsProduced,
-                          onIncrement: pricingCtrl.incrementItemsProduced,
-                          onDecrement: pricingCtrl.decrementItemsProduced,
-                        ),
-                        const SizedBox(height: AppSpacing.lg),
-
-                        // ── Price corridor gauge ────────────────────────
-                        PriceGauge(
-                          floorPrice: pricing.floorPrice,
-                          fairPrice: pricing.fairPrice,
-                          premiumPrice: pricing.premiumPrice,
-                        ),
-                        const SizedBox(height: AppSpacing.md),
-                        if (pricingCtrl.sellerProposedPrice > 0)
-                          Container(
-                            padding: const EdgeInsets.all(AppSpacing.md),
-                            decoration: BoxDecoration(
-                              color: pricingCtrl.sellerProposedPrice < pricing.floorPrice
-                                  ? AppColors.priceFloor.withOpacity(0.1)
-                                  : AppColors.actionGreen.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: pricingCtrl.sellerProposedPrice < pricing.floorPrice
-                                    ? AppColors.priceFloor
-                                    : AppColors.actionGreen,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  pricingCtrl.sellerProposedPrice < pricing.floorPrice
-                                      ? Icons.warning_amber_rounded
-                                      : Icons.check_circle_outline_rounded,
-                                  color: pricingCtrl.sellerProposedPrice < pricing.floorPrice
-                                      ? AppColors.priceFloor
-                                      : AppColors.actionGreen,
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '⚡ ONDC Market Comparison',
-                                        style: AppTextStyles.label,
-                                      ),
-                                      Text(
-                                        pricingCtrl.sellerProposedPrice < pricing.floorPrice
-                                            ? 'Your price (₹${pricingCtrl.sellerProposedPrice}) is below market floor! You may be underpricing your work.'
-                                            : 'Your price (₹${pricingCtrl.sellerProposedPrice}) is highly competitive in the current ONDC market.',
-                                        style: AppTextStyles.caption,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        const SizedBox(height: AppSpacing.xl),
-
-
-                        // ── Final / Selling price (editable) ────────────
-                        GestureDetector(
-                          onTap: () async {
-                            final ctrl = TextEditingController(
-                              text: pricingCtrl.finalPrice == 0
-                                  ? ''
-                                  : '${pricingCtrl.finalPrice}',
-                            );
-                            final result = await showDialog<int>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: Text(
-                                  'अंतिम कीमत / Final Price',
-                                  style: AppTextStyles.label,
-                                ),
-                                content: TextField(
-                                  controller: ctrl,
-                                  autofocus: true,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly
-                                  ],
-                                  decoration: const InputDecoration(
-                                    prefixText: '₹ ',
-                                    hintText: '0',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  onSubmitted: (v) => Navigator.of(ctx)
-                                      .pop(int.tryParse(v) ?? 0),
-                                ),
-                                actions: [
-                                  if (pricingCtrl.hasFinalPriceOverride)
-                                    TextButton(
-                                      onPressed: () {
-                                        pricingCtrl.clearFinalPriceOverride();
-                                        Navigator.of(ctx).pop();
-                                      },
-                                      child: const Text('Reset to Auto'),
-                                    ),
-                                  TextButton(
-                                    onPressed: () => Navigator.of(ctx).pop(),
-                                    child: const Text('रद्द / Cancel'),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: () => Navigator.of(ctx).pop(
-                                      int.tryParse(ctrl.text) ?? 0,
-                                    ),
-                                    child: const Text('सेट करें / Set'),
-                                  ),
-                                ],
-                              ),
-                            );
-                            if (result != null && result > 0) {
-                              final errorMsg = pricingCtrl.setFinalPrice(result);
-                              if (errorMsg != null && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(errorMsg),
-                                    backgroundColor: AppColors.alertRed,
-                                  ),
-                                );
-                              }
-                            }
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                              vertical: AppSpacing.sm + 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: pricingCtrl.hasFinalPriceOverride
-                                  ? AppColors.actionGreen.withAlpha(18)
-                                  : AppColors.cardBackground,
-                              borderRadius:
-                                  BorderRadius.circular(AppSpacing.radiusMd),
-                              border: Border.all(
-                                color: pricingCtrl.hasFinalPriceOverride
-                                    ? AppColors.actionGreen
-                                    : AppColors.cardBorder,
-                                width: pricingCtrl.hasFinalPriceOverride ? 2 : 1,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.sell_rounded,
-                                  color: pricingCtrl.hasFinalPriceOverride
-                                      ? AppColors.actionGreen
-                                      : AppColors.textSecondary,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Final Price / अंतिम कीमत',
-                                        style: AppTextStyles.label.copyWith(
-                                          color: pricingCtrl
-                                                  .hasFinalPriceOverride
-                                              ? AppColors.actionGreen
-                                              : AppColors.textSecondary,
-                                        ),
-                                      ),
-                                      Text(
-                                        pricingCtrl.hasFinalPriceOverride
-                                            ? 'Manually set'
-                                            : 'Tap to set selling price',
-                                        style: AppTextStyles.caption,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Text(
-                                  '₹${pricingCtrl.finalPrice}',
-                                  style: AppTextStyles.priceLarge.copyWith(
-                                    color: pricingCtrl.hasFinalPriceOverride
-                                        ? AppColors.actionGreen
-                                        : AppColors.textHint,
-                                  ),
-                                ),
-                                const SizedBox(width: AppSpacing.xs),
-                                Icon(
-                                  Icons.edit_rounded,
-                                  size: 16,
-                                  color: AppColors.textHint,
-                                ),
-                              ],
-                            ),
+                        const Icon(Icons.photo_library_outlined, color: Colors.white, size: 12),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_selectedThumb + 1}/4',
+                          style: AppTextStyles.caption.copyWith(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        const SizedBox(height: AppSpacing.xl),
                       ],
                     ),
                   ),
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
 
-                // ── Bottom action dock ────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.md,
-                    AppSpacing.sm,
-                    AppSpacing.md,
-                    AppSpacing.lg,
+          // Thumbnail Row
+          Row(
+            children: [
+              ...List.generate(_thumbnails.length, (i) {
+                final isSelected = _selectedThumb == i;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedThumb = i),
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected ? AppColors.primaryTeal : AppColors.cardBorder,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Image.network(
+                      _thumbnails[i],
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                );
+              }),
+
+              // 360 View Button
+              Expanded(
+                child: Container(
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFBECE5),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: AppColors.secondaryTerracotta.withValues(alpha: 0.25),
+                    ),
                   ),
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Publish Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: (catalogCtrl.isPublishing || catalogCtrl.publishSuccess)
-                              ? null
-                              : () async {
-                                  await catalogCtrl.publishToOndc(pricingCtrl);
-                                  if (catalogCtrl.errorMessage != null && context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(catalogCtrl.errorMessage!),
-                                        backgroundColor: AppColors.alertRed,
-                                      ),
-                                    );
-                                  }
-                                },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.actionGreen,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(0, AppSpacing.touchTargetMin),
-                            disabledBackgroundColor: catalogCtrl.publishSuccess 
-                                ? AppColors.actionGreen 
-                                : null,
-                            disabledForegroundColor: Colors.white,
-                          ),
-                          child: catalogCtrl.isPublishing
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                )
-                              : catalogCtrl.publishSuccess
-                                  ? const Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.check_circle_rounded),
-                                        SizedBox(width: 8),
-                                        Text('ONDC पर प्रकाशित / Published'),
-                                      ],
-                                    )
-                                  : const Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Icon(Icons.rocket_launch_rounded),
-                                        SizedBox(width: 8),
-                                        Text('ONDC पर प्रकाशन / Publish to ONDC'),
-                                      ],
-                                    ),
-                        ),
+                      const Icon(
+                        Icons.view_in_ar_rounded,
+                        color: AppColors.secondaryTerracotta,
+                        size: 20,
                       ),
-                      const SizedBox(height: AppSpacing.sm),
-                      // Retake Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            catalogCtrl.reset();
-                            context.read<CaptureController>().retake();
-                            context.read<VoiceController>().reset();
-                            Navigator.of(context).pushNamedAndRemoveUntil(
-                                AppRoutes.capture, (r) => false);
-                          },
-                          style: OutlinedButton.styleFrom(
-                            minimumSize:
-                                const Size(0, AppSpacing.touchTargetMin),
-                            side: const BorderSide(
-                                color: AppColors.textSecondary),
-                          ),
-                          child: Column(
-                            children: [
-                              const Text('फिर से करें'),
-                              Text('Retake', style: AppTextStyles.caption),
-                            ],
-                          ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '360° View',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.secondaryTerracotta,
                         ),
                       ),
                     ],
                   ),
                 ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
+  // ── 2. Title & Pricing Card ────────────────────────────────────────────────
+  Widget _buildTitleAndPriceCard(
+    CatalogItem item,
+    int fairPrice,
+    int mrp,
+    int discountPercent,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Category Breadcrumb + Edit Pencil
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.craftAttributes?.category?.toUpperCase() ??
+                      'TERRACOTTA POTTERY • FESTIVE',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.secondaryTerracotta,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                onPressed: () {},
+                icon: const Icon(
+                  Icons.edit_outlined,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          // Title
+          Text(
+            item.titleEn ?? 'Handmade Terracotta Diya',
+            style: AppTextStyles.serifHeading(
+              color: AppColors.textPrimary,
+            ).copyWith(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+
+          // Rating & GI Badge
+          Row(
+            children: [
+              const Icon(Icons.star_rounded, color: AppColors.tertiarySaffron, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                '${item.rating} (${item.reviewCount} reviews)',
+                style: AppTextStyles.label.copyWith(fontSize: 13),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.verified_user_outlined,
+                      size: 13,
+                      color: AppColors.primaryTeal,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'GI Origin ${item.craftAttributes?.clusterLocation?.split(',').first ?? 'Pune'}',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.primaryTeal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Price Row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(
+                '₹$fairPrice',
+                style: AppTextStyles.priceLarge.copyWith(
+                  fontSize: 28,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'MRP ₹$mrp',
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 14,
+                  decoration: TextDecoration.lineThrough,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEEAE0),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '$discountPercent% OFF',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.secondaryTerracotta,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Text(
+            'Inclusive of all taxes',
+            style: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Customer Quantity Stepper
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFBECE5).withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Customer Quantity preview:',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          if (_quantity > 1) setState(() => _quantity--);
+                        },
+                        child: const Icon(Icons.remove, size: 16, color: AppColors.textPrimary),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          '$_quantity',
+                          style: AppTextStyles.label.copyWith(fontSize: 14),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() => _quantity++),
+                        child: const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-        );
-      },
+        ],
+      ),
+    );
+  }
+
+  // ── 3. About this craft Card ───────────────────────────────────────────────
+  Widget _buildAboutCraftCard(CatalogItem item) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome, color: AppColors.primaryTeal, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                'About this craft',
+                style: AppTextStyles.serifTitle().copyWith(fontSize: 17),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.voice);
+                },
+                child: Row(
+                  children: [
+                    const Icon(Icons.mic_outlined, size: 14, color: AppColors.primaryTeal),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Edit voice notes',
+                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryTeal),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Story description
+          Text(
+            item.descriptionEn ??
+                'Beautiful handmade terracotta diya crafted using traditional techniques passed down through generations. Molded with locally sourced clay and dried under gentle sunlight. Perfect for Diwali, festive celebrations, pooja rituals, and mindful home decor.',
+            style: AppTextStyles.body.copyWith(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Audio Voice Note Player Card
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFDF1EC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: AppColors.secondaryTerracotta.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => _isPlayingAudio = !_isPlayingAudio);
+                      },
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(
+                          color: AppColors.secondaryTerracotta,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          _isPlayingAudio ? Icons.pause_rounded : Icons.volume_up_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Listen in ${item.audioLanguage} (${item.audioLanguage == "Marathi" ? "मराठी" : "हिंदी"})',
+                            style: AppTextStyles.label.copyWith(fontSize: 13),
+                          ),
+                          Text(
+                            'Artisan voice note • 0:${item.audioDurationSeconds} sec',
+                            style: AppTextStyles.caption.copyWith(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFBECE5),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Voice verified',
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.secondaryTerracotta,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Audio waveform bars
+                Row(
+                  children: List.generate(
+                    28,
+                    (i) => Expanded(
+                      child: Container(
+                        height: (i % 4 == 0 ? 14 : (i % 2 == 0 ? 8 : 18)).toDouble(),
+                        margin: const EdgeInsets.symmetric(horizontal: 1),
+                        decoration: BoxDecoration(
+                          color: i < 11
+                              ? AppColors.secondaryTerracotta
+                              : AppColors.secondaryTerracotta.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 4. Meet the Artisan Card ───────────────────────────────────────────────
+  Widget _buildMeetArtisanCard(CatalogItem item) {
+    final artisanName = item.craftAttributes?.artisanName ?? 'Savita Patil';
+    final location = item.craftAttributes?.clusterLocation ?? 'Pune, Maharashtra';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Meet the Artisan',
+                style: AppTextStyles.serifTitle().copyWith(fontSize: 17),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.workspace_premium_rounded, size: 12, color: AppColors.primaryTeal),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Master Craftsman',
+                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryTeal),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Artisan Profile Banner
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFBECE5).withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    image: DecorationImage(
+                      image: NetworkImage(
+                        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
+                      ),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        artisanName,
+                        style: AppTextStyles.label.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        'Traditional Potter & Artisan',
+                        style: AppTextStyles.caption.copyWith(fontSize: 12),
+                      ),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 12, color: AppColors.textSecondary),
+                          const SizedBox(width: 2),
+                          Text(
+                            location,
+                            style: AppTextStyles.caption.copyWith(fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Quote Card
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF8ED),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '“ ',
+                  style: AppTextStyles.serifHeading(color: AppColors.secondaryTerracotta)
+                      .copyWith(fontSize: 24, height: 1),
+                ),
+                Expanded(
+                  child: Text(
+                    'Made by hand with traditional generational clay techniques. Every diya carries the fragrance of our soil and Diwali prayers.',
+                    style: AppTextStyles.body.copyWith(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // View Profile Button
+          OutlinedButton(
+            onPressed: () {},
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size(double.infinity, 42),
+              side: const BorderSide(color: AppColors.cardBorder),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.badge_outlined, size: 16, color: AppColors.primaryTeal),
+                const SizedBox(width: 6),
+                Text(
+                  'View Artisan Profile & Guild Story',
+                  style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryTeal),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 5. Product Specifications Card ─────────────────────────────────────────
+  Widget _buildSpecificationsCard(CatalogItem item) {
+    final materials = item.craftAttributes?.materials.isNotEmpty == true
+        ? item.craftAttributes!.materials.join(', ')
+        : 'Natural Terracotta Clay';
+    final guild = item.guildName ?? 'Pune Rural Pottery Cluster';
+    final dimensions = item.craftAttributes?.dimensions ?? '180g • 3.5 x 2.0 inches';
+    final technique = item.craftTechnique ?? 'Hand Wheel & Embossed Carving';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Product Specifications',
+            style: AppTextStyles.serifTitle().copyWith(fontSize: 17),
+          ),
+          const SizedBox(height: 12),
+
+          _buildSpecRow('Category', 'Festive Home Decor', true),
+          _buildSpecRow('Material', materials, false),
+          _buildSpecRow('Craft Technique', technique, true),
+          _buildSpecRow('Origin Guild', guild, false),
+          _buildSpecRow('Weight & Dimensions', dimensions, true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpecRow(String label, String value, bool isEven) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isEven ? const Color(0xFFFFF8ED) : Colors.white,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w500),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: AppTextStyles.label.copyWith(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 6. Fulfilment & Delivery Card ──────────────────────────────────────────
+  Widget _buildDeliveryCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_shipping_outlined, color: AppColors.primaryTeal, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                'Fulfilment & Delivery',
+                style: AppTextStyles.serifTitle().copyWith(fontSize: 17),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEEAE0),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  'Free Delivery',
+                  style: AppTextStyles.labelSmall.copyWith(color: AppColors.secondaryTerracotta),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFBECE5).withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Estimated Arrival: 12 – 15 Oct',
+                  style: AppTextStyles.label.copyWith(fontSize: 13),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Delivering to: Mumbai 400001',
+                      style: AppTextStyles.caption,
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Change Pin',
+                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryTeal),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          Row(
+            children: [
+              _buildTrustTag(Icons.eco_outlined, 'Eco Packaging'),
+              const SizedBox(width: 12),
+              _buildTrustTag(Icons.security_outlined, 'Breakage Guaranteed'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrustTag(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 13, color: AppColors.textSecondary),
+        const SizedBox(width: 4),
+        Text(text, style: AppTextStyles.caption.copyWith(fontSize: 11)),
+      ],
+    );
+  }
+
+  // ── 7. Buyer Simulation ────────────────────────────────────────────────────
+  Widget _buildBuyerSimulation() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'BUYER INTERFACE SIMULATION',
+                style: AppTextStyles.labelSmall.copyWith(
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const Spacer(),
+              const Icon(Icons.visibility_outlined, size: 14, color: AppColors.textSecondary),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {},
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 44),
+                    side: const BorderSide(color: AppColors.cardBorder),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.shopping_bag_outlined, size: 16, color: AppColors.textPrimary),
+                      const SizedBox(width: 6),
+                      Text('Add to Cart', style: AppTextStyles.labelSmall),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryDark,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(0, 44),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.bolt_rounded, size: 16),
+                      const SizedBox(width: 4),
+                      Text('Buy Now', style: AppTextStyles.labelSmall.copyWith(color: Colors.white)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primaryTeal,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.mic_rounded, color: Colors.white, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Edit by Voice',
+                    style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Bottom Action Bar ──────────────────────────────────────────────────────
+  Widget _buildBottomActionBar(
+    BuildContext context,
+    CatalogController catalogCtrl,
+    CatalogItem item,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.cardBorder, width: 1)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 1,
+            child: OutlinedButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Draft saved locally in Karigar archive!'),
+                    backgroundColor: AppColors.textPrimary,
+                  ),
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(0, 48),
+                side: const BorderSide(color: AppColors.cardBorder),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.bookmark_border_rounded, size: 16, color: AppColors.textPrimary),
+                  const SizedBox(width: 4),
+                  Text('Save Draft', style: AppTextStyles.labelSmall),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: ElevatedButton(
+              onPressed: _isPublishing
+                  ? null
+                  : () async {
+                      setState(() => _isPublishing = true);
+                      try {
+                        await catalogCtrl.publishToOndc(
+                          null,
+                          _quantity,
+                        );
+                        if (!context.mounted) return;
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            backgroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            title: Row(
+                              children: [
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.successGreen,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Published to ONDC!',
+                                  style: AppTextStyles.serifTitle(),
+                                ),
+                              ],
+                            ),
+                            content: Text(
+                              'Your craft "${item.titleEn}" has been successfully broadcast to ONDC buyer apps via BazaarSetu BPP.',
+                              style: AppTextStyles.body,
+                            ),
+                            actions: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(ctx);
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    AppRoutes.explore,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryTeal,
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('Back to Home'),
+                              ),
+                            ],
+                          ),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Publish result: $e'),
+                            backgroundColor: AppColors.primaryTeal,
+                          ),
+                        );
+                      } finally {
+                        if (mounted) setState(() => _isPublishing = false);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryDark,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(0, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: _isPublishing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.rocket_launch_rounded, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Publish Product',
+                          style: AppTextStyles.buttonLabel.copyWith(fontSize: 14),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
