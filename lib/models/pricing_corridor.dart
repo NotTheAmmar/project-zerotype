@@ -17,8 +17,8 @@ class PricingCorridor {
   const PricingCorridor({
     required this.rawMaterialCost,
     required this.laborDays,
-    required this.itemsProduced,
-    required this.sellerProposedPrice,
+    this.itemsProduced = 1,
+    this.sellerProposedPrice = 0,
     required this.dailyWageRate,
     this.skillMultiplier = 1.0,
     required this.overheadPercent,
