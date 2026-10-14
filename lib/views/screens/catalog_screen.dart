@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/catalog_controller.dart';
-import '../../data/mock_data.dart';
 import '../../models/catalog_item.dart';
 
 class CatalogScreen extends StatefulWidget {
@@ -29,11 +28,64 @@ class _CatalogScreenState extends State<CatalogScreen> {
   @override
   Widget build(BuildContext context) {
     final catalogCtrl = context.watch<CatalogController>();
-    final item = catalogCtrl.item ?? MockData.terracottaDiya;
+    final item = catalogCtrl.item;
 
-    final fairPrice = item.pricing?.fairPrice ?? 300;
-    final mrp = item.mrp ?? (fairPrice * 1.33).round();
-    final discountPercent = (((mrp - fairPrice) / mrp) * 100).round();
+    if (item == null) {
+      return Scaffold(
+        backgroundColor: AppColors.warmCream,
+        appBar: _buildAppBar(context),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.inventory_2_outlined,
+                  size: 56,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No Craft Selected',
+                  style: AppTextStyles.serifTitle(),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please select a craft from your listings or create a new craft listing.',
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.body.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.pushReplacementNamed(
+                    context,
+                    AppRoutes.explore,
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryTeal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: const Text('Back to Crafts'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final fairPrice = item.pricing?.fairPrice ?? 0;
+    final mrp = item.mrp ?? (fairPrice > 0 ? (fairPrice * 1.33).round() : 0);
+    final discountPercent = mrp > fairPrice && mrp > 0
+        ? (((mrp - fairPrice) / mrp) * 100).round()
+        : 0;
 
     return Scaffold(
       backgroundColor: AppColors.warmCream,
@@ -46,45 +98,55 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
             // ── Scrollable Content ────────────────────────────────────────
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. Hero Image Section
-                    _buildImageSection(item),
-                    const SizedBox(height: 14),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 760),
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. Hero Image Section
+                        _buildImageSection(item),
+                        const SizedBox(height: 14),
 
-                    // 2. Title & Pricing Card
-                    _buildTitleAndPriceCard(item, fairPrice, mrp, discountPercent),
-                    const SizedBox(height: 14),
+                        // 2. Title & Pricing Card
+                        _buildTitleAndPriceCard(item, fairPrice, mrp, discountPercent),
+                        const SizedBox(height: 14),
 
-                    // 3. About this craft Card
-                    _buildAboutCraftCard(item),
-                    const SizedBox(height: 14),
+                        // 3. About this craft Card
+                        _buildAboutCraftCard(item),
+                        const SizedBox(height: 14),
 
-                    // 4. Meet the Artisan Card
-                    _buildMeetArtisanCard(item),
-                    const SizedBox(height: 14),
+                        // 4. Meet the Artisan Card
+                        _buildMeetArtisanCard(item),
+                        const SizedBox(height: 14),
 
-                    // 5. Product Specifications Card
-                    _buildSpecificationsCard(item),
-                    const SizedBox(height: 14),
+                        // 5. Product Specifications Card
+                        _buildSpecificationsCard(item),
+                        const SizedBox(height: 14),
 
-                    // 6. Fulfilment & Delivery Card
-                    _buildDeliveryCard(),
-                    const SizedBox(height: 14),
+                        // 6. Fulfilment & Delivery Card
+                        _buildDeliveryCard(),
+                        const SizedBox(height: 14),
 
-                    // 7. Buyer Interface Simulation
-                    _buildBuyerSimulation(),
-                    const SizedBox(height: 24),
-                  ],
+                        // 7. Buyer Interface Simulation
+                        _buildBuyerSimulation(),
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
 
             // ── Sticky Bottom Action Bar ──────────────────────────────────
-            _buildBottomActionBar(context, catalogCtrl, item),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: _buildBottomActionBar(context, catalogCtrl, item),
+              ),
+            ),
           ],
         ),
       ),
@@ -138,16 +200,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           icon: const Icon(Icons.share_outlined, color: AppColors.textPrimary),
           onPressed: () {},
         ),
-        Container(
-          margin: const EdgeInsets.only(right: 14),
-          width: 32,
-          height: 32,
-          decoration: const BoxDecoration(
-            color: AppColors.primaryTeal,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.person_rounded, color: Colors.white, size: 18),
-        ),
+        const SizedBox(width: 8),
       ],
     );
   }
@@ -216,30 +269,42 @@ class _CatalogScreenState extends State<CatalogScreen> {
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          // Main Image
-          Container(
-            height: 260,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (isLocal && File(imagePath).existsSync())
-                  Image.file(File(imagePath), fit: BoxFit.cover)
-                else
-                  Image.network(
-                    _thumbnails[_selectedThumb % _thumbnails.length],
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: AppColors.surfaceContainer,
-                      child: const Center(
-                        child: Icon(Icons.image_outlined, size: 40, color: AppColors.textSecondary),
+          // Main Image with Dynamic AspectRatio
+          AspectRatio(
+            aspectRatio: 1.25,
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (isLocal && File(imagePath).existsSync())
+                    Image.file(File(imagePath), fit: BoxFit.cover)
+                  else if (imagePath != null && imagePath.startsWith('http'))
+                    Image.network(
+                      imagePath,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: AppColors.surfaceContainer,
+                        child: const Center(
+                          child: Icon(Icons.image_outlined, size: 40, color: AppColors.textSecondary),
+                        ),
+                      ),
+                    )
+                  else
+                    Image.network(
+                      _thumbnails[_selectedThumb % _thumbnails.length],
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: AppColors.surfaceContainer,
+                        child: const Center(
+                          child: Icon(Icons.image_outlined, size: 40, color: AppColors.textSecondary),
+                        ),
                       ),
                     ),
-                  ),
 
                 // Top Left Badges: Handmade + AI-Listed
                 Positioned(
@@ -337,7 +402,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+        ),
+        const SizedBox(height: 12),
 
           // Thumbnail Row
           Row(
@@ -456,18 +522,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Rating & GI Badge
+          // Craft Origin Provenance Badge (Reviews removed)
           Row(
             children: [
-              const Icon(Icons.star_rounded, color: AppColors.tertiarySaffron, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                '${item.rating} (${item.reviewCount} reviews)',
-                style: AppTextStyles.label.copyWith(fontSize: 13),
-              ),
-              const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.primaryContainer,
                   borderRadius: BorderRadius.circular(6),
@@ -477,14 +536,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   children: [
                     const Icon(
                       Icons.verified_user_outlined,
-                      size: 13,
+                      size: 14,
                       color: AppColors.primaryTeal,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 5),
                     Text(
-                      'GI Origin ${item.craftAttributes?.clusterLocation?.split(',').first ?? 'Pune'}',
+                      'GI Origin • ${item.craftAttributes?.clusterLocation?.split(',').first ?? 'Handmade Craft Cluster'}',
                       style: AppTextStyles.labelSmall.copyWith(
                         color: AppColors.primaryTeal,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -869,30 +929,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
-
-          // View Profile Button
-          OutlinedButton(
-            onPressed: () {},
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size(double.infinity, 42),
-              side: const BorderSide(color: AppColors.cardBorder),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.badge_outlined, size: 16, color: AppColors.primaryTeal),
-                const SizedBox(width: 6),
-                Text(
-                  'View Artisan Profile & Guild Story',
-                  style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryTeal),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -943,14 +979,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 130,
+          Expanded(
+            flex: 2,
             child: Text(
               label,
               style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
+          const SizedBox(width: 8),
           Expanded(
+            flex: 3,
             child: Text(
               value,
               style: AppTextStyles.label.copyWith(fontSize: 12),

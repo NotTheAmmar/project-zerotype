@@ -3,42 +3,42 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class AppConstants {
   AppConstants._();
 
+  static String? _getEnv(String key) {
+    if (!dotenv.isInitialized) return null;
+    return dotenv.env[key];
+  }
+
   // API
   static String get baseUrl =>
-      dotenv.env['API_BASE_URL'] ?? 'https://api.kalakriti.dev/v1';
+      _getEnv('API_BASE_URL') ?? 'https://api.kalakriti.dev/v1';
   static bool get useMockData =>
-      (dotenv.env['USE_MOCK_DATA'] ?? 'true').toLowerCase() == 'true';
+      (_getEnv('USE_MOCK_DATA') ?? 'true').toLowerCase() == 'true';
   static Duration get apiTimeout => const Duration(seconds: 120);
 
   // Gemini
-  static String get geminiApiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
+  static String get geminiApiKey => _getEnv('GEMINI_API_KEY') ?? '';
   static String get geminiModel =>
-      dotenv.env['GEMINI_MODEL'] ?? 'gemini-2.5-flash';
+      _getEnv('GEMINI_MODEL') ?? 'gemini-2.5-flash';
 
   // Bhashini (Bhashini Cloud)
-  // BHASHINI_API_KEY     = inference API key (Authorization header for Dhruva)
-  // BHASHINI_ULCA_KEY    = ULCA / udyat key (pipeline config lookup)
-  // BHASHINI_USER_ID     = numeric user ID shown in Bhashini dashboard
-  // BHASHINI_PIPELINE_ID = pipeline supporting ASR+NMT+TTS+Transliteration
-  static String get bhashiniApiKey => dotenv.env['BHASHINI_API_KEY'] ?? '';
-  static String get bhashiniUlcaKey => dotenv.env['BHASHINI_ULCA_KEY'] ?? '';
+  static String get bhashiniApiKey => _getEnv('BHASHINI_API_KEY') ?? '';
+  static String get bhashiniUlcaKey => _getEnv('BHASHINI_ULCA_KEY') ?? '';
   static String get bhashiniApiUrl =>
-      dotenv.env['BHASHINI_API_URL'] ?? 'https://dhruva-api.bhashini.gov.in';
-  static String get bhashiniUserId => dotenv.env['BHASHINI_USER_ID'] ?? '';
-  // Default pipeline that covers ASR + NMT + TTS + Transliteration for Hindi
+      _getEnv('BHASHINI_API_URL') ?? 'https://dhruva-api.bhashini.gov.in';
+  static String get bhashiniUserId => _getEnv('BHASHINI_USER_ID') ?? '';
   static String get bhashiniPipelineId =>
-      dotenv.env['BHASHINI_PIPELINE_ID'] ?? '64392f96daac500b55c543cd';
-  static String get voicePipeline => //delete
-      dotenv.env['VOICE_PIPELINE']?.toLowerCase() ?? 'auto';
-  // Backend (Kaggle FastAPI via localtunnel for Image Processing)
+      _getEnv('BHASHINI_PIPELINE_ID') ?? '64392f96daac500b55c543cd';
+  static String get voicePipeline =>
+      _getEnv('VOICE_PIPELINE')?.toLowerCase() ?? 'auto';
+
   // ── BPP Backend (ONDC Beckn Provider Platform) ────────────────────
   static String get bppBackendUrl {
-    final url = dotenv.env['BPP_BACKEND_URL'] ?? 'http://localhost:8000';
+    final url = _getEnv('BPP_BACKEND_URL') ?? 'http://localhost:8000';
     return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
   }
 
   static String get backendUrl {
-    final url = dotenv.env['BACKEND_URL'] ?? 'http://localhost:8000';
+    final url = _getEnv('BACKEND_URL') ?? 'http://localhost:8000';
     return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
   }
 
