@@ -1,10 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/catalog_controller.dart';
-import '../../data/mock_data.dart';
 import '../../models/catalog_item.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -15,155 +15,151 @@ class ExploreScreen extends StatefulWidget {
 }
 
 class _ExploreScreenState extends State<ExploreScreen> {
-  int _selectedCategoryIndex = 0;
   int _bottomNavIndex = 0;
-  bool _isPlayingVoiceNote = false;
-
-  final List<String> _categories = [
-    'All Crafts',
-    'Pottery & Clay',
-    'Clothing & Weaves',
-    'Metal & Wood',
-    'Jewelry & Brass',
-  ];
 
   @override
   Widget build(BuildContext context) {
+    final catalogCtrl = context.watch<CatalogController>();
+    final savedCatalogs = catalogCtrl.savedCatalogs;
+
     return Scaffold(
       backgroundColor: AppColors.warmCream,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // ── App Header ────────────────────────────────────────────────
-            SliverToBoxAdapter(child: _buildTopHeader(context)),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = constraints.maxWidth;
+            final isTablet = screenWidth >= 640;
+            final int crossAxisCount = screenWidth > 900
+                ? 4
+                : screenWidth > 600
+                    ? 3
+                    : 2;
 
-            // ── Search Bar with Voice Mic ─────────────────────────────────
-            SliverToBoxAdapter(child: _buildSearchBar(context)),
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1040),
+                child: CustomScrollView(
+                  slivers: [
+                    // ── App Header ─────────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: _buildTopHeader(context, isTablet),
+                    ),
 
-            // ── Direct Karigar Fair Pledge Banner ─────────────────────────
-            SliverToBoxAdapter(child: _buildPledgeBanner(context)),
+                    // ── Search & Mic Bar ──────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: _buildSearchBar(context),
+                    ),
 
-            // ── Category Pills ────────────────────────────────────────────
-            SliverToBoxAdapter(child: _buildCategoryPills()),
+                    // ── Prototype & Fair Pledge Banner ────────────────────
+                    SliverToBoxAdapter(
+                      child: _buildPrototypeBanner(context),
+                    ),
 
-            // ── Product Grid Header ───────────────────────────────────────
-            SliverToBoxAdapter(child: _buildGridHeader()),
+                    // ── Section Header ────────────────────────────────────
+                    SliverToBoxAdapter(
+                      child: _buildSectionHeader(savedCatalogs.length),
+                    ),
 
-            // ── 2-Column Product Grid ─────────────────────────────────────
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.58,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 16,
+                    // ── Product Grid or Empty State ───────────────────────
+                    if (savedCatalogs.isEmpty)
+                      SliverToBoxAdapter(
+                        child: _buildEmptyState(context),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: crossAxisCount,
+                            childAspectRatio: screenWidth < 360 ? 0.62 : 0.68,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 16,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final item = savedCatalogs[index];
+                              return _buildProductCard(context, item);
+                            },
+                            childCount: savedCatalogs.length,
+                          ),
+                        ),
+                      ),
+
+                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                  ],
                 ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final item =
-                      MockData.catalogs[index % MockData.catalogs.length];
-                  return _buildProductCard(context, item);
-                }, childCount: MockData.catalogs.length),
               ),
-            ),
-
-            // ── Karigar Voice Note Spotlight ──────────────────────────────
-            SliverToBoxAdapter(child: _buildVoiceNoteSpotlight(context)),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
+            );
+          },
         ),
       ),
       bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
 
-  // ── Top Header ─────────────────────────────────────────────────────────────
-  Widget _buildTopHeader(BuildContext context) {
+  // ── Top Header (Profile removed) ───────────────────────────────────────────
+  Widget _buildTopHeader(BuildContext context, bool isTablet) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
           // BazaarSetu Brand Logo
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               color: AppColors.secondaryTerracotta.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: const Icon(
               Icons.temple_hindu_rounded,
               color: AppColors.secondaryTerracotta,
-              size: 24,
+              size: 26,
             ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            'BazaarSetu',
-            style: AppTextStyles.serifHeading().copyWith(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textPrimary,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const Spacer(),
-          // Favorites Heart
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(
-              Icons.favorite_border_rounded,
-              color: AppColors.textPrimary,
-              size: 24,
-            ),
-          ),
-          // Cart with badge
-          Stack(
-            clipBehavior: Clip.none,
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(
-                  Icons.shopping_bag_outlined,
+              Text(
+                'BazaarSetu',
+                style: AppTextStyles.serifHeading().copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
-                  size: 24,
+                  letterSpacing: -0.3,
                 ),
               ),
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: AppColors.tertiarySaffron,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Text(
-                    '2',
-                    style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
+              Text(
+                'Karigar AI Studio • Prototype',
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
           ),
-          // User Avatar
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 34,
-              height: 34,
-              decoration: const BoxDecoration(
-                color: AppColors.primaryTeal,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.person_rounded,
+          const Spacer(),
+
+          // New Craft Listing CTA button in Header
+          FilledButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.capture);
+            },
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: Text(
+              isTablet ? 'Create Craft Listing' : 'List Craft',
+              style: AppTextStyles.labelSmall.copyWith(
                 color: Colors.white,
-                size: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primaryTeal,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
           ),
@@ -194,13 +190,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Search products...',
+                'Search craft products...',
                 style: AppTextStyles.body.copyWith(
                   color: AppColors.textSecondary,
+                  fontSize: 14,
                 ),
               ),
             ),
-            // Voice Mic Button
+            // Voice Mic Button -> Opens AI Capture
             GestureDetector(
               onTap: () {
                 Navigator.pushNamed(context, AppRoutes.capture);
@@ -233,10 +230,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  // ── Direct Karigar Fair Pledge Banner ──────────────────────────────────────
-  Widget _buildPledgeBanner(BuildContext context) {
+  // ── Direct Karigar Fair Pledge Prototype Banner ────────────────────────────
+  Widget _buildPrototypeBanner(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -256,13 +253,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   Row(
                     children: [
                       const Icon(
-                        Icons.verified_rounded,
+                        Icons.science_outlined,
                         color: AppColors.secondaryTerracotta,
-                        size: 14,
+                        size: 15,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        'DIRECT KARIGAR FAIR PLEDGE',
+                        'KARIGAR AI PROTOTYPE',
                         style: AppTextStyles.labelSmall.copyWith(
                           color: AppColors.secondaryTerracotta,
                           letterSpacing: 0.8,
@@ -273,22 +270,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Authentic Craft from Village Guilds',
+                    'Voice & Vision Craft Onboarding',
                     style: AppTextStyles.serifTitle(
                       color: AppColors.textPrimary,
-                    ).copyWith(fontSize: 18, fontWeight: FontWeight.w700),
+                    ).copyWith(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '100% genuine artisan provenance • Fair compensation paid upfront',
+                    'Photograph your handmade craft and speak in your language. The AI pipeline analyzes materials, recommends fair pricing, and drafts your ONDC listing.',
                     style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textPrimary.withValues(alpha: 0.75),
+                      color: AppColors.textPrimary.withValues(alpha: 0.8),
+                      height: 1.35,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
@@ -307,113 +305,137 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  // ── Category Pills ─────────────────────────────────────────────────────────
-  Widget _buildCategoryPills() {
-    return SizedBox(
-      height: 44,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _categories.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final isSelected = _selectedCategoryIndex == index;
-          return GestureDetector(
-            onTap: () {
-              setState(() => _selectedCategoryIndex = index);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.secondaryTerracotta
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: isSelected
-                      ? AppColors.secondaryTerracotta
-                      : AppColors.cardBorder,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  _categories[index],
-                  style: AppTextStyles.chipText.copyWith(
-                    color: isSelected ? Colors.white : AppColors.textPrimary,
-                  ),
-                ),
+  // ── Section Header ─────────────────────────────────────────────────────────
+  Widget _buildSectionHeader(int itemCount) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Row(
+        children: [
+          Text(
+            itemCount > 0 ? 'Your Craft Listings' : 'Craft Listings',
+            style: AppTextStyles.serifTitle().copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$itemCount',
+              style: AppTextStyles.labelSmall.copyWith(
+                color: AppColors.primaryTeal,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          );
-        },
+          ),
+          const Spacer(),
+          if (itemCount > 0)
+            GestureDetector(
+              onTap: () {
+                context.read<CatalogController>().loadSavedCatalogs();
+              },
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.refresh_rounded,
+                    size: 15,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Refresh',
+                    style: AppTextStyles.caption.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
 
-  // ── Product Grid Header ────────────────────────────────────────────────────
-  Widget _buildGridHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      child: Row(
+  // ── Empty State (When no user crafts listed yet) ───────────────────────────
+  Widget _buildEmptyState(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.textPrimary.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: '6 ',
-                  style: AppTextStyles.serifTitle().copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                TextSpan(
-                  text: 'masterpiece crafts',
-                  style: AppTextStyles.body.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceContainer,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.primaryTeal.withValues(alpha: 0.2),
+                width: 1.5,
+              ),
+            ),
+            child: const Icon(
+              Icons.camera_enhance_rounded,
+              size: 34,
+              color: AppColors.primaryTeal,
             ),
           ),
-          const Spacer(),
-          // Sort Chip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.cardBorder),
+          const SizedBox(height: 16),
+          Text(
+            'No Craft Products Listed Yet',
+            style: AppTextStyles.serifTitle().copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
             ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.swap_vert_rounded,
-                  size: 14,
-                  color: AppColors.textPrimary,
-                ),
-                const SizedBox(width: 4),
-                Text('Featured', style: AppTextStyles.labelSmall),
-              ],
-            ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(width: 8),
-          // Filter Chip
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.cardBorder),
+          const SizedBox(height: 8),
+          Text(
+            'Start your prototype journey! Tap below to snap a picture of your craft and speak your artisan story.',
+            style: AppTextStyles.body.copyWith(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.4,
             ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.tune_rounded,
-                  size: 14,
-                  color: AppColors.textPrimary,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.capture);
+              },
+              icon: const Icon(Icons.add_a_photo_outlined, size: 18),
+              label: const Text('Create First Craft Listing'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondaryTerracotta,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 4),
-                Text('Filter', style: AppTextStyles.labelSmall),
-              ],
+                elevation: 0,
+              ),
             ),
           ),
         ],
@@ -421,11 +443,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  // ── 2-Column Product Card ──────────────────────────────────────────────────
+  // ── Product Card (Review & rating removed) ──────────────────────────────────
   Widget _buildProductCard(BuildContext context, CatalogItem item) {
-    final fairPrice = item.pricing?.fairPrice ?? 300;
-    final mrp = item.mrp ?? (fairPrice * 1.33).round();
-    final discountPercent = (((mrp - fairPrice) / mrp) * 100).round();
+    final fairPrice = item.pricing?.fairPrice ?? 0;
+    final mrp = item.mrp;
 
     return GestureDetector(
       onTap: () {
@@ -455,19 +476,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    item.studioImagePath ?? 'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      color: AppColors.surfaceContainer,
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_outlined,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
+                  _buildProductImage(item),
                   // Handmade Tag
                   Positioned(
                     bottom: 8,
@@ -487,25 +496,35 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         'Handmade',
                         style: AppTextStyles.labelSmall.copyWith(
                           color: Colors.white,
+                          fontSize: 10,
                         ),
                       ),
                     ),
                   ),
-                  // Favorite Heart Button
+                  // Status badge (e.g. Published or Draft)
                   Positioned(
                     top: 8,
                     right: 8,
                     child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
                       ),
-                      child: const Icon(
-                        Icons.favorite_border_rounded,
-                        size: 16,
-                        color: AppColors.textPrimary,
+                      decoration: BoxDecoration(
+                        color: item.status == CatalogStatus.published
+                            ? AppColors.primaryTeal.withValues(alpha: 0.9)
+                            : Colors.black.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        item.status == CatalogStatus.published
+                            ? 'ONDC Live'
+                            : 'Draft',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -513,13 +532,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
             ),
 
-            // Details
+            // Details (No review or star rating section)
             Padding(
               padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Guild Location
+                  // Guild / Location
                   Row(
                     children: [
                       const Icon(
@@ -530,7 +549,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       const SizedBox(width: 2),
                       Expanded(
                         child: Text(
-                          item.guildName ?? 'Artisan Guild',
+                          item.guildName ??
+                              item.craftAttributes?.clusterLocation ??
+                              'Artisan Guild',
                           style: AppTextStyles.caption.copyWith(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -545,7 +566,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
                   // Title
                   Text(
-                    item.titleEn ?? 'Indian Handcraft',
+                    item.titleEn ?? 'Handmade Craft',
                     style:
                         AppTextStyles.serifSubhead(color: AppColors.textPrimary)
                             .copyWith(
@@ -556,27 +577,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-
-                  // Rating
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.star_rounded,
-                        color: AppColors.tertiarySaffron,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        '${item.rating} (${item.reviewCount})',
-                        style: AppTextStyles.caption.copyWith(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 6),
 
                   // Pricing Row
@@ -585,194 +585,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        '₹$fairPrice',
+                        fairPrice > 0 ? '₹$fairPrice' : 'Price Pending',
                         style: AppTextStyles.label.copyWith(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '₹$mrp',
-                        style: AppTextStyles.caption.copyWith(
-                          fontSize: 11,
-                          decoration: TextDecoration.lineThrough,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$discountPercent% OFF',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.secondaryTerracotta,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Karigar Voice Note Spotlight ───────────────────────────────────────────
-  Widget _buildVoiceNoteSpotlight(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFBECE5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppColors.secondaryTerracotta.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                // Artisan Photo
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    image: const DecorationImage(
-                      image: NetworkImage(
-                        'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=400&q=80',
-                      ),
-                      fit: BoxFit.cover,
-                    ),
-                    border: Border.all(
-                      color: AppColors.secondaryTerracotta,
-                      width: 1.5,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.record_voice_over_rounded,
-                            size: 13,
-                            color: AppColors.secondaryTerracotta,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Listen to Karigar Voice Note',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: AppColors.secondaryTerracotta,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Master Ramprasad Prajapati',
-                        style: AppTextStyles.label.copyWith(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        '3rd Gen Potter • Khurja Village',
-                        style: AppTextStyles.caption.copyWith(fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Audio Player Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.cardBorder),
-              ),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isPlayingVoiceNote = !_isPlayingVoiceNote;
-                      });
-                    },
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primaryTeal,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _isPlayingVoiceNote
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                      if (mrp != null && mrp > fairPrice) ...[
+                        const SizedBox(width: 4),
                         Text(
-                          '"हस्तनिर्मित दीया कैसे बनता है"',
-                          style: AppTextStyles.body.copyWith(
-                            color: AppColors.textPrimary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        // Waveform dummy dots
-                        Row(
-                          children: List.generate(
-                            20,
-                            (i) => Expanded(
-                              child: Container(
-                                height:
-                                    (i % 3 == 0 ? 10 : (i % 2 == 0 ? 6 : 14))
-                                        .toDouble(),
-                                margin: const EdgeInsets.symmetric(
-                                  horizontal: 1,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: i < 7
-                                      ? AppColors.primaryTeal
-                                      : AppColors.textSecondary.withValues(
-                                          alpha: 0.3,
-                                        ),
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
+                          '₹$mrp',
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 11,
+                            decoration: TextDecoration.lineThrough,
+                            color: AppColors.textSecondary,
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '0:14 / 0:42',
-                    style: AppTextStyles.caption.copyWith(fontSize: 11),
+                    ],
                   ),
                 ],
               ),
@@ -783,7 +614,56 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  // ── Bottom Navigation Bar ──────────────────────────────────────────────────
+  Widget _buildProductImage(CatalogItem item) {
+    final imagePath = item.studioImagePath ?? item.rawImagePath;
+
+    if (imagePath == null || imagePath.isEmpty) {
+      return Container(
+        color: AppColors.surfaceContainer,
+        child: const Center(
+          child: Icon(
+            Icons.brush_rounded,
+            color: AppColors.textSecondary,
+            size: 32,
+          ),
+        ),
+      );
+    }
+
+    if (imagePath.startsWith('http')) {
+      return Image.network(
+        imagePath,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
+      );
+    }
+
+    final file = File(imagePath);
+    if (file.existsSync()) {
+      return Image.file(
+        file,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
+      );
+    }
+
+    return _buildFallbackImage();
+  }
+
+  Widget _buildFallbackImage() {
+    return Container(
+      color: AppColors.surfaceContainer,
+      child: const Center(
+        child: Icon(
+          Icons.image_outlined,
+          color: AppColors.textSecondary,
+          size: 28,
+        ),
+      ),
+    );
+  }
+
+  // ── Bottom Navigation Bar (Categories & Profile removed) ───────────────────
   Widget _buildBottomNavigationBar(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
@@ -793,7 +673,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: BottomNavigationBar(
         currentIndex: _bottomNavIndex,
         onTap: (index) {
-          if (index == 2) {
+          if (index == 1) {
             // Karigar Hub: Start AI Product Creation
             Navigator.pushNamed(context, AppRoutes.capture);
           } else {
@@ -806,6 +686,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         unselectedItemColor: AppColors.textSecondary,
         selectedLabelStyle: AppTextStyles.labelSmall.copyWith(
           color: AppColors.primaryTeal,
+          fontWeight: FontWeight.w600,
         ),
         unselectedLabelStyle: AppTextStyles.labelSmall.copyWith(
           color: AppColors.textSecondary,
@@ -813,24 +694,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
         elevation: 0,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            activeIcon: Icon(Icons.explore_rounded),
-            label: 'Home',
+            icon: Icon(Icons.storefront_outlined),
+            activeIcon: Icon(Icons.storefront_rounded),
+            label: 'Crafts',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_outlined),
-            activeIcon: Icon(Icons.grid_view_rounded),
-            label: 'Categories',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline_rounded, size: 28),
-            activeIcon: Icon(Icons.add_circle_rounded, size: 28),
+            icon: Icon(Icons.add_circle_outline_rounded, size: 26),
+            activeIcon: Icon(Icons.add_circle_rounded, size: 26),
             label: 'Karigar Hub',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline_rounded),
-            activeIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
           ),
         ],
       ),

@@ -91,11 +91,14 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     return Scaffold(
       backgroundColor: AppColors.warmCream,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
               // ── Top Pill Badge ──────────────────────────────────────────
               Center(
                 child: Container(
@@ -297,8 +300,10 @@ class _ProcessingScreenState extends State<ProcessingScreen>
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   // ── Circular Image Frame with Dashed Radial Outer Ring ───────────────────────────
   Widget _buildCircularPreview(String? localImagePath) {

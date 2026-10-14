@@ -23,10 +23,14 @@ class CatalogController extends ChangeNotifier {
     required StorageService storageService,
   })  : _apiService = apiService,
         _audioService = audioService,
-        _storageService = storageService;
+        _storageService = storageService {
+    loadSavedCatalogs();
+  }
 
   ProcessingStage _stage = ProcessingStage.notStarted;
   CatalogItem? _currentItem;
+  List<CatalogItem> _savedCatalogs = [];
+  bool _isLoadingCatalogs = false;
   bool _showStudioImage = false;
   bool _isSpeaking = false;
   bool _isPublishing = false;
@@ -36,11 +40,26 @@ class CatalogController extends ChangeNotifier {
   ProcessingStage get stage => _stage;
   CatalogItem? get currentItem => _currentItem;
   CatalogItem? get item => _currentItem;
+  List<CatalogItem> get savedCatalogs => _savedCatalogs;
+  bool get isLoadingCatalogs => _isLoadingCatalogs;
   bool get showStudioImage => _showStudioImage;
   bool get isSpeaking => _isSpeaking;
   bool get isPublishing => _isPublishing;
   bool get publishSuccess => _publishSuccess;
   String? get errorMessage => _errorMessage;
+
+  Future<void> loadSavedCatalogs() async {
+    _isLoadingCatalogs = true;
+    notifyListeners();
+    try {
+      _savedCatalogs = await _storageService.loadCatalogs();
+    } catch (e) {
+      debugPrint('[CatalogController] Error loading catalogs: $e');
+    } finally {
+      _isLoadingCatalogs = false;
+      notifyListeners();
+    }
+  }
 
   void setItem(CatalogItem item) {
     _currentItem = item;
@@ -99,6 +118,7 @@ class CatalogController extends ChangeNotifier {
 
       // Persist locally
       await _storageService.saveCatalog(_currentItem!);
+      _updateSavedList(_currentItem!);
 
       _stage = ProcessingStage.done;
       notifyListeners();
@@ -201,6 +221,7 @@ class CatalogController extends ChangeNotifier {
       if (response['status'] == 'PUBLISHED') {
         _currentItem = _currentItem!.copyWith(status: CatalogStatus.published);
         await _storageService.saveCatalog(_currentItem!);
+        _updateSavedList(_currentItem!);
         _publishSuccess = true;
         HapticFeedback.heavyImpact();
 
@@ -242,6 +263,25 @@ class CatalogController extends ChangeNotifier {
     _isPublishing = false;
     _publishSuccess = false;
     _errorMessage = null;
+    notifyListeners();
+  }
+
+  void _updateSavedList(CatalogItem item) {
+    final index = _savedCatalogs.indexWhere((c) => c.id == item.id);
+    if (index >= 0) {
+      _savedCatalogs[index] = item;
+    } else {
+      _savedCatalogs.insert(0, item);
+    }
+    notifyListeners();
+  }
+
+  Future<void> deleteCatalog(String id) async {
+    await _storageService.deleteCatalog(id);
+    _savedCatalogs.removeWhere((item) => item.id == id);
+    if (_currentItem?.id == id) {
+      _currentItem = null;
+    }
     notifyListeners();
   }
 
