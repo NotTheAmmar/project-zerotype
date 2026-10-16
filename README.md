@@ -1,6 +1,3 @@
-from pathlib import Path
-
-readme = r'''# BazaarSetu
 
 ### From a product photo and a voice note to a market-ready catalog.
 
@@ -175,6 +172,3 @@ Check the repository for a `LICENSE` file before reusing or redistributing this 
 **Repository:** [NotTheAmmar/project-zerotype](https://github.com/NotTheAmmar/project-zerotype)
 '''
 
-path = Path("/mnt/data/README_BazaarSetu.md")
-path.write_text(readme, encoding="utf-8")
-print(f"Created: {path}\nSize: {path.stat().st_size} bytes")
