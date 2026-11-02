@@ -3,26 +3,67 @@ name: Build Release APK
 on:
   push:
     tags:
-      - 'v*'
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
   workflow_dispatch:
     inputs:
+      version:
+        description: 'Semantic Version (e.g. 1.0.0). Leave blank to use pubspec.yaml version.'
+        required: false
+        default: ''
       create_release:
         description: 'Publish as GitHub Release'
         required: true
         type: boolean
-        default: false
+        default: true
 
 permissions:
   contents: write
 
 jobs:
   build-apk:
-    name: Build Android Release APK
+    name: Build & Package Android Release APK
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve Semantic Version
+        id: semver
+        run: |
+          set -e
+          # 1. Determine target version name
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            RAW_VER="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            RAW_VER="${GITHUB_REF_NAME#v}"
+          else
+            # Extract from pubspec.yaml
+            RAW_VER=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          fi
+
+          # 2. Strict SemVer validation (MAJOR.MINOR.PATCH)
+          if [[ ! "$RAW_VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "::error::Version '$RAW_VER' does not match strict Semantic Versioning (X.Y.Z)."
+            exit 1
+          fi
+
+          # 3. Monotonically increasing build number
+          BUILD_NUM="${{ github.run_number }}"
+          APK_BASENAME="BazaarSetu-v${RAW_VER}-build${BUILD_NUM}"
+
+          echo "version_name=${RAW_VER}" >> "$GITHUB_OUTPUT"
+          echo "build_number=${BUILD_NUM}" >> "$GITHUB_OUTPUT"
+          echo "apk_basename=${APK_BASENAME}" >> "$GITHUB_OUTPUT"
+
+          echo "=============================================="
+          echo " Building BazaarSetu Release APK"
+          echo " Semantic Version : $RAW_VER"
+          echo " Build Number     : $BUILD_NUM"
+          echo " Artifact Name    : ${APK_BASENAME}.apk"
+          echo "=============================================="
 
       - name: Set up Java 17
         uses: actions/setup-java@v4
@@ -36,28 +77,44 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Setup environment file (.env)
+      - name: Prepare environment file (.env)
         run: cp .env.example .env
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Android Release APK
-        run: flutter build apk --release --target-platform android-arm64
+      - name: Compile Release APK (Strict Versioned)
+        run: |
+          flutter build apk --release \
+            --target-platform android-arm64 \
+            --build-name="${{ steps.semver.outputs.version_name }}" \
+            --build-number="${{ steps.semver.outputs.build_number }}"
+
+      - name: Package & Generate Checksum
+        run: |
+          cd build/app/outputs/flutter-apk
+          mv app-release.apk "${{ steps.semver.outputs.apk_basename }}.apk"
+          sha256sum "${{ steps.semver.outputs.apk_basename }}.apk" > "${{ steps.semver.outputs.apk_basename }}.sha256"
+          cat "${{ steps.semver.outputs.apk_basename }}.sha256"
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bazaarsetu-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: ${{ steps.semver.outputs.apk_basename }}
+          path: |
+            build/app/outputs/flutter-apk/${{ steps.semver.outputs.apk_basename }}.apk
+            build/app/outputs/flutter-apk/${{ steps.semver.outputs.apk_basename }}.sha256
           if-no-files-found: error
 
-      - name: Create GitHub Release
+      - name: Publish GitHub Release
         if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.create_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
-          name: BazaarSetu Release ${{ github.ref_name }}
+          tag_name: v${{ steps.semver.outputs.version_name }}
+          name: BazaarSetu v${{ steps.semver.outputs.version_name }} (Build ${{ steps.semver.outputs.build_number }})
+          files: |
+            build/app/outputs/flutter-apk/${{ steps.semver.outputs.apk_basename }}.apk
+            build/app/outputs/flutter-apk/${{ steps.semver.outputs.apk_basename }}.sha256
           draft: false
           prerelease: false
           generate_release_notes: true
