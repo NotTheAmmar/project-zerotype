@@ -1,5 +1,5 @@
 """
-main.py — KalaKriti BPP FastAPI application entrypoint.
+main.py — BazaarSetu BPP FastAPI application entrypoint.
 
 Startup:
     uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -29,7 +29,7 @@ logging.basicConfig(
     format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
     datefmt="%H:%M:%S",
 )
-logger = logging.getLogger("kalakriti_bpp")
+logger = logging.getLogger("bazaarsetu_bpp")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     """Log startup summary and verify settings on boot."""
     settings = get_settings()
     logger.info("=" * 60)
-    logger.info("  KalaKriti BPP — ONDC Beckn Provider Platform")
+    logger.info("  BazaarSetu BPP — ONDC Beckn Provider Platform")
     logger.info("  Subscriber ID : %s", settings.bpp_subscriber_id)
     logger.info("  Public URI    : %s", settings.bpp_public_uri)
     logger.info(
@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
     logger.info("  Catalog store : %d listing(s) pre-loaded", listing_count())
     logger.info("=" * 60)
     yield
-    logger.info("KalaKriti BPP shutting down.")
+    logger.info("BazaarSetu BPP shutting down.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -60,17 +60,16 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
 # ─────────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="KalaKriti BPP",
+    title="BazaarSetu BPP",
     description=(
-        "ONDC Beckn Provider Platform Adapter for KalaKriti AI — "
-        "Smart India Hackathon 2026 (SIH26090). "
+        "ONDC Beckn Provider Platform Adapter for BazaarSetu (Project ZeroType). "
         "Receives finalized artisan catalog payloads from the Flutter mobile app "
         "and serves them to ONDC buyer apps via the Beckn protocol."
     ),
     version="1.0.0",
     contact={
         "name": "Team LetEmCook",
-        "url": "https://github.com/NotTheAmmar/sih-2026",
+        "url": "https://github.com/NotTheAmmar/project-zerotype",
     },
     lifespan=lifespan,
 )

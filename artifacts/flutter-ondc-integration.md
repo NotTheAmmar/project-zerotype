@@ -1,8 +1,8 @@
 # Flutter → ONDC Integration Checklist
 
 > **Status:** ✅ Implemented in Prototype  
-> **Depends on:** `kalakriti-backend` BPP server running (see [backend-quickstart.md](./backend-quickstart.md))  
-> **Last updated:** 2026-09-11
+> **Depends on:** `backend` BPP server running (see [backend-quickstart.md](./backend-quickstart.md))  
+> **Last updated:** 2026-11-02
 
 This document tracks everything needed to wire the Flutter mobile app's
 **"Publish"** button directly to the ONDC BPP backend, so artisan listings
@@ -15,7 +15,7 @@ flow from the Flutter catalog card all the way onto the ONDC network.
 ```
 Flutter App (CatalogScreen)
   │  Artisan taps "Publish to ONDC"
-  │  POST /api/v1/bpp/publish  ──────────►  KalaKriti BPP (FastAPI)
+  │  POST /api/v1/bpp/publish  ──────────►  BazaarSetu BPP (FastAPI)
   │  ← {"status": "PUBLISHED",              │  save_active_listing()
   │      "catalog_id": "cat_xxx"}           │
   │                                         │  Next /beckn/search arrives

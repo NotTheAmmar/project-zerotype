@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     # ── ONDC Identity ─────────────────────────────────────────────
-    bpp_subscriber_id: str = "kalakriti.bpp.org"
+    bpp_subscriber_id: str = "bazaarsetu.bpp.org"
     """Subscriber ID registered on the ONDC network."""
 
     bpp_uk_id: str = "key-1"

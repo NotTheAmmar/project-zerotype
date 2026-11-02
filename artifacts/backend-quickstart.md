@@ -1,8 +1,8 @@
-# Backend Quickstart — KalaKriti BPP
+# Backend Quickstart — BazaarSetu BPP
 
 > **Purpose:** Get the ONDC Beckn Provider Platform server running locally and demo it on ONDC Workbench.  
 > **Time to first ACK:** ~2 minutes  
-> **Last updated:** 2026-09-11
+> **Last updated:** 2026-11-02
 
 ---
 
@@ -16,7 +16,7 @@
 ## Step 1 — First-time Setup
 
 ```bash
-cd kalakriti-backend
+cd backend
 
 # Create and activate virtualenv
 python3 -m venv venv
@@ -37,7 +37,7 @@ python generate_keys.py
 Output looks like:
 ```
 ──────────────────────────────────────────────────
-  KalaKriti BPP — ONDC Ed25519 Keypair
+  BazaarSetu BPP — ONDC Ed25519 Keypair
 ──────────────────────────────────────────────────
 BPP_SIGNING_PRIVATE_KEY=YOUR_BASE64_PRIVATE_KEY
 BPP_SIGNING_PUBLIC_KEY=YOUR_BASE64_PUBLIC_KEY
@@ -190,7 +190,7 @@ The synchronous ACK fires first (< 1s), then the signed `on_search` callback wit
 ## Repository Structure
 
 ```
-kalakriti-backend/
+backend/
 ├── app/
 │   ├── config.py          # Pydantic Settings — env vars
 │   ├── crypto.py          # Ed25519 + BLAKE2b-512 ONDC auth

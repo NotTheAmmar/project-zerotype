@@ -159,7 +159,7 @@ def build_on_search_catalog(
                                 "@ondc/org/available_on_cod": False,
                                 "@ondc/org/contact_details_consumer_care": (
                                     f"GRO: {item.artisan_name}, "
-                                    f"gro@kalakriti.ai, +91-9876543210"
+                                    f"gro@bazaarsetu.ai, +91-9876543210"
                                 ),
                                 # ── Mandatory Informational — Statutory tags
                                 "tags": [

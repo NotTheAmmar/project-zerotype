@@ -55,7 +55,7 @@ def create_ondc_auth_header(
 
     Args:
         payload_bytes:   Raw JSON body bytes to be sent in the request.
-        subscriber_id:   BPP subscriber ID (e.g. "kalakriti.bpp.org").
+        subscriber_id:   BPP subscriber ID (e.g. "bazaarsetu.bpp.org").
         unique_key_id:   Key ID string (e.g. "key-1").
         private_key_b64: Base64-encoded 32-byte Ed25519 private key seed.
         ttl_seconds:     Validity window in seconds (default 5 minutes).

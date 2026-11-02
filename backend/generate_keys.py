@@ -19,7 +19,7 @@ def main() -> None:
     public_b64 = base64.b64encode(key.verify_key.encode()).decode("utf-8")
 
     print("─" * 50)
-    print("  KalaKriti BPP — ONDC Ed25519 Keypair")
+    print("  BazaarSetu BPP — ONDC Ed25519 Keypair")
     print("─" * 50)
     print(f"BPP_SIGNING_PRIVATE_KEY={private_b64}")
     print(f"BPP_SIGNING_PUBLIC_KEY={public_b64}")
