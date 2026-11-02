@@ -220,7 +220,7 @@ class LiveApiService implements ApiService {
     if (useQwen) {
       final extracted = await _extractWithQwen(englishTranscript);
       onStageComplete?.call(2);
-      return _resultFromQwenExtraction(extracted, descHiFallback: hindiTranscript);
+      return resultFromQwenExtraction(extracted, descHiFallback: hindiTranscript);
     } else {
       _assertKey('GEMINI_API_KEY', AppConstants.geminiApiKey);
       final extracted = await _extractWithGemini(englishTranscript);
@@ -246,7 +246,7 @@ class LiveApiService implements ApiService {
     }
   }
 
-  CatalogProcessResult _resultFromQwenExtraction(
+  static CatalogProcessResult resultFromQwenExtraction(
     Map<String, dynamic> j, {
     required String descHiFallback,
   }) {
@@ -274,7 +274,7 @@ class LiveApiService implements ApiService {
         (craftType != null && commodity != null ? '$craftType $commodity' : 'Handmade $commodity');
     final titleHi = j['title_hi']?.toString() ?? 'हस्तनिर्मित उत्पाद';
     final descEn = j['description_en']?.toString() ??
-        'Authentic handcrafted product made with traditional techniques. Pure $material, delicately crafted by generational artisans.';
+        'Authentic handcrafted product made with traditional techniques.${workType != null ? " Technique: $workType." : ""} Pure $material, delicately crafted by generational artisans.';
     final descHi = j['description_hi']?.toString() ??
         (descHiFallback.isNotEmpty ? descHiFallback : 'पारंपरिक कारीगरी द्वारा निर्मित सुंदर हस्तशिल्प उत्पाद।');
 
@@ -497,12 +497,14 @@ class LiveApiService implements ApiService {
     }
   }
 
-  int? _parseInt(dynamic v) {
+  static int? parseInt(dynamic v) {
     if (v == null) return null;
     if (v is int) return v;
     if (v is double) return v.round();
     return int.tryParse(v.toString());
   }
+
+  static int? _parseInt(dynamic v) => parseInt(v);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -8,8 +8,7 @@ enum CaptureState { idle, previewing, confirmed }
 class CaptureController extends ChangeNotifier {
   final ImageService _imageService;
 
-  CaptureController({required ImageService imageService})
-      : _imageService = imageService;
+  CaptureController({required this._imageService});
 
   CaptureState _state = CaptureState.idle;
   String? _capturedImagePath;

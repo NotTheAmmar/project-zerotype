@@ -33,7 +33,7 @@ class BhashiniService {
   // ── Config cache ─────────────────────────────────────────────────────────
 
   /// Lazy-loaded pipeline config: task name → serviceId.
-  Map<String, String> _serviceIds = {};
+  final Map<String, String> _serviceIds = {};
 
   /// The inference URL returned by the config call (may vary by task).
   String? _inferenceUrl;
@@ -220,7 +220,7 @@ class BhashiniService {
       'config': {
         'language': {
           'sourceLanguage': sourceLanguage,
-          if (targetLanguage != null) 'targetLanguage': targetLanguage,
+          'targetLanguage': ?targetLanguage,
         },
       },
     };
@@ -334,7 +334,7 @@ class BhashiniService {
       debugPrint('Status Code: ${response.statusCode}');
       // Only print first 500 chars to avoid huge base64 spam
       final bodyStr = response.body;
-      debugPrint('Body: ${bodyStr.length > 500 ? bodyStr.substring(0, 500) + "..." : bodyStr}');
+      debugPrint('Body: ${bodyStr.length > 500 ? "${bodyStr.substring(0, 500)}..." : bodyStr}');
       debugPrint('===========================');
     }
 

@@ -18,12 +18,10 @@ class CatalogController extends ChangeNotifier {
   final StorageService _storageService;
 
   CatalogController({
-    required ApiService apiService,
-    required AudioService audioService,
-    required StorageService storageService,
-  })  : _apiService = apiService,
-        _audioService = audioService,
-        _storageService = storageService {
+    required this._apiService,
+    required this._audioService,
+    required this._storageService,
+  }) {
     loadSavedCatalogs();
   }
 

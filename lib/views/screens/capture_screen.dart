@@ -627,7 +627,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                                   Image.file(
                                     File(ctrl.capturedAngles[i]!),
                                     fit: BoxFit.cover,
-                                    errorBuilder: (ctx, _, __) => const Center(
+                                    errorBuilder: (ctx, _, _) => const Center(
                                       child: Icon(Icons.check_circle, color: AppColors.primaryTeal, size: 20),
                                     ),
                                   ),

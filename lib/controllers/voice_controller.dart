@@ -9,8 +9,7 @@ enum VoiceState { idle, recording, stopped }
 class VoiceController extends ChangeNotifier {
   final AudioService _audioService;
 
-  VoiceController({required AudioService audioService})
-      : _audioService = audioService;
+  VoiceController({required this._audioService});
 
   VoiceState _state = VoiceState.idle;
   String? _audioPath;

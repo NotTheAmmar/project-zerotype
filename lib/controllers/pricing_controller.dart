@@ -7,8 +7,8 @@ class PricingController extends ChangeNotifier {
   int _laborDays;
   int _itemsProduced;
   int _sellerProposedPrice;
-  int _dailyWageRate;
-  double _skillMultiplier;
+  final int _dailyWageRate;
+  final double _skillMultiplier;
   int _availableQuantity;
 
   /// When non-null, the user has manually overridden the final (fair) price.
@@ -21,15 +21,13 @@ class PricingController extends ChangeNotifier {
     int initialLaborDays = 0,
     int initialItemsProduced = 1,
     int initialSellerProposedPrice = 0,
-    int dailyWageRate = AppConstants.defaultDailyWageRate,
-    double skillMultiplier = 1.0,
+    this._dailyWageRate = AppConstants.defaultDailyWageRate,
+    this._skillMultiplier = 1.0,
     int initialQuantity = 1,
   })  : _rawMaterialCost = initialRawMaterialCost,
         _laborDays = initialLaborDays,
         _itemsProduced = initialItemsProduced,
         _sellerProposedPrice = initialSellerProposedPrice,
-        _dailyWageRate = dailyWageRate,
-        _skillMultiplier = skillMultiplier,
         _availableQuantity = initialQuantity {
     _recalculate();
   }

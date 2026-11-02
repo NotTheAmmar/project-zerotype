@@ -9,9 +9,13 @@ import 'package:record/record.dart';
 import '../config/constants.dart';
 
 class AudioService {
-  final AudioRecorder _recorder = AudioRecorder();
-  final AudioPlayer _player = AudioPlayer();
-  final FlutterTts _tts = FlutterTts();
+  AudioRecorder? _recorderInstance;
+  AudioPlayer? _playerInstance;
+  FlutterTts? _ttsInstance;
+
+  AudioRecorder get _recorder => _recorderInstance ??= AudioRecorder();
+  AudioPlayer get _player => _playerInstance ??= AudioPlayer();
+  FlutterTts get _tts => _ttsInstance ??= FlutterTts();
 
   StreamSubscription<Amplitude>? _amplitudeSub;
   bool _isRecording = false;
@@ -21,10 +25,14 @@ class AudioService {
   // ── Initialization ──────────────────────────────────────────────────────
 
   Future<void> initTts() async {
-    await _tts.setLanguage('hi-IN');
-    await _tts.setSpeechRate(0.45);
-    await _tts.setVolume(1.0);
-    await _tts.setPitch(1.0);
+    try {
+      await _tts.setLanguage('hi-IN');
+      await _tts.setSpeechRate(0.45);
+      await _tts.setVolume(1.0);
+      await _tts.setPitch(1.0);
+    } catch (e) {
+      debugPrint('[AudioService] TTS init error: $e');
+    }
   }
 
   // ── Recording ───────────────────────────────────────────────────────────
@@ -116,23 +124,31 @@ class AudioService {
 
   /// Speak an error / warning prompt in Hindi
   Future<void> speakText(String hindiText) async {
-    await initTts();
-    await _tts.speak(hindiText);
+    try {
+      await initTts();
+      await _tts.speak(hindiText);
+    } catch (e) {
+      debugPrint('[AudioService] TTS speak error: $e');
+    }
   }
 
   /// Speak an error / warning prompt in Hindi
   Future<void> speakWarning(String hindiText) async {
-    await initTts();
-    await _tts.speak(hindiText);
+    try {
+      await initTts();
+      await _tts.speak(hindiText);
+    } catch (e) {
+      debugPrint('[AudioService] TTS speakWarning error: $e');
+    }
   }
 
   // ── Disposal ─────────────────────────────────────────────────────────────
 
   Future<void> dispose() async {
     await _amplitudeSub?.cancel();
-    await _recorder.dispose();
-    await _player.dispose();
-    await _tts.stop();
+    await _recorderInstance?.dispose();
+    await _playerInstance?.dispose();
+    await _ttsInstance?.stop();
   }
 
   // ── Private ──────────────────────────────────────────────────────────────
