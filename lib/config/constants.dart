@@ -15,7 +15,16 @@ class AppConstants {
       (_getEnv('USE_MOCK_DATA') ?? 'true').toLowerCase() == 'true';
   static Duration get apiTimeout => const Duration(seconds: 120);
 
-  // Gemini
+  // AI Extraction (Qwen / Gemini)
+  static String get aiExtractionProvider =>
+      _getEnv('AI_EXTRACTION_PROVIDER')?.toLowerCase() ?? 'groq_qwen';
+  static String get groqApiKey => _getEnv('GROQ_API_KEY') ?? '';
+  static String get qwenModel =>
+      _getEnv('QWEN_MODEL') ?? 'qwen-2.5-32b-it';
+  static String get qwenApiUrl =>
+      _getEnv('QWEN_API_URL') ?? 'https://api.groq.com/openai/v1/chat/completions';
+
+  // Gemini (Fallback)
   static String get geminiApiKey => _getEnv('GEMINI_API_KEY') ?? '';
   static String get geminiModel =>
       _getEnv('GEMINI_MODEL') ?? 'gemini-2.5-flash';
@@ -42,8 +51,8 @@ class AppConstants {
     return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
   }
 
-  // Audio
-  static const int maxRecordingSeconds = 60;
+  // Audio — Open-ended voice input (no strict time limit)
+  static const int maxRecordingSeconds = 3600; // 1 hour max safety buffer
   static const int audioSampleRate = 16000;
   static const double silenceAmplitudeThreshold = -50.0; // dBFS
 

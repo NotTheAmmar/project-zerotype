@@ -6,6 +6,7 @@ import 'views/screens/capture_screen.dart';
 import 'views/screens/catalog_screen.dart';
 import 'views/screens/processing_screen.dart';
 import 'views/screens/voice_screen.dart';
+import 'views/screens/welcome_screen.dart';
 
 class KalaKritiApp extends StatelessWidget {
   const KalaKritiApp({super.key});
@@ -18,6 +19,7 @@ class KalaKritiApp extends StatelessWidget {
       theme: AppTheme.light,
       initialRoute: AppRoutes.explore,
       routes: {
+        AppRoutes.welcome: (_) => const WelcomeScreen(),
         AppRoutes.explore: (_) => const ExploreScreen(),
         AppRoutes.capture: (_) => const CaptureScreen(),
         AppRoutes.voice: (_) => const VoiceScreen(),

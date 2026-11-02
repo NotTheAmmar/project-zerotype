@@ -18,6 +18,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
   int _selectedThumb = 0;
   bool _isPlayingAudio = false;
   bool _isPublishing = false;
+  int? _overridePrice;
+  String _selectedTier = 'fair'; // 'floor' | 'fair' | 'premium'
 
   final List<String> _thumbnails = [
     'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
@@ -81,11 +83,19 @@ class _CatalogScreenState extends State<CatalogScreen> {
       );
     }
 
-    final fairPrice = item.pricing?.fairPrice ?? 0;
-    final mrp = item.mrp ?? (fairPrice > 0 ? (fairPrice * 1.33).round() : 0);
-    final discountPercent = mrp > fairPrice && mrp > 0
-        ? (((mrp - fairPrice) / mrp) * 100).round()
-        : 0;
+    final floorPrice = item.pricing?.floorPrice ?? 200;
+    final baseFairPrice = item.pricing?.fairPrice ?? 300;
+    final premiumPrice = item.pricing?.premiumPrice ?? 450;
+
+    final selectedTierPrice = _selectedTier == 'floor'
+        ? floorPrice
+        : (_selectedTier == 'premium' ? premiumPrice : baseFairPrice);
+
+    final activePrice = _overridePrice ?? selectedTierPrice;
+    final mrp = (activePrice * 1.25).round();
+    final discountPercent = mrp > activePrice && mrp > 0
+        ? (((mrp - activePrice) / mrp) * 100).round()
+        : 20;
 
     return Scaffold(
       backgroundColor: AppColors.warmCream,
@@ -110,8 +120,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         _buildImageSection(item),
                         const SizedBox(height: 14),
 
-                        // 2. Title & Pricing Card
-                        _buildTitleAndPriceCard(item, fairPrice, mrp, discountPercent),
+                        // 2. Title & Tactile Pricing Card
+                        _buildTitleAndPriceCard(
+                          item,
+                          activePrice,
+                          floorPrice,
+                          baseFairPrice,
+                          premiumPrice,
+                          mrp,
+                          discountPercent,
+                        ),
                         const SizedBox(height: 14),
 
                         // 3. About this craft Card
@@ -469,10 +487,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
     );
   }
 
-  // ── 2. Title & Pricing Card ────────────────────────────────────────────────
+  // ── 2. Title & Tactile Pricing Card ───────────────────────────────────────
   Widget _buildTitleAndPriceCard(
     CatalogItem item,
-    int fairPrice,
+    int activePrice,
+    int floorPrice,
+    int baseFairPrice,
+    int premiumPrice,
     int mrp,
     int discountPercent,
   ) {
@@ -502,12 +523,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                onPressed: () {},
+                onPressed: () => _openVoiceEditDrawer(context, activePrice),
                 icon: const Icon(
                   Icons.edit_outlined,
                   size: 18,
                   color: AppColors.textSecondary,
                 ),
+                tooltip: 'Edit by voice or values',
               ),
             ],
           ),
@@ -522,7 +544,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 8),
 
-          // Craft Origin Provenance Badge (Reviews removed)
+          // Craft Origin Provenance Badge
           Row(
             children: [
               Container(
@@ -541,7 +563,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      'GI Origin • ${item.craftAttributes?.clusterLocation?.split(',').first ?? 'Handmade Craft Cluster'}',
+                      'GI Origin • ${item.craftAttributes?.clusterLocation?.split(',').first ?? 'Pune Craft Cluster'}',
                       style: AppTextStyles.labelSmall.copyWith(
                         color: AppColors.primaryTeal,
                         fontWeight: FontWeight.w600,
@@ -560,10 +582,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(
-                '₹$fairPrice',
+                '₹$activePrice',
                 style: AppTextStyles.priceLarge.copyWith(
                   fontSize: 28,
                   color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
               const SizedBox(width: 8),
@@ -598,61 +621,453 @@ class _CatalogScreenState extends State<CatalogScreen> {
               fontSize: 11,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // Customer Quantity Stepper
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFBECE5).withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(10),
+          // ── TACTILE PRICING CORRIDOR SELECTOR (Directive: Zero Typing) ──
+          Text(
+            'FAIR-PRICE CORRIDOR • उचित मूल्य चयन',
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.secondaryTerracotta,
+              letterSpacing: 0.6,
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Customer Quantity preview:',
-                    style: AppTextStyles.body.copyWith(
-                      color: AppColors.textPrimary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+          ),
+          const SizedBox(height: 8),
+
+          Row(
+            children: [
+              // 1. Floor Cost
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedTier = 'floor';
+                      _overridePrice = floorPrice;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: _selectedTier == 'floor' ? const Color(0xFFFBECE5) : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _selectedTier == 'floor' ? AppColors.secondaryTerracotta : AppColors.cardBorder,
+                        width: _selectedTier == 'floor' ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text('Floor Cost', style: AppTextStyles.caption.copyWith(fontSize: 10, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text('₹$floorPrice', style: AppTextStyles.label.copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
+                        Text('लागत', style: AppTextStyles.caption.copyWith(fontSize: 9, color: AppColors.textSecondary)),
+                      ],
                     ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: Row(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          if (_quantity > 1) setState(() => _quantity--);
-                        },
-                        child: const Icon(Icons.remove, size: 16, color: AppColors.textPrimary),
+              ),
+              const SizedBox(width: 6),
+
+              // 2. Fair Market (Recommended)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedTier = 'fair';
+                      _overridePrice = baseFairPrice;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: _selectedTier == 'fair' ? AppColors.primaryContainer : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _selectedTier == 'fair' ? AppColors.primaryTeal : AppColors.cardBorder,
+                        width: _selectedTier == 'fair' ? 2 : 1,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          '$_quantity',
-                          style: AppTextStyles.label.copyWith(fontSize: 14),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryTeal,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'RECOMMENDED',
+                            style: AppTextStyles.caption.copyWith(fontSize: 7, color: Colors.white, fontWeight: FontWeight.w800),
+                          ),
                         ),
-                      ),
-                      GestureDetector(
-                        onTap: () => setState(() => _quantity++),
-                        child: const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
-                      ),
-                    ],
+                        const SizedBox(height: 2),
+                        Text('₹$baseFairPrice', style: AppTextStyles.label.copyWith(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryTeal)),
+                        Text('उचित दर', style: AppTextStyles.caption.copyWith(fontSize: 9, color: AppColors.textSecondary)),
+                      ],
+                    ),
                   ),
                 ),
-              ],
+              ),
+              const SizedBox(width: 6),
+
+              // 3. Premium Price
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedTier = 'premium';
+                      _overridePrice = premiumPrice;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: _selectedTier == 'premium' ? const Color(0xFFFBECE5) : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _selectedTier == 'premium' ? AppColors.secondaryTerracotta : AppColors.cardBorder,
+                        width: _selectedTier == 'premium' ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Text('Premium', style: AppTextStyles.caption.copyWith(fontSize: 10, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 2),
+                        Text('₹$premiumPrice', style: AppTextStyles.label.copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
+                        Text('प्रीमियम', style: AppTextStyles.caption.copyWith(fontSize: 9, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Nudge buttons: [- ₹50] and [+ ₹50]
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    final curr = _overridePrice ?? activePrice;
+                    if (curr > 50) _overridePrice = curr - 50;
+                  });
+                },
+                icon: const Icon(Icons.remove, size: 14),
+                label: const Text('- ₹50'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(80, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              Text(
+                'Nudge Price • कीमत बदलें',
+                style: AppTextStyles.caption.copyWith(fontSize: 11, color: AppColors.textSecondary),
+              ),
+              OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    final curr = _overridePrice ?? activePrice;
+                    _overridePrice = curr + 50;
+                  });
+                },
+                icon: const Icon(Icons.add, size: 14),
+                label: const Text('+ ₹50'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(80, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // ── TACTILE QUANTITY SELECTOR (Pill Chips: 1, 2, 5, 10 + Stepper) ──
+          Text(
+            'AVAILABLE STOCK / उपलब्ध मात्रा',
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.secondaryTerracotta,
+              letterSpacing: 0.6,
             ),
+          ),
+          const SizedBox(height: 8),
+
+          Row(
+            children: [
+              ...[1, 2, 5, 10].map((qty) {
+                final isSelected = _quantity == qty;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _quantity = qty),
+                    child: Container(
+                      width: 42,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.primaryTeal : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primaryTeal : AppColors.cardBorder,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '$qty',
+                        style: AppTextStyles.label.copyWith(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: isSelected ? Colors.white : AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+              const Spacer(),
+
+              // Stepper for custom counts
+              Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        if (_quantity > 1) setState(() => _quantity--);
+                      },
+                      child: const Icon(Icons.remove, size: 16, color: AppColors.textPrimary),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Text(
+                        '$_quantity',
+                        style: AppTextStyles.label.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _quantity++),
+                      child: const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  // ── Voice Edit Assistant Drawer ───────────────────────────────────────────
+  void _openVoiceEditDrawer(BuildContext context, int currentPrice) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Grab handle
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.cardBorder,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.mic, color: AppColors.primaryTeal, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Voice Edit Assistant',
+                        style: AppTextStyles.serifTitle().copyWith(fontSize: 16),
+                      ),
+                      Text(
+                        'बोलून बदल करा • Speak in any language',
+                        style: AppTextStyles.caption.copyWith(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Listening Box
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1EB),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryTeal,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.mic, color: Colors.white, size: 26),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Listening... (ऐकत आहे)',
+                      style: AppTextStyles.label.copyWith(color: AppColors.primaryTeal, fontSize: 13),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            '"Price 300 nahi, 350 karo."',
+                            style: AppTextStyles.body.copyWith(fontWeight: FontWeight.w600, fontSize: 13),
+                            textAlign: TextAlign.center,
+                          ),
+                          Text(
+                            'Detected: Hindi/Hinglish (Price Adjustment)',
+                            style: AppTextStyles.caption.copyWith(fontSize: 10, fontStyle: FontStyle.italic),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Proposed AI changes
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFBECE5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Current Listing Price', style: AppTextStyles.caption.copyWith(fontSize: 11)),
+                        Text(
+                          '₹$currentPrice',
+                          style: AppTextStyles.label.copyWith(
+                            decoration: TextDecoration.lineThrough,
+                            color: AppColors.textSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Icon(Icons.arrow_forward_rounded, color: AppColors.primaryTeal, size: 20),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text('Proposed New Price', style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryTeal, fontSize: 11)),
+                        Text(
+                          '₹350',
+                          style: AppTextStyles.serifHeading().copyWith(
+                            color: AppColors.primaryTeal,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Drawer action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 46),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Cancel'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _overridePrice = 350;
+                        });
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Price updated to ₹350 by voice!'),
+                            backgroundColor: AppColors.primaryTeal,
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryTeal,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 46),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Confirm Change'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1168,22 +1583,35 @@ class _CatalogScreenState extends State<CatalogScreen> {
           const SizedBox(height: 8),
 
           Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.primaryTeal,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.mic_rounded, color: Colors.white, size: 14),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Edit by Voice',
-                    style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
-                  ),
-                ],
+            child: GestureDetector(
+              onTap: () => _openVoiceEditDrawer(context, activePrice),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal,
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryTeal.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.mic_rounded, color: Colors.white, size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Edit by Voice • आवाज़ से बदलें',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1204,8 +1632,64 @@ class _CatalogScreenState extends State<CatalogScreen> {
         color: Colors.white,
         border: Border(top: BorderSide(color: AppColors.cardBorder, width: 1)),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Audio Readback Bar
+          GestureDetector(
+            onTap: () => catalogCtrl.speakReadback(),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.warmSand),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: catalogCtrl.isSpeaking
+                          ? AppColors.accentTerracotta
+                          : AppColors.primaryTeal,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      catalogCtrl.isSpeaking
+                          ? Icons.volume_up
+                          : Icons.headphones_outlined,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      catalogCtrl.isSpeaking
+                          ? 'सुनाई दे रहा है... (Playing audio readback)'
+                          : 'सुनें: ऑडियो पुष्टि • Listen to audio summary',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    catalogCtrl.isSpeaking ? 'Playing' : 'Play',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: AppColors.primaryTeal,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Row(
+            children: [
           Expanded(
             flex: 1,
             child: OutlinedButton(
@@ -1334,6 +1818,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
             ),
           ),
+        ],
+      ),
         ],
       ),
     );

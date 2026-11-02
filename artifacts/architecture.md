@@ -1,41 +1,74 @@
-# KalaKriti Architecture
+# Project ZeroType: BazaarSetu Architecture
 
-KalaKriti is a mobile application that allows rural artisans to create ONDC-compliant product catalogs using just their voice and smartphone camera.
+**Project ZeroType** (User-facing brand: **BazaarSetu** / **बाज़ारसेतु**) is a mobile cataloging engine designed to onboard non-literate and semi-literate rural Indian artisans into the Open Network for Digital Commerce (ONDC) without requiring them to type a single character.
 
-## Core Flow
-1. **Voice Input**: Artisan describes their product in their native language (e.g., Hindi).
-2. **Image Input**: Artisan takes a raw photo of the product in their workshop.
-3. **AI Processing**: 
-   - **Voice**: Sent to Bhashini (Dhruva APIs) for Speech-to-Text (ASR) and Translation (NMT).
-   - **Extraction**: English text is sent to Gemini 2.5 Flash to extract a strict ONDC Beckn schema JSON.
-   - **TTS**: Product description is translated back to Hindi (NMT) and read aloud via Bhashini TTS.
-   - **Image**: Sent to a backend running BiRefNet for background removal and professional studio compositing.
-4. **Publish**: The final catalog item is published to an ONDC BPP endpoint.
+---
 
-## Tech Stack
-- **Frontend**: Flutter (Mobile/Web)
-- **Voice / NLP Pipeline**: Bhashini Cloud APIs (Govt. of India)
-- **JSON Extraction**: Google Gemini 2.5 Flash
-- **Image Processing**: Python FastAPI + BiRefNet (for background removal)
-- **Deployment Strategy**: Serverless / Managed Cloud for APIs
+## 1. Core Paradigm: Strict Modality Partitioning
 
-## Environment Configuration
+Rather than overloading a single unconstrained voice prompt, BazaarSetu strictly segments data acquisition by input modality:
+
+```
+┌─────────────────┐       ┌────────────────────────┐       ┌────────────────────────┐
+│  Vision/Camera  │ ────> │ Spoken Dialect Anchor  │ ────> │ Tactile Corridor /     │
+│  (Multi-angle)  │       │ (Open-ended Speech)    │       │ Stepper (Zero-Typing)  │
+└─────────────────┘       └────────────────────────┘       └────────────────────────┘
+        │                             │                                 │
+        ▼                             ▼                                 ▼
+Detect Category &             Dialect Prompt played             Fair-Price Corridor
+Bounding Geometry             MIC opened (No 15s limit)         Floor/Fair/Premium
+(RET12, RET16, RET10)         ASR -> Qwen Structuring           Tactile Pill [1][2][5][10]
+```
+
+1. **Vision / Camera Modality (Primary Anchor)**:
+   - Guided multi-angle capture (Front, Side, Back, Detail slots).
+   - Real-time heuristic/vision classifier detects craft category (`ONDC:RET12` Apparel, `ONDC:RET16` Pottery & Crafts, `ONDC:RET10` Packaged Food).
+2. **Category-Adaptive Audio Anchor (Speech Input)**:
+   - Plays a 5–8s localized Indic dialect question tailored to the detected category (e.g. for pottery: *"यह दीया किस मिट्टी से बना है और इसपर क्या नक्काशी है?"*).
+   - Mic opens for open-ended spoken narration (unlimited recording duration; no 15-second cap).
+   - Speech transcribed via Bhashini ASR / Whisper and structured via **Qwen** (Qwen-2.5-32B-Instruct via Groq free API or dedicated backend).
+3. **Tactile Zero-Typing Controls (Quantities & Pricing)**:
+   - Available stock configured via tactile preset pills (`[1]`, `[2]`, `[5]`, `[10]`) + quick stepper.
+   - Pricing selected via 3 Fair-Price Corridor Cards (**Floor Price**, **Fair Price**, **Premium Price**) with `[±₹50]` quick adjustment nudges.
+4. **Automated Background Prefill**:
+   - Zero typing for statutory, regulatory, and logistics fields. Automated merchant KYC prefill (`country_of_origin="IND"`, `time_to_ship="PT24H"`, `return_window="P7D"`, `cancellable=true`, `contact_details_consumer_care`).
+5. **Auditory Verification & Readback Loop**:
+   - Readback in artisan's native language (*"आपका कैटलॉग तैयार है: $cat $title, कीमत ₹$price। क्या यह सही है?"*).
+   - Instant 1-tap broadcast to ONDC BPP.
+
+---
+
+## 2. Tech Stack
+
+- **Frontend**: Flutter (Cross-platform Android / iOS / Web)
+- **Speech Pipeline**: Bhashini Cloud ASR / NMT / TTS (Govt. of India Dhruva platform) + On-device Flutter TTS fallback
+- **Catalog Structuring LLM**: **Qwen-2.5-32B-Instruct** (via free Groq API endpoint or custom OpenAI-compatible server)
+- **Computer Vision / Image Processing**: BiRefNet background isolation & studio composite pipeline via FastAPI backend
+- **ONDC Integration**: Beckn protocol v1.2.0 BPP adapter (`/api/v1/bpp/publish`)
+
+---
+
+## 3. Environment Configuration (`.env`)
+
 ```env
+# Application Settings
 API_BASE_URL=https://api.kalakriti.dev/v1
-USE_MOCK_DATA=false
+USE_MOCK_DATA=true
 
-# Bhashini Configuration
-BHASHINI_API_KEY=your_inference_api_key
-BHASHINI_ULCA_KEY=your_ulca_api_key
-BHASHINI_USER_ID=your_32_char_user_id
+# AI Extraction Provider (Qwen)
+AI_EXTRACTION_PROVIDER=groq_qwen
+QWEN_MODEL=qwen-2.5-32b-it
+QWEN_API_URL=https://api.groq.com/openai/v1/chat/completions
+GROQ_API_KEY=gsk_your_groq_api_key_here
+
+# Bhashini Configuration (Govt. of India Indic NLP)
+BHASHINI_API_KEY=your_bhashini_api_key
+BHASHINI_ULCA_KEY=your_bhashini_ulca_key
+BHASHINI_USER_ID=your_bhashini_user_id
 BHASHINI_PIPELINE_ID=64392f96daac500b55c543cd
 BHASHINI_API_URL=https://dhruva-api.bhashini.gov.in
 
-# Gemini Configuration
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini-2.5-flash
-
-# Backend (Image Processing & ONDC Publish)
+# Backend Services
 BACKEND_URL=https://your-backend-domain.com
 BPP_BACKEND_URL=https://your-bpp-domain.com
 ```

@@ -1,58 +1,60 @@
-# Multimodal Pricing Regression Model (Phase 2)
+# BazaarSetu: Pricing Architecture & Tactile Corridor (Project ZeroType)
 
-> **Status:** Planning / Data Collection  
-> **Target Deployment:** Phase 2 (Server-side Kaggle Backend)  
-> **Model Type:** XGBoost Regressor + CLIP ViT-B/32 (Multimodal)
-
-To ensure rural artisans receive fair compensation while remaining competitive, KalaKriti AI employs a two-stage pricing engine. Stage 1 (Statutory Floor) is a deterministic calculation ensuring minimum wages. Stage 2 (Market-Aware Pricing) uses machine learning to predict optimal D2C and B2B pricing.
+**BazaarSetu** (Project ZeroType) protects artisans from predatory pricing and distress selling while eliminating manual price entry through **Tactile Corridor Selection**.
 
 ---
 
-## Stage 1: Statutory Cost Floor ($C_{\text{floor}}$)
+## 1. Zero-Typing Tactile Corridor Interface
 
-A non-negotiable minimum calculation anchored to government standards. This acts as a hard boundary (Remuneration Guarantee) — the system blocks any listings priced below this floor to prevent predatory distress sales.
+Rather than typing numerals on a mobile keyboard, the artisan interacts with 3 visual **Corridor Cards** and tactile delta nudges:
 
-**Formula:**
+```
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│   FLOOR PRICE   │  │   FAIR PRICE    │  │  PREMIUM PRICE  │
+│      ₹200       │  │      ₹350       │  │      ₹500       │
+│  Min Wage Floor │  │ Recommended D2C │  │  Export/Gifted  │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+         ▲                    ▲
+    [Selected]             [Tap to switch]
+    
+  [ - ₹50 ]   [ + ₹50 ]  <-- Tactile Nudges (Zero Typing)
+  
+  Stock: [ 1 ]  [ 2 ]  [ 5 ]  [ 10 ]  + / - Stepper
+```
+
+### Corridor Tiers:
+1. **Floor Price ($P_{\text{floor}}$)**: Non-negotiable statutory wage floor calculated from material cost and labour days. Below this threshold, publishing is prevented to protect artisan livelihood.
+2. **Fair Price ($P_{\text{fair}}$)**: The AI-recommended D2C selling price reflecting market equilibrium on ONDC buyer applications.
+3. **Premium Price ($P_{\text{prem}}$)**: Recommended price ($1.20 \times - 1.40 \times$) for institutional, export, or festive packaging.
+
+### Tactile Nudges:
+- `[- ₹50]` and `[+ ₹50]` buttons allow artisans to adjust their target price without typing. The floor constraint ensures the price cannot drop below $P_{\text{floor}}$.
+
+---
+
+## 2. Mathematical Formulations
+
+### Stage 1: Statutory Cost Floor ($C_{\text{floor}}$)
+Actively calculated to guarantee basic remuneration:
 $$C_{\text{floor}} = M_{\text{raw}} + (T_{\text{days}} \times W_{\text{statutory}} \times K_{\text{skill}}) + O_{\text{overhead}}$$
 
-**Variables:**
-*   **$M_{\text{raw}}$**: Stated raw material expenses (yarn, dyes, brass, clay). Extracted from dialect audio via the voice pipeline.
-*   **$T_{\text{days}}$**: Verified production effort (labor days recorded via voice transcription).
-*   **$W_{\text{statutory}}$**: Central/State statutory minimum wage rate for skilled artisans. Benchmarked at **₹450–₹600/day** under Ministry of Labour & Employment norms.
-*   **$K_{\text{skill}}$**: Skill level multiplier:
-    *   `1.0`: Basic craftsman
-    *   `1.25`: Specialized GI-cluster artisan
-    *   `1.5`: Master Weaver / National Awardee
-*   **$O_{\text{overhead}}$**: 10% fixed allowance for packaging, local transit, and utilities.
+- $M_{\text{raw}}$: Stated material cost (clay, yarn, metal, wood, dyes).
+- $T_{\text{days}}$: Production effort in artisan days.
+- $W_{\text{statutory}}$: Central/State minimum wage for skilled crafts (₹450–₹600/day).
+- $K_{\text{skill}}$: Skill multiplier (1.0 for basic craft, 1.25 for GI clusters, 1.5 for Master Weavers).
+- $O_{\text{overhead}}$: 10% allowance for firing, packaging, and local transport.
+
+### Stage 2: MRP & Buyer Discount Calculation
+ONDC buyer applications (e.g. Paytm, Mystore, Magicpin) prioritize products showing clear consumer value. BazaarSetu automatically derives the Maximum Retail Price (MRP):
+$$\text{MRP} = \text{round}(P_{\text{active}} \times 1.25)$$
+$$\text{Discount \%} = \text{round}\left(\frac{\text{MRP} - P_{\text{active}}}{\text{MRP}} \times 100\right)$$
+This yields a compliant, attractive listing with a 15–20% strike-through discount on ONDC buyer search grids.
 
 ---
 
-## Stage 2: Market-Aware Fair Corridor ($P_{\text{fair}}, P_{\text{prem}}$)
+## 3. Spoken Price & Quantity Extraction
+When an artisan speaks their price or batch size (e.g., *"मैं इसे तीन सौ पचास में बेचूँगा और दस पीस तैयार हैं"*), the **Qwen** structuring model extracts:
+- `fair_price`: `350`
+- `available_quantity`: `10`
 
-Once the wage floor is locked, an AI model suggests the optimal consumer pricing based on current market trends and visual quality.
-
-### Architecture
-
-1.  **Vision Embeddings (CLIP ViT-B/32):** The studio-processed image of the product is passed through OpenAI's CLIP model to extract a 512-dimensional visual feature vector. This captures the aesthetic appeal, intricacy, and visual quality of the craft.
-2.  **Textual/Categorical Features:** Craft category, materials used, GI tag presence.
-3.  **Regressor (XGBoost):** An XGBoost regression model takes the combined features (CLIP embeddings + categorical data + $C_{\text{floor}}$) and predicts the market price.
-
-### Pricing Outputs
-
-*   **$P_{\text{fair}}$ (Fair Price):** The recommended D2C (Direct-to-Consumer) selling price.
-*   **$P_{\text{prem}}$ (Premium Price):** $P_{\text{prem}} = 1.20 \times P_{\text{fair}}$. Used for B2B, institutional, or export pricing.
-
-### Training Dataset
-
-The XGBoost model will be trained on a scraped dataset of **45,000+ authentic Indian handicraft listings**:
-*   **Sources:** Tribes India, Government e-Marketplace (GeM), Amazon Karigar, ONDC Network data.
-*   **Features:** Images, descriptions, materials, and selling prices.
-*   **Target Variable:** Actual selling price (filtered for active, successful listings).
-
----
-
-## System Integration (Flutter App ↔ Backend)
-
-1.  **Frontend Fallback (App-side):** The Flutter app implements the $C_{\text{floor}}$ equation locally in `pricing_corridor.dart` to provide immediate feedback. For the mock/frontend fallback, $P_{\text{fair}}$ is estimated as $1.5 \times C_{\text{floor}}$.
-2.  **Backend AI:** In Phase 2, the Kaggle backend will run the XGBoost model on the extracted text and image to return a highly accurate $P_{\text{fair}}$ alongside the $C_{\text{floor}}$.
-3.  **Validation:** The Flutter UI strictly enforces `Final Price >= Floor Price`. If an artisan or admin attempts to manually override the price below $C_{\text{floor}}$, the UI blocks the action.
+These values automatically populate the selected corridor tier and quantity pill upon entering the catalog screen.

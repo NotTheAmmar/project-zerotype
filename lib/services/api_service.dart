@@ -21,6 +21,8 @@ class CatalogProcessResult {
   final PricingCorridor? pricing;
   final String? studioImagePath;
   final String? audioReadbackPath;
+  final int? spokenPrice;
+  final int? spokenQuantity;
 
   const CatalogProcessResult({
     this.titleEn,
@@ -31,6 +33,8 @@ class CatalogProcessResult {
     this.pricing,
     this.studioImagePath,
     this.audioReadbackPath,
+    this.spokenPrice,
+    this.spokenQuantity,
   });
 }
 
@@ -191,7 +195,6 @@ class LiveApiService implements ApiService {
     StageCallback? onStageComplete,
   }) async {
     _assertKey('BHASHINI_API_KEY', AppConstants.bhashiniApiKey);
-    _assertKey('GEMINI_API_KEY', AppConstants.geminiApiKey);
 
     // Stage 0: image processing (runs in parallel via CatalogController)
     onStageComplete?.call(0);
@@ -200,7 +203,7 @@ class LiveApiService implements ApiService {
     final hindiTranscript = await _bhashiniService.transcribe(audioPath);
     debugPrint('[Bhashini] ASR transcript: $hindiTranscript');
 
-    // ── Step 2: Bhashini NMT — Hindi → English (so Gemini can extract reliably) ──
+    // ── Step 2: Bhashini NMT — Hindi → English (so LLM can extract reliably) ──
     final englishTranscript = await _bhashiniService.translate(
       hindiTranscript,
       sourceLanguage: 'hi',
@@ -211,31 +214,154 @@ class LiveApiService implements ApiService {
     // Stage 1: transcription + translation done
     onStageComplete?.call(1);
 
-    // ── Step 3: Gemini — structured catalog JSON extraction from English text ──
-    final extracted = await _extractWithGemini(englishTranscript);
+    // ── Step 3: Structured Catalog Extraction (Qwen or Gemini) ──
+    final useQwen = AppConstants.aiExtractionProvider.contains('qwen');
 
-    // ── Step 4: Bhashini NMT — English description → Hindi (for readback TTS) ──
-    final descEn = extracted['descriptor']?['long_desc'] as String? ?? '';
-    String descHi = '';
-    if (descEn.isNotEmpty) {
-      try {
-        descHi = await _bhashiniService.translate(
-          descEn,
-          sourceLanguage: 'en',
-          targetLanguage: 'hi',
-        );
-      } catch (_) {
-        // Non-fatal: fall back to Gemini's own Hindi description tag
+    if (useQwen) {
+      final extracted = await _extractWithQwen(englishTranscript);
+      onStageComplete?.call(2);
+      return _resultFromQwenExtraction(extracted, descHiFallback: hindiTranscript);
+    } else {
+      _assertKey('GEMINI_API_KEY', AppConstants.geminiApiKey);
+      final extracted = await _extractWithGemini(englishTranscript);
+
+      final descEn = extracted['descriptor']?['long_desc'] as String? ?? '';
+      String descHi = '';
+      if (descEn.isNotEmpty) {
+        try {
+          descHi = await _bhashiniService.translate(
+            descEn,
+            sourceLanguage: 'en',
+            targetLanguage: 'hi',
+          );
+        } catch (_) {
+          descHi = _getTagValue(extracted, 'translation_hi', 'long_desc') ?? '';
+        }
+      } else {
         descHi = _getTagValue(extracted, 'translation_hi', 'long_desc') ?? '';
       }
-    } else {
-      descHi = _getTagValue(extracted, 'translation_hi', 'long_desc') ?? '';
+
+      onStageComplete?.call(2);
+      return _resultFromBhashiniExtraction(extracted, descHi: descHi);
+    }
+  }
+
+  CatalogProcessResult _resultFromQwenExtraction(
+    Map<String, dynamic> j, {
+    required String descHiFallback,
+  }) {
+    final commodity = j['commodity_name']?.toString();
+    final craftType = j['craft_type']?.toString();
+    final material = j['material']?.toString();
+    final workType = j['work_type']?.toString();
+    final netQty = j['net_quantity']?.toString() ?? '1 unit';
+    final location = j['cluster_location']?.toString() ?? 'Pune Rural Cluster, Maharashtra';
+
+    final pricingInputs = j['pricing_inputs'] is Map ? (j['pricing_inputs'] as Map) : {};
+    final laborDays = _parseInt(pricingInputs['labor_days']) ?? 1;
+    final rawCost = _parseInt(pricingInputs['raw_material_cost']) ?? 100;
+
+    final spokenPrice = _parseInt(j['spoken_price']);
+    final spokenQty = _parseInt(j['spoken_quantity']);
+
+    final pricing = PricingCorridor.compute(
+      rawMaterialCost: rawCost,
+      laborDays: laborDays,
+      sellerProposedPrice: spokenPrice ?? 0,
+    );
+
+    final titleEn = j['title_en']?.toString() ??
+        (craftType != null && commodity != null ? '$craftType $commodity' : 'Handmade $commodity');
+    final titleHi = j['title_hi']?.toString() ?? 'हस्तनिर्मित उत्पाद';
+    final descEn = j['description_en']?.toString() ??
+        'Authentic handcrafted product made with traditional techniques. Pure $material, delicately crafted by generational artisans.';
+    final descHi = j['description_hi']?.toString() ??
+        (descHiFallback.isNotEmpty ? descHiFallback : 'पारंपरिक कारीगरी द्वारा निर्मित सुंदर हस्तशिल्प उत्पाद।');
+
+    final materialsList = <String>[];
+    if (material != null && material.isNotEmpty) {
+      materialsList.addAll(material.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty));
+    }
+    if (materialsList.isEmpty) {
+      materialsList.add('Natural Clay & Earth');
     }
 
-    // Stage 2: extraction + pricing done
-    onStageComplete?.call(2);
+    return CatalogProcessResult(
+      titleEn: titleEn,
+      titleHi: titleHi,
+      descriptionEn: descEn,
+      descriptionHi: descHi,
+      craftAttributes: CraftAttributes(
+        category: craftType ?? 'Terracotta Pottery',
+        materials: materialsList,
+        laborDays: laborDays,
+        clusterLocation: location,
+        artisanName: 'Savita Patil',
+        countryOfOrigin: 'IND',
+        netQuantity: netQty,
+        genericName: commodity ?? 'Diya',
+        timeToShip: 'PT24H',
+        returnWindow: 'P7D',
+        returnable: true,
+        cancellable: true,
+        availableOnCod: true,
+      ),
+      pricing: pricing,
+      spokenPrice: spokenPrice,
+      spokenQuantity: spokenQty,
+    );
+  }
 
-    return _resultFromBhashiniExtraction(extracted, descHi: descHi);
+  Future<Map<String, dynamic>> _extractWithQwen(String transcript) async {
+    final apiKey = AppConstants.groqApiKey;
+    final model = AppConstants.qwenModel;
+    final uri = Uri.parse(AppConstants.qwenApiUrl);
+
+    final headers = {
+      'Content-Type': 'application/json',
+      if (apiKey.isNotEmpty) 'Authorization': 'Bearer $apiKey',
+    };
+
+    final payload = {
+      'model': model,
+      'messages': [
+        {
+          'role': 'system',
+          'content': _qwenSystemInstruction,
+        },
+        {
+          'role': 'user',
+          'content': transcript,
+        }
+      ],
+      'temperature': 0.2,
+      'response_format': {'type': 'json_object'},
+    };
+
+    final response = await http
+        .post(uri, headers: headers, body: jsonEncode(payload))
+        .timeout(AppConstants.apiTimeout);
+
+    if (response.statusCode != 200) {
+      throw Exception('Qwen extraction failed (${response.statusCode}): ${response.body}');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final choices = body['choices'] as List?;
+    if (choices == null || choices.isEmpty) {
+      throw Exception('Qwen returned empty choices.');
+    }
+    final content = choices.first['message']?['content'] as String?;
+    if (content == null || content.isEmpty) {
+      throw Exception('Qwen message content was empty.');
+    }
+
+    final cleanJson = content
+        .replaceAll(RegExp(r'^```json\s*', multiLine: true), '')
+        .replaceAll(RegExp(r'^```\s*', multiLine: true), '')
+        .trim();
+
+    return jsonDecode(cleanJson) as Map<String, dynamic>;
   }
 
   CatalogProcessResult _resultFromBhashiniExtraction(
@@ -378,6 +504,40 @@ class LiveApiService implements ApiService {
     return int.tryParse(v.toString());
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QWEN SYSTEM INSTRUCTION (Strict Modality Partitioning)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const String _qwenSystemInstruction = '''
+You are an expert Indian artisan commerce assistant for BazaarSetu.
+Given an English-translated voice transcript spoken by a rural artisan, craftsman, or local seller describing their product, extract the structured attributes and return ONLY a valid JSON object matching the exact schema below. Do not output markdown fences or explanatory text.
+
+Schema:
+{
+  "commodity_name": "string (e.g. Diya, Saree, Kurta, Basket, Idol, Pickle, Spice)",
+  "craft_type": "string (e.g. Terracotta Pottery, Handloom Silk, Dokra Metalcraft, Woodcarving)",
+  "material": "string (comma-separated, e.g. Terracotta Clay, Pure Silk, Brass, Teakwood)",
+  "work_type": "string or null (e.g. Hand-carved, Handwoven, Lost-wax cast, Embroidered)",
+  "net_quantity": "string (e.g. 1 unit, 500g, 6.2 meters, or 1 unit by default)",
+  "cluster_location": "string or null (e.g. Pune, Chanderi, Bastar, Jaipur if mentioned)",
+  "title_en": "SEO-friendly attractive product title in English (max 70 chars)",
+  "title_hi": "Clean Hindi product title in Devanagari script",
+  "description_en": "Engaging artisan storytelling description in English (80-120 words)",
+  "description_hi": "Rich artisan storytelling description in Hindi (Devanagari)",
+  "pricing_inputs": {
+    "raw_material_cost": "integer or null (cost of raw materials mentioned by seller)",
+    "labor_days": "integer or null (days or time taken to craft this item)"
+  },
+  "spoken_price": "integer or null (if seller explicitly states selling price, e.g. 350)",
+  "spoken_quantity": "integer or null (if seller explicitly states count in stock, e.g. 5)"
+}
+
+Rules:
+1. Extract numerical values as integers (e.g. 350, not "₹350").
+2. If the seller does not state a price or quantity, return null for spoken_price and spoken_quantity.
+3. Return ONLY the JSON object.
+''';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GEMINI SYSTEM INSTRUCTION

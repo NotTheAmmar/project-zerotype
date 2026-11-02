@@ -17,16 +17,75 @@ class CaptureController extends ChangeNotifier {
   bool _isQualityWarningLight = false;
   bool _isBusy = false;
 
+  // Multi-angle photo tracker (Front=0, Side=1, Back=2, Detail=3)
+  final Map<int, String> _capturedAngles = {};
+  int _activeAngleIndex = 0;
+
+  // Viewfinder controls
+  bool _flashOn = false;
+  bool _showGrid = true;
+  String _detectedObject = 'Diya';
+  String _detectedCategory = 'pottery'; // 'pottery' | 'apparel' | 'wood_metal' | 'food' | 'fallback'
+  String _detectedStatusLabel = 'Diya detected • अच्छी रोशनी';
+
   CaptureState get state => _state;
-  String? get capturedImagePath => _capturedImagePath;
+  String? get capturedImagePath => _capturedImagePath ?? (_capturedAngles.isNotEmpty ? _capturedAngles.values.first : null);
   bool get isQualityWarningBlur => _isQualityWarningBlur;
   bool get isQualityWarningLight => _isQualityWarningLight;
   bool get isBusy => _isBusy;
   bool get isCameraReady => _imageService.isInitialized;
   CameraController? get cameraController => _imageService.controller;
 
+  Map<int, String> get capturedAngles => _capturedAngles;
+  int get activeAngleIndex => _activeAngleIndex;
+  int get photosTakenCount => _capturedAngles.length;
+  bool get canProceed => _capturedAngles.isNotEmpty || _capturedImagePath != null;
+
+  bool get flashOn => _flashOn;
+  bool get showGrid => _showGrid;
+  String get detectedObject => _detectedObject;
+  String get detectedCategory => _detectedCategory;
+  String get detectedStatusLabel => _detectedStatusLabel;
+
   Future<void> initCamera() async {
     await _imageService.initCamera();
+    notifyListeners();
+  }
+
+  void toggleFlash() {
+    _flashOn = !_flashOn;
+    HapticFeedback.selectionClick();
+    notifyListeners();
+  }
+
+  void toggleGrid() {
+    _showGrid = !_showGrid;
+    HapticFeedback.selectionClick();
+    notifyListeners();
+  }
+
+  void selectAngleSlot(int index) {
+    if (index >= 0 && index < 4) {
+      _activeAngleIndex = index;
+      HapticFeedback.selectionClick();
+      notifyListeners();
+    }
+  }
+
+  void retakeAngle(int index) {
+    _capturedAngles.remove(index);
+    _activeAngleIndex = index;
+    _capturedImagePath = _capturedAngles.isNotEmpty ? _capturedAngles.values.first : null;
+    _state = CaptureState.idle;
+    _clearWarnings();
+    HapticFeedback.selectionClick();
+    notifyListeners();
+  }
+
+  void setDetectedCategory(String category, {String? objectName, String? statusLabel}) {
+    _detectedCategory = category;
+    if (objectName != null) _detectedObject = objectName;
+    if (statusLabel != null) _detectedStatusLabel = statusLabel;
     notifyListeners();
   }
 
@@ -83,7 +142,17 @@ class CaptureController extends ChangeNotifier {
     _isQualityWarningLight = quality.isLowLight;
 
     _capturedImagePath = path;
-    _state = CaptureState.previewing;
+    _capturedAngles[_activeAngleIndex] = path;
+
+    // Advance to next uncaptured angle slot if available
+    for (int i = 0; i < 4; i++) {
+      if (!_capturedAngles.containsKey(i)) {
+        _activeAngleIndex = i;
+        break;
+      }
+    }
+
+    _state = CaptureState.idle; // keep viewfinder active so seller can capture more angles
   }
 
   void _clearWarnings() {

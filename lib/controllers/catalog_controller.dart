@@ -106,6 +106,7 @@ class CatalogController extends ChangeNotifier {
         descriptionHi: result.descriptionHi,
         craftAttributes: result.craftAttributes,
         pricing: result.pricing,
+        availableQuantity: result.spokenQuantity ?? 1,
         status: CatalogStatus.draft,
       );
 
@@ -144,17 +145,15 @@ class CatalogController extends ChangeNotifier {
 
     if (AppConstants.bhashiniApiKey.isNotEmpty) {
       // Build a concise readback sentence in Hindi
-      final parts = <String>[];
-      final cat = _currentItem!.craftAttributes?.category;
-      final titleHi = _currentItem!.titleHi;
+      final cat = _currentItem!.craftAttributes?.category ?? '';
+      final titleHi = _currentItem!.titleHi ?? _currentItem!.titleEn ?? '';
+      final material = _currentItem!.craftAttributes?.materials.isNotEmpty == true
+          ? _currentItem!.craftAttributes!.materials.first
+          : '';
       final price = _currentItem!.pricing?.fairPrice;
-      if (cat != null) parts.add('यह उत्पाद $cat की श्रेणी में है।');
-      if (titleHi != null) parts.add(titleHi);
-      if (price != null) {
-        parts.add('इसकी अनुशंसित बाज़ार कीमत $price रुपये है।');
-      }
-      parts.add('क्या आप इसे ONDC पर प्रकाशित करना चाहते हैं?');
-      final readbackText = parts.join(' ');
+      
+      final readbackText =
+          'आपका कैटलॉग तैयार है: $cat $titleHi ${material.isNotEmpty ? ', $material' : ''}, कीमत ${price != null ? '₹$price' : ''}। क्या यह सही है?';
 
       try {
         final audioPath = await _bhashiniService.synthesize(

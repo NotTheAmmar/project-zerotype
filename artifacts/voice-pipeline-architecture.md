@@ -1,83 +1,82 @@
-# Voice & AI Processing Architecture
+# BazaarSetu: Voice Pipeline Architecture (Project ZeroType)
 
-This document outlines the end-to-end flow of the KalaKriti voice-to-catalog pipeline. The architecture is designed to be fully serverless on the voice side, directly connecting the Flutter client to scalable cloud AI APIs without requiring a middleman backend.
+This document details the voice-to-catalog pipeline in **BazaarSetu** (Project ZeroType). It specifies how open-ended spoken artisan narratives are anchored by visual category detection and structured by **Qwen** into valid ONDC Beckn catalog schemas.
 
-## 1. High-Level Flow
+---
 
-The voice pipeline orchestrates 5 distinct AI calls to produce a structured ONDC Beckn catalog item and a localized audio readback.
+## 1. High-Level Pipeline Flow
 
 ```mermaid
 sequenceDiagram
-    participant Artisan as User (Flutter)
+    participant Artisan as Artisan (Mobile App)
+    participant Vision as Vision/Category Detector
     participant Audio as AudioService
-    participant Bhashini as Bhashini Cloud (Dhruva)
-    participant Gemini as Google Gemini 2.5 Flash
+    participant Bhashini as Bhashini Cloud / Local ASR
+    participant Qwen as Qwen-2.5-32B-Instruct
     
-    Artisan->>Audio: Records Hindi Voice
-    Audio-->>Artisan: .wav file (16kHz)
+    Vision->>Audio: Category Detected (e.g. Pottery RET16)
+    Audio->>Artisan: 1. Plays Spoken Dialect Anchor (5-8s Hindi TTS)
+    Note over Artisan,Audio: "यह दीया किस मिट्टी से बना है और इसपर क्या नक्काशी है?"
     
-    Artisan->>Bhashini: 1. ASR (Speech-to-Text)
-    Bhashini-->>Artisan: Raw Hindi Transcript
+    Artisan->>Audio: 2. Speaks Open-Ended Description (No 15s cap)
+    Audio-->>Artisan: 16kHz WAV Stream (Dynamic waveform visualizer)
     
-    Artisan->>Bhashini: 2. NMT (Translation hi -> en)
-    Bhashini-->>Artisan: English Transcript
+    Audio->>Bhashini: 3. ASR (Speech-to-Text)
+    Bhashini-->>Audio: Indic Transcript
     
-    Artisan->>Gemini: 3. Extraction (English Text)
-    Note over Gemini: System Prompt enforces<br/>strict ONDC JSON schema
-    Gemini-->>Artisan: Structured JSON Catalog
+    Audio->>Qwen: 4. Extract & Structure via Qwen-2.5-32B
+    Note over Qwen: Enforces strict ONDC Beckn schema,<br/>extracts title, desc, price, qty, materials
+    Qwen-->>Audio: Structured JSON Catalog Result
     
-    Artisan->>Bhashini: 4. NMT (Desc en -> hi)
-    Bhashini-->>Artisan: Hindi Description
-    
-    Artisan->>Bhashini: 5. TTS (Text-to-Speech)
-    Bhashini-->>Audio: base64 WAV Audio
-    Audio-->>Artisan: Plays Readback
+    Audio->>Artisan: 5. Statutory Spoken Readback (TTS)
+    Note over Audio,Artisan: "आपका कैटलॉग तैयार है: मिट्टी का दीया, कीमत ₹350। क्या यह सही है?"
 ```
 
-## 2. Component Breakdown
+---
 
-### A. Audio Capture (`audio_service.dart`)
-- **Codec:** Uses `AudioEncoder.wav`. Bhashini is highly strict about audio formats; sending MPEG4/AAC (`.m4a`) results in Internal Server Errors (500).
-- **Sample Rate:** 16kHz, mono channel.
-- **Delivery:** Encodes the `.wav` file to a Base64 string for transmission to the Bhashini API.
+## 2. Modality Details
 
-### B. Bhashini Integration (`bhashini_service.dart`)
-Handles the 2-step Dhruva API architecture required by MeitY:
-1. **Config Discovery (`getModelsPipeline`)**: Uses `BHASHINI_USER_ID` and `BHASHINI_ULCA_KEY` to discover the active `serviceId`s for ASR, Translation, and TTS for the requested languages. Results are cached per session.
-2. **Inference Compute (`/services/inference/pipeline`)**: Uses the `BHASHINI_API_KEY` to execute the actual machine learning tasks.
-   - **ASR**: Transcribes the base64 WAV to Indic text.
-   - **NMT**: Translates Indic text to English, and vice versa.
-   - **TTS**: Synthesizes Hindi text back into base64 WAV for playback.
+### A. Category-Adaptive Spoken Anchors
+Rather than opening the microphone into an empty prompt, the system queries the detected category and plays a targeted, localized question before recording:
+- **Pottery (`ONDC:RET16`)**: *"यह दीया किस मिट्टी से बना है और इसपर क्या नक्काशी है? (What clay is this diya made from, and what carvings does it have?)"*
+- **Apparel / Weaves (`ONDC:RET12`)**: *"यह कपड़ा किस धागे से बुना गया है और इसपर क्या कढ़ाई की गई है? (What yarn was used and what embroidery is featured?)"*
+- **Food / Spices (`ONDC:RET10`)**: *"यह खाद्य सामग्री कैसे तैयार की गई है और इसमें कौन से मसाले हैं? (How was this prepared and what ingredients/spices are in it?)"*
+- **Wood / Metalcraft**: *"यह हस्तशिल्प किस धातु या लकड़ी से गढ़ा गया है? (What metal or wood is this craft carved from?)"*
 
-### C. LLM Extraction (`api_service.dart`)
-- **Model:** `gemini-2.5-flash`
-- **Why English?**: Regional dialects and code-switched Hindi can cause hallucinations in structural JSON mapping. Translating to English first (via Bhashini) ensures Gemini operates on its strongest language, resulting in near 100% schema adherence.
-- **Temperature:** Set to `0.2` to prioritize deterministic formatting over creative text generation.
+### B. Open-Ended Voice Capture
+- **No 15-Second Limit**: The artisan may speak as long as necessary. The UI provides an open-ended count-up timer (`MM:SS`) with a live 30-bar amplitude waveform.
+- **Audio Specification**: 16 kHz Mono WAV format (`AudioEncoder.wav`).
+- **Silence & Under-run Protection**: If speech amplitude drops or duration is insufficient, the artisan is gently prompted to speak naturally.
 
-### D. Controller Orchestration (`catalog_controller.dart`)
-- Manages the UI state (`ProcessingStage`) while the pipeline runs asynchronously.
-- Handles the final TTS fallback: If the Bhashini network request fails during audio readback generation, the controller gracefully falls back to the device's native `flutter_tts` engine so the artisan still hears their confirmation.
+### C. Qwen Catalog Extraction (`api_service.dart`)
+- **Default Model**: `qwen-2.5-32b-it` (via Groq OpenAI-compatible free API or custom inference server).
+- **Temperature**: `0.1` for maximum schema reliability and determinism.
+- **System Prompt**:
+```text
+You are an expert Indian artisan product cataloguer for the ONDC (Open Network for Digital Commerce) e-commerce network.
+You convert spoken artisan descriptions (Hindi, Hinglish, or English) into structured ONDC Beckn catalog JSON.
 
-## 3. Environment Variables Required
-
-For the voice pipeline to function, the following must be defined in the `.env`:
-
-```env
-# Bhashini Auth (From Bhashini Dashboard)
-BHASHINI_API_KEY=xxx
-BHASHINI_ULCA_KEY=xxx
-BHASHINI_USER_ID=xxx
-
-# Bhashini Config
-BHASHINI_PIPELINE_ID=64392f96daac500b55c543cd
-BHASHINI_API_URL=https://dhruva-api.bhashini.gov.in
-
-# Gemini Auth
-GEMINI_API_KEY=xxx
-GEMINI_MODEL=gemini-2.5-flash
+Return ONLY a valid JSON object matching the target schema:
+{
+  "title_en": "Product title in English",
+  "title_hi": "उत्पाद का हिंदी नाम",
+  "category": "apparel|pottery|metalcraft|woodwork|food|jewelry|decor|handicrafts",
+  "materials": ["primary material", "secondary material"],
+  "dimensions": "length x width x height or size",
+  "care_instructions": "Care instructions in English",
+  "craft_technique": "Name of craft technique",
+  "lead_time": "Production lead time",
+  "origin_cluster": "Artisan cluster / village / region",
+  "fair_price": 350,
+  "available_quantity": 5,
+  "description_en": "Rich evocative artisan story in English",
+  "description_hi": "हिंदी में विवरण"
+}
 ```
 
-## 4. Error Handling & Edge Cases
-- **Empty Voice Input:** Caught by `audio_service` amplitude thresholds before hitting the API.
-- **Bhashini 500 Errors:** Usually format related. Always ensure the client sends strict `wav` or `flac` bytes.
-- **JSON Parsing Errors:** If Gemini hallucinated markdown fences (e.g. ````json`), the fallback regex in `api_service.dart` strips them before `jsonDecode`.
+### D. Spoken Price & Quantity Routing
+If the artisan explicitly mentions price (e.g. *"मैं इसे साढ़े तीन सौ में बेचता हूँ"*) or quantity (*"मेरे पास पांच पीस तैयार हैं"*), Qwen extracts `fair_price: 350` and `available_quantity: 5`. These values automatically pre-populate the **Fair-Price Corridor** card and **Tactile Quantity Stepper** on the catalog screen.
+
+### E. Readback & Verification
+Before publishing, the artisan hears the readback summary:
+> *"आपका कैटलॉग तैयार है: [श्रेणी] [शीर्षक], कीमत ₹[कीमत]। क्या यह सही है?"*

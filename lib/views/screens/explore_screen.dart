@@ -6,6 +6,7 @@ import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/catalog_controller.dart';
 import '../../models/catalog_item.dart';
+import '../../services/audio_service.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -16,11 +17,74 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   int _bottomNavIndex = 0;
+  int _selectedCategoryIndex = 0;
+  final AudioService _audioService = AudioService();
+  bool _isPlayingStory = false;
+
+  final List<String> _categories = [
+    'All Crafts',
+    'Pottery & Clay',
+    'Clothing & Weaves',
+    'Home Decor',
+    'Tribal Metalcraft',
+    'Festive Special',
+  ];
+
+  @override
+  void dispose() {
+    _audioService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final catalogCtrl = context.watch<CatalogController>();
     final savedCatalogs = catalogCtrl.savedCatalogs;
+
+    final filteredCatalogs = savedCatalogs.where((item) {
+      if (_selectedCategoryIndex == 0) return true;
+      final selectedCat = _categories[_selectedCategoryIndex].toLowerCase();
+      final cat = (item.craftAttributes?.category ?? '').toLowerCase();
+      final title = (item.titleEn ?? '').toLowerCase();
+      if (selectedCat.contains('pottery') &&
+          (cat.contains('pottery') ||
+              cat.contains('clay') ||
+              title.contains('diya') ||
+              title.contains('pot') ||
+              title.contains('cup'))) {
+        return true;
+      }
+      if (selectedCat.contains('clothing') &&
+          (cat.contains('apparel') ||
+              cat.contains('cloth') ||
+              cat.contains('sari') ||
+              cat.contains('shawl') ||
+              title.contains('kurta') ||
+              title.contains('silk'))) {
+        return true;
+      }
+      if (selectedCat.contains('decor') &&
+          (cat.contains('decor') ||
+              title.contains('lamp') ||
+              title.contains('vase') ||
+              title.contains('hanging'))) {
+        return true;
+      }
+      if (selectedCat.contains('metal') &&
+          (cat.contains('metal') ||
+              cat.contains('brass') ||
+              cat.contains('bell') ||
+              title.contains('brass'))) {
+        return true;
+      }
+      if (selectedCat.contains('festive') &&
+          (title.contains('diya') ||
+              title.contains('puja') ||
+              title.contains('festive'))) {
+        return true;
+      }
+      return false;
+    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.warmCream,
@@ -55,13 +119,19 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       child: _buildPrototypeBanner(context),
                     ),
 
+                    // ── Category Filter Pills ─────────────────────────────
+                    SliverToBoxAdapter(
+                      child: _buildCategoryFilters(),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 8)),
+
                     // ── Section Header ────────────────────────────────────
                     SliverToBoxAdapter(
-                      child: _buildSectionHeader(savedCatalogs.length),
+                      child: _buildSectionHeader(filteredCatalogs.length),
                     ),
 
                     // ── Product Grid or Empty State ───────────────────────
-                    if (savedCatalogs.isEmpty)
+                    if (filteredCatalogs.isEmpty)
                       SliverToBoxAdapter(
                         child: _buildEmptyState(context),
                       )
@@ -78,10 +148,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                           ),
                           delegate: SliverChildBuilderDelegate(
                             (context, index) {
-                              final item = savedCatalogs[index];
+                              final item = filteredCatalogs[index];
                               return _buildProductCard(context, item);
                             },
-                            childCount: savedCatalogs.length,
+                            childCount: filteredCatalogs.length,
                           ),
                         ),
                       ),
@@ -305,6 +375,44 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+  // ── Category Filter Pills ──────────────────────────────────────────────────
+  Widget _buildCategoryFilters() {
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final isSelected = _selectedCategoryIndex == index;
+          return ChoiceChip(
+            label: Text(_categories[index]),
+            selected: isSelected,
+            onSelected: (selected) {
+              if (selected) {
+                setState(() => _selectedCategoryIndex = index);
+              }
+            },
+            selectedColor: AppColors.primaryTeal,
+            backgroundColor: Colors.white,
+            labelStyle: AppTextStyles.labelSmall.copyWith(
+              color: isSelected ? Colors.white : AppColors.textPrimary,
+              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            ),
+            side: BorderSide(
+              color: isSelected ? AppColors.primaryTeal : AppColors.cardBorder,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            showCheckmark: false,
+          );
+        },
+      ),
+    );
+  }
+
   // ── Section Header ─────────────────────────────────────────────────────────
   Widget _buildSectionHeader(int itemCount) {
     return Padding(
@@ -449,11 +557,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final mrp = item.mrp;
 
     return GestureDetector(
-      onTap: () {
-        final catalogController = context.read<CatalogController>();
-        catalogController.setItem(item);
-        Navigator.pushNamed(context, AppRoutes.catalog);
-      },
+      onTap: () => _showQuickView(context, item),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
@@ -611,6 +715,281 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // ── Product Quick View Modal ───────────────────────────────────────────────
+  void _showQuickView(BuildContext context, CatalogItem item) {
+    final fairPrice = item.pricing?.fairPrice ?? 0;
+    final mrp = item.mrp ?? (fairPrice > 0 ? (fairPrice * 1.25).round() : 0);
+    final desc = item.descriptionHi ??
+        item.descriptionEn ??
+        'पारंपरिक हस्तशिल्प उत्पाद। कुशल कारीगर द्वारा हस्तनिर्मित।';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (modalCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 14,
+                bottom: MediaQuery.of(ctx).padding.bottom + 16,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.warmSand,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: SizedBox(
+                          width: 84,
+                          height: 84,
+                          child: _buildProductImage(item),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.titleEn ?? 'Handmade Craft',
+                              style: AppTextStyles.serifTitle().copyWith(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (item.titleHi != null &&
+                                item.titleHi!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                item.titleHi!,
+                                style: AppTextStyles.body.copyWith(
+                                  fontSize: 13,
+                                  color: AppColors.secondaryTerracotta,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Text(
+                                  fairPrice > 0 ? '₹$fairPrice' : 'Price Pending',
+                                  style: AppTextStyles.label.copyWith(
+                                    color: AppColors.primaryTeal,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (mrp > fairPrice) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '₹$mrp',
+                                    style: AppTextStyles.caption.copyWith(
+                                      decoration: TextDecoration.lineThrough,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Cluster: ${item.craftAttributes?.clusterLocation ?? "Pune, Maharashtra"}',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Karigar Story Audio Snippet Card
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.warmSand),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.auto_stories_rounded,
+                              size: 16,
+                              color: AppColors.primaryTeal,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Karigar Story • कारीगर की कहानी',
+                              style: AppTextStyles.labelSmall.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryTeal,
+                              ),
+                            ),
+                            const Spacer(),
+                            GestureDetector(
+                              onTap: () async {
+                                if (_isPlayingStory) {
+                                  await _audioService.stopTts();
+                                  setModalState(() => _isPlayingStory = false);
+                                  setState(() => _isPlayingStory = false);
+                                } else {
+                                  setModalState(() => _isPlayingStory = true);
+                                  setState(() => _isPlayingStory = true);
+                                  await _audioService.speakText(desc);
+                                  setModalState(() => _isPlayingStory = false);
+                                  setState(() => _isPlayingStory = false);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryTeal,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      _isPlayingStory
+                                          ? Icons.stop_rounded
+                                          : Icons.volume_up_rounded,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _isPlayingStory ? 'Stop' : 'सुनें',
+                                      style: AppTextStyles.labelSmall.copyWith(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          desc,
+                          style: AppTextStyles.body.copyWith(
+                            fontSize: 12,
+                            height: 1.4,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Actions: Guild Basket Pledge & View Full Catalog
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(modalCtx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Added to Guild Basket! Direct artisan pledge recorded.',
+                                ),
+                                backgroundColor: AppColors.secondaryTerracotta,
+                              ),
+                            );
+                          },
+                          icon: const Icon(
+                            Icons.shopping_basket_outlined,
+                            size: 16,
+                          ),
+                          label: const Text('Guild Basket'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(0, 46),
+                            side: const BorderSide(
+                              color: AppColors.secondaryTerracotta,
+                            ),
+                            foregroundColor: AppColors.secondaryTerracotta,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(modalCtx);
+                            final catalogController =
+                                context.read<CatalogController>();
+                            catalogController.setItem(item);
+                            Navigator.pushNamed(context, AppRoutes.catalog);
+                          },
+                          icon: const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 16,
+                          ),
+                          label: const Text('View Catalog'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryTeal,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(0, 46),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
