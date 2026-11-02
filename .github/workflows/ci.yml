@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-ci:
+    name: Flutter Lint & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+          cache-key: "flutter-:os:-:channel:-:version:-:arch:-:hash:"
+
+      - name: Display Flutter info
+        run: flutter doctor -v
+
+      - name: Setup environment file (.env)
+        run: cp .env.example .env
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Verify code formatting
+        run: dart format --output=none --set-exit-if-changed lib/ test/
+        continue-on-error: true
+
+      - name: Run static analysis
+        run: flutter analyze
+
+      - name: Run unit & widget tests
+        run: flutter test --coverage
+
+  backend-ci:
+    name: Backend Lint & Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt pytest
+
+      - name: Syntax & compilation check
+        run: |
+          python -m py_compile backend/main.py backend/generate_keys.py backend/app/*.py
+
+      - name: Run backend tests
+        working-directory: backend
+        run: |
+          pytest tests/ -v

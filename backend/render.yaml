@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: bazaarsetu-bpp
+    runtime: python
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    plan: free
+    region: oregon
+    envVars:
+      - key: BPP_SUBSCRIBER_ID
+        value: bazaarsetu-bpp.onrender.com
+      - key: BPP_PUBLIC_URI
+        value: https://bazaarsetu-bpp.onrender.com
+      - key: BPP_COUNTRY
+        value: IND
+      - key: BPP_CITY
+        value: std:080
+      - key: BPP_SIGNING_PRIVATE_KEY
+        generateValue: false
+      - key: BPP_SIGNING_PUBLIC_KEY
+        generateValue: false
+      - key: BPP_ENCRYPTION_PRIVATE_KEY
+        generateValue: false
+      - key: BPP_ENCRYPTION_PUBLIC_KEY
+        generateValue: false

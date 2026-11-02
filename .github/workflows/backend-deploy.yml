@@ -1,0 +1,33 @@
+name: Backend Deploy Hook
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Trigger Backend Redeploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check Deploy Hook Secret
+        id: check_secret
+        run: |
+          if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "RENDER_DEPLOY_HOOK_URL is not set in GitHub repository secrets."
+            echo "To enable automated deployments, see docs/backend-deployment-guide.md."
+          fi
+
+      - name: Trigger Webhook Deploy
+        if: steps.check_secret.outputs.configured == 'true'
+        run: |
+          echo "Triggering automated backend redeployment..."
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+          echo "Deploy trigger dispatched successfully."
