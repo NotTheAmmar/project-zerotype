@@ -28,7 +28,7 @@ dependencies:
   flutter_dotenv: ^6.0.1
 
   # Typography
-  google_fonts: ^6.3.3
+  google_fonts: ^9.0.0
 
   # UI helpers
   shimmer: ^4.0.0
