@@ -1,12 +1,16 @@
 import os
+import sys
 import unittest
-from fastapi.testclient import TestClient
+
+# Ensure backend directory is in sys.path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Ensure test mode settings before importing app
 os.environ["BPP_SUBSCRIBER_ID"] = "test.bazaarsetu.bpp"
 os.environ["BPP_PUBLIC_URI"] = "https://test.bazaarsetu.bpp"
 os.environ["BPP_SIGNING_PRIVATE_KEY"] = ""
 
+from fastapi.testclient import TestClient  # noqa: E402
 from main import app  # noqa: E402
 
 
