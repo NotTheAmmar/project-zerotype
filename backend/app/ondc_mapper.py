@@ -76,12 +76,12 @@ def build_on_search_catalog(
             "catalog": {
                 # ── BPP (platform) descriptor ─────────────────────────────
                 "bpp/descriptor": {
-                    "name": "KalaKriti Artisan Collective",
-                    "short_desc": "Empowering marginalized weavers under MoSJE (SIH26090)",
+                    "name": "BazaarSetu Artisan Collective",
+                    "short_desc": "Empowering rural artisans via voice-first cataloging (Project ZeroType)",
                     "long_desc": (
-                        "KalaKriti AI is a voice-first platform that helps rural artisans "
+                        "BazaarSetu is a voice-first platform that helps rural artisans "
                         "list their handcrafted products on ONDC without typing a single "
-                        "character. Photo + 15-second voice → ONDC-ready listing in under 60s."
+                        "character. Photo + voice narration -> ONDC-ready listing."
                     ),
                     "symbol": item.studio_image_url,
                 },

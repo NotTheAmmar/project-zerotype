@@ -8,8 +8,8 @@ import 'views/screens/processing_screen.dart';
 import 'views/screens/voice_screen.dart';
 import 'views/screens/welcome_screen.dart';
 
-class KalaKritiApp extends StatelessWidget {
-  const KalaKritiApp({super.key});
+class BazaarSetuApp extends StatelessWidget {
+  const BazaarSetuApp({super.key});
 
   @override
   Widget build(BuildContext context) {

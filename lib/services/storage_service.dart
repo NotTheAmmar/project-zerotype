@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/catalog_item.dart';
 
 class StorageService {
-  static const String _catalogsKey = 'kalakriti_catalogs';
+  static const String _catalogsKey = 'bazaarsetu_catalogs';
 
   Future<List<CatalogItem>> loadCatalogs() async {
     final prefs = await SharedPreferences.getInstance();

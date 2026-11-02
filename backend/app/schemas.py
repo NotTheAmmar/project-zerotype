@@ -1,5 +1,5 @@
 """
-schemas.py — Pydantic v2 models for the KalaKriti BPP.
+schemas.py — Pydantic v2 models for the BazaarSetu BPP.
 
 Two model groups:
   1. ArtisanListingPayload — what the Flutter mobile app POSTs after AI processing.
@@ -31,7 +31,7 @@ class ArtisanListingPayload(BaseModel):
         ..., description="Unique SKU / catalog ID from the Flutter app."
     )
     artisan_name: str = Field(
-        default="KalaKriti Artisan",
+        default="BazaarSetu Artisan",
         description="Full name of the artisan / weaver.",
     )
 

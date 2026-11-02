@@ -149,7 +149,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         const SizedBox(height: 14),
 
                         // 7. Buyer Interface Simulation
-                        _buildBuyerSimulation(),
+                        _buildBuyerSimulation(activePrice),
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -1508,7 +1508,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   // ── 7. Buyer Simulation ────────────────────────────────────────────────────
-  Widget _buildBuyerSimulation() {
+  Widget _buildBuyerSimulation(int activePrice) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(

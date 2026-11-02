@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           xmlns:tools="http://schemas.android.com/tools">
-    <!-- Camera & audio permissions for KalaKriti AI prototype -->
+    <!-- Camera & audio permissions for BazaarSetu prototype -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -19,7 +19,7 @@
     <uses-feature android:name="android.hardware.microphone"     android:required="false" />
 
     <application
-        android:label="KalaKriti AI"
+        android:label="BazaarSetu"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity

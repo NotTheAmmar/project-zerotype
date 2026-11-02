@@ -64,13 +64,13 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 Expected startup output:
 ```
-22:58:00  INFO     kalakriti_bpp — ============================================================
-22:58:00  INFO     kalakriti_bpp —   KalaKriti BPP — ONDC Beckn Provider Platform
-22:58:00  INFO     kalakriti_bpp —   Subscriber ID : kalakriti.bpp.org
-22:58:00  INFO     kalakriti_bpp —   Public URI    : http://localhost:8000/beckn
-22:58:00  INFO     kalakriti_bpp —   Signing Key   : ⚠ NOT SET (mock mode)
-22:58:00  INFO     kalakriti_bpp —   Catalog store : 1 listing(s) pre-loaded
-22:58:00  INFO     kalakriti_bpp — ============================================================
+22:58:00  INFO     bazaarsetu_bpp — ============================================================
+22:58:00  INFO     bazaarsetu_bpp —   BazaarSetu BPP — ONDC Beckn Provider Platform
+22:58:00  INFO     bazaarsetu_bpp —   Subscriber ID : bazaarsetu.bpp.org
+22:58:00  INFO     bazaarsetu_bpp —   Public URI    : http://localhost:8000/beckn
+22:58:00  INFO     bazaarsetu_bpp —   Signing Key   : ⚠ NOT SET (mock mode)
+22:58:00  INFO     bazaarsetu_bpp —   Catalog store : 1 listing(s) pre-loaded
+22:58:00  INFO     bazaarsetu_bpp — ============================================================
 INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
 
@@ -83,7 +83,7 @@ Browse to **http://localhost:8000/docs** for interactive Swagger UI.
 ```bash
 # Health check
 curl http://localhost:8000/
-# → {"status":"ok","service":"KalaKriti BPP","active_listings":1,...}
+# → {"status":"ok","service":"BazaarSetu BPP","active_listings":1,...}
 
 # Fetch the pre-loaded Chanderi Silk listing
 curl http://localhost:8000/api/v1/bpp/listings
@@ -136,7 +136,7 @@ Navigate to **[dev-workbench.ondc.tech](https://dev-workbench.ondc.tech/)** and 
 
 Fill the **"Create a new Session"** form on the right panel:
 
-| # | Field | Value for KalaKriti BPP |
+| # | Field | Value for BazaarSetu BPP |
 |---|-------|------------------------|
 | 1 | **Enter Subscriber URL** | `https://YOUR-TUNNEL.trycloudflare.com` |
 | 2 | **Select Domain** | `ONDC:RET12` |

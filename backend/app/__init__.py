@@ -1,1 +1,1 @@
-# KalaKriti BPP — ONDC Beckn Provider Platform Adapter
+# BazaarSetu BPP — ONDC Beckn Provider Platform Adapter

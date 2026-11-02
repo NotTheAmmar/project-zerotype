@@ -35,7 +35,7 @@ Flutter App (CatalogScreen)
   # Or your Cloudflare tunnel URL for device testing:
   # BPP_BACKEND_URL=https://YOUR-TUNNEL.trycloudflare.com
   ```
-- `[x]` Add `bppBackendUrl` getter to [`lib/config/constants.dart`](file:///home/ammar/Programs/Flutter/sih_26_kalakriti/lib/config/constants.dart):
+- `[x]` Add `bppBackendUrl` getter to [`lib/config/constants.dart`](file:///home/ammar/Programs/project-zerotype/lib/config/constants.dart):
   ```dart
   static String get bppBackendUrl =>
       dotenv.env['BPP_BACKEND_URL'] ?? 'http://localhost:8000';
@@ -45,14 +45,14 @@ Flutter App (CatalogScreen)
 
 ### 2. Publish Service Method
 
-- `[x]` Add `publishToOndc` method to [`lib/services/api_service.dart`](file:///home/ammar/Programs/Flutter/sih_26_kalakriti/lib/services/api_service.dart).
+- `[x]` Add `publishToOndc` method to [`lib/services/api_service.dart`](file:///home/ammar/Programs/project-zerotype/lib/services/api_service.dart).
 
   **Request body** — map Flutter's `CatalogItem` + `PricingCorridor` to the BPP's `ArtisanListingPayload` schema:
 
   ```dart
   final body = {
     "catalog_id": item.id,
-    "artisan_name": item.craftAttributes?.artisanName ?? "KalaKriti Artisan",
+    "artisan_name": item.craftAttributes?.artisanName ?? "BazaarSetu Artisan",
     "cluster_name": item.craftAttributes?.clusterLocation ?? "Chanderi Handloom Cluster",
     "title_en": item.titleEn ?? "",
     "title_hi": item.titleHi ?? "",
@@ -77,7 +77,7 @@ Flutter App (CatalogScreen)
 
 ### 3. CatalogController — Publish Action
 
-- `[x]` Add `publishToOndc()` method to [`lib/controllers/catalog_controller.dart`](file:///home/ammar/Programs/Flutter/sih_26_kalakriti/lib/controllers/catalog_controller.dart):
+- `[x]` Add `publishToOndc()` method to [`lib/controllers/catalog_controller.dart`](file:///home/ammar/Programs/project-zerotype/lib/controllers/catalog_controller.dart):
   - Sets a `isPublishing` loading flag
   - Calls `apiService.publishToOndc(currentItem)`
   - On success: updates `currentItem.status = CatalogStatus.published`
@@ -88,7 +88,7 @@ Flutter App (CatalogScreen)
 
 ### 4. CatalogScreen UI — Publish Button
 
-- `[ ]` Update [`lib/views/screens/catalog_screen.dart`](file:///home/ammar/Programs/Flutter/sih_26_kalakriti/lib/views/screens/catalog_screen.dart):
+- `[x]` Update [`lib/views/screens/catalog_screen.dart`](file:///home/ammar/Programs/project-zerotype/lib/views/screens/catalog_screen.dart):
   - Replace / augment the existing "Phir Se Karein" (Retake) CTA with a new primary **"ONDC par Prakashan Karein"** (Publish to ONDC) green button
   - Show `CircularProgressIndicator` while `isPublishing == true`
   - Show a **✓ Published** green badge with the catalog_id on success
@@ -103,7 +103,7 @@ Flutter App (CatalogScreen)
 
 ### 5. Status Persistence
 
-- `[ ]` Update [`lib/services/storage_service.dart`](file:///home/ammar/Programs/Flutter/sih_26_kalakriti/lib/services/storage_service.dart) to persist `CatalogStatus.published` in SharedPreferences/SQLite so the badge survives app restarts.
+- `[x]` Update [`lib/services/storage_service.dart`](file:///home/ammar/Programs/project-zerotype/lib/services/storage_service.dart) to persist `CatalogStatus.published` in SharedPreferences/SQLite so the badge survives app restarts.
 
 ---
 

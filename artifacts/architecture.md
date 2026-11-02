@@ -52,7 +52,7 @@ Bounding Geometry             MIC opened (No 15s limit)         Floor/Fair/Premi
 
 ```env
 # Application Settings
-API_BASE_URL=https://api.kalakriti.dev/v1
+API_BASE_URL=https://api.bazaarsetu.in/v1
 USE_MOCK_DATA=true
 
 # AI Extraction Provider (Qwen)

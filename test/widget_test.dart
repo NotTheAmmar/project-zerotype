@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
-import 'package:sih_26_kalakriti/app.dart';
-import 'package:sih_26_kalakriti/controllers/capture_controller.dart';
-import 'package:sih_26_kalakriti/controllers/catalog_controller.dart';
-import 'package:sih_26_kalakriti/controllers/pricing_controller.dart';
-import 'package:sih_26_kalakriti/controllers/voice_controller.dart';
-import 'package:sih_26_kalakriti/services/api_service.dart';
-import 'package:sih_26_kalakriti/services/audio_service.dart';
-import 'package:sih_26_kalakriti/services/image_service.dart';
-import 'package:sih_26_kalakriti/services/storage_service.dart';
+import 'package:project_zerotype/app.dart';
+import 'package:project_zerotype/controllers/capture_controller.dart';
+import 'package:project_zerotype/controllers/catalog_controller.dart';
+import 'package:project_zerotype/controllers/pricing_controller.dart';
+import 'package:project_zerotype/controllers/voice_controller.dart';
+import 'package:project_zerotype/services/api_service.dart';
+import 'package:project_zerotype/services/audio_service.dart';
+import 'package:project_zerotype/services/image_service.dart';
+import 'package:project_zerotype/services/storage_service.dart';
 
 void main() {
   testWidgets('BazaarSetu app smoke test', (WidgetTester tester) async {
@@ -37,7 +37,7 @@ void main() {
             create: (_) => PricingController(),
           ),
         ],
-        child: const KalaKritiApp(),
+        child: const BazaarSetuApp(),
       ),
     );
 

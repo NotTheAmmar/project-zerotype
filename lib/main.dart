@@ -44,7 +44,7 @@ void main() async {
           create: (_) => PricingController(),
         ),
       ],
-      child: const KalaKritiApp(),
+      child: const BazaarSetuApp(),
     ),
   );
 }

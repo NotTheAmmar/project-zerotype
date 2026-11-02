@@ -7,6 +7,7 @@ class AppColors {
 
   // Canvas & Surfaces
   static const Color warmCream = Color(0xFFFFF8ED);
+  static const Color warmSand = Color(0xFFEAD6CD);
   static const Color surfaceLight = Color(0xFFFFF8ED);
   static const Color surfaceClean = Color(0xFFFFFFFF);
   static const Color surfaceContainer = Color(0xFFFEEAE0);
@@ -18,6 +19,7 @@ class AppColors {
   static const Color primaryDark = Color(0xFF005252);
   static const Color primaryContainer = Color(0xFFE6F3F3);
   static const Color secondaryTerracotta = Color(0xFFB86F52);
+  static const Color accentTerracotta = Color(0xFF8E4D32);
   static const Color secondaryContainer = Color(0xFFFBECE5);
   static const Color tertiarySaffron = Color(0xFFE3A24B);
   static const Color saffronContainer = Color(0xFFFEF3DE);

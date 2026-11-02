@@ -130,7 +130,7 @@ async def root() -> dict:
     settings = get_settings()
     return {
         "status": "ok",
-        "service": "KalaKriti BPP",
+        "service": "BazaarSetu BPP",
         "subscriber_id": settings.bpp_subscriber_id,
         "bpp_uri": settings.bpp_public_uri,
         "active_listings": listing_count(),

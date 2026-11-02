@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "sih_26_kalakriti" "\0"
+            VALUE "CompanyName", "com.projectzerotype" "\0"
+            VALUE "FileDescription", "BazaarSetu" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "sih_26_kalakriti" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "sih_26_kalakriti.exe" "\0"
-            VALUE "ProductName", "sih_26_kalakriti" "\0"
+            VALUE "InternalName", "project_zerotype" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.projectzerotype. All rights reserved." "\0"
+            VALUE "OriginalFilename", "project_zerotype.exe" "\0"
+            VALUE "ProductName", "BazaarSetu" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

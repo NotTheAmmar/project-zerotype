@@ -1,9 +1,9 @@
 # ONDC Workbench Integration & Workflow
 
 > **Component:** ONDC Network Testing & Validation  
-> **Role:** Simulates the ONDC Buyer App (BAP) and Network Gateway to test the KalaKriti Seller Platform (BPP).  
+> **Role:** Simulates the ONDC Buyer App (BAP) and Network Gateway to test the BazaarSetu Seller Platform (BPP).  
 
-This document explains the role of the ONDC Workbench in the KalaKriti AI ecosystem, the parameters used for connection, and the end-to-end Beckn protocol workflow that enables our rural artisans to sell on the open network.
+This document explains the role of the ONDC Workbench in the BazaarSetu ecosystem, the parameters used for connection, and the end-to-end Beckn protocol workflow that enables our rural artisans to sell on the open network.
 
 ---
 
@@ -11,8 +11,8 @@ This document explains the role of the ONDC Workbench in the KalaKriti AI ecosys
 
 The ONDC Workbench is an official testing sandbox provided by ONDC. Since the real ONDC network requires extensive legal and technical onboarding, the Workbench acts as a simulated **Gateway** and **Buyer App (BAP)**. 
 
-**Its Role in KalaKriti:**
-It allows us to prove that the KalaKriti FastAPI Backend successfully functions as a **Beckn Provider Platform (BPP) / Seller Node**. When an artisan hits "Publish" on the Flutter app, we use the Workbench to verify that the listing is correctly broadcasted across the network, fully compliant with ONDC protocols.
+**Its Role in BazaarSetu:**
+It allows us to prove that the BazaarSetu FastAPI Backend successfully functions as a **Beckn Provider Platform (BPP) / Seller Node**. When an artisan hits "Publish" on the Flutter app, we use the Workbench to verify that the listing is correctly broadcasted across the network, fully compliant with ONDC protocols.
 
 ---
 
@@ -20,8 +20,8 @@ It allows us to prove that the KalaKriti FastAPI Backend successfully functions 
 
 Because ONDC requires public URLs to send webhook callbacks, the connection flow relies on secure tunnels during development.
 
-1. **Flutter App (Mobile):** The artisan finalizes pricing and taps *Publish*. The app sends the catalog data to the KalaKriti BPP.
-2. **KalaKriti BPP (FastAPI):** Receives the listing and saves it in the active catalog store. It is running locally on port `8000`.
+1. **Flutter App (Mobile):** The artisan finalizes pricing and taps *Publish*. The app sends the catalog data to the BazaarSetu BPP.
+2. **BazaarSetu BPP (FastAPI):** Receives the listing and saves it in the active catalog store. It is running locally on port `8000`.
 3. **Cloudflare Tunnel (`cloudflared`):** Exposes the local `localhost:8000` to a public URL (e.g., `https://my-tunnel.trycloudflare.com`).
 4. **ONDC Workbench:** Sends Beckn protocol requests (like `/search`) to our tunnel URL, and our FastAPI server responds to the Workbench's callback URL.
 
@@ -29,7 +29,7 @@ Because ONDC requires public URLs to send webhook callbacks, the connection flow
 
 ## 3. Workbench Session Parameters
 
-To initiate a testing session, the Workbench requires specific parameters to configure the simulated ONDC network. For KalaKriti (Handicrafts/Apparel), we use the following configuration:
+To initiate a testing session, the Workbench requires specific parameters to configure the simulated ONDC network. For BazaarSetu (Handicrafts/Apparel), we use the following configuration:
 
 | Parameter | Selected Value | Explanation |
 | :--- | :--- | :--- |
@@ -49,8 +49,8 @@ ONDC relies on the **Beckn Protocol**, which uses asynchronous, paired API calls
 Here is the exact workflow tested via the Workbench:
 
 ### Phase 1: Discovery (Cataloging) - *Our Primary Focus*
-1. **`/search`** *(Workbench → KalaKriti)*: The simulated buyer searches for "Sarees" or "Handicrafts".
-2. **`/on_search`** *(KalaKriti → Workbench)*: Our backend maps the artisan's `CatalogItem` into the ONDC schema and pushes the full catalog back to the network.
+1. **`/search`** *(Workbench → BazaarSetu)*: The simulated buyer searches for "Sarees" or "Handicrafts".
+2. **`/on_search`** *(BazaarSetu → Workbench)*: Our backend maps the artisan's `CatalogItem` into the ONDC schema and pushes the full catalog back to the network.
 
 ### Phase 2: Order Fulfillment
 3. **`/select` & `/on_select`**: The buyer adds the artisan's item (e.g., Chanderi Dupatta) to their cart. We confirm availability (`available_qty`) and final price.

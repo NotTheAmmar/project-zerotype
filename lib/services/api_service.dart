@@ -132,7 +132,7 @@ class LiveApiService implements ApiService {
 
     final body = {
       'catalog_id': item.id,
-      'artisan_name': item.craftAttributes?.artisanName ?? 'KalaKriti Artisan',
+      'artisan_name': item.craftAttributes?.artisanName ?? 'BazaarSetu Artisan',
       'cluster_name':
           item.craftAttributes?.clusterLocation ?? 'Chanderi Handloom Cluster',
       'title_en': item.titleEn ?? '',

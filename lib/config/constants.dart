@@ -10,7 +10,7 @@ class AppConstants {
 
   // API
   static String get baseUrl =>
-      _getEnv('API_BASE_URL') ?? 'https://api.kalakriti.dev/v1';
+      _getEnv('API_BASE_URL') ?? 'https://api.bazaarsetu.in/v1';
   static bool get useMockData =>
       (_getEnv('USE_MOCK_DATA') ?? 'true').toLowerCase() == 'true';
   static Duration get apiTimeout => const Duration(seconds: 120);
