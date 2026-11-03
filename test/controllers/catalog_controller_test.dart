@@ -11,6 +11,8 @@ class FakeApiService implements ApiService {
   Future<CatalogProcessResult> processCatalog({
     required String imagePath,
     required String audioPath,
+    List<String>? audioPaths,
+    String? manualDimensions,
     StageCallback? onStageComplete,
   }) async {
     return CatalogProcessResult(
@@ -19,6 +21,25 @@ class FakeApiService implements ApiService {
       descriptionEn: 'Pure Chanderi silk with zari work',
       descriptionHi: 'शुद्ध चंदेरी रेशम ज़री कार्य सहित',
       pricing: PricingCorridor.compute(rawMaterialCost: 500, laborDays: 3),
+    );
+  }
+
+  @override
+  Future<String> transcribeAudio(String audioPath) async {
+    return 'कीमत ₹650 कर दो';
+  }
+
+  @override
+  Future<CatalogItem> updateCatalogWithInstruction({
+    required CatalogItem currentItem,
+    required String instruction,
+  }) async {
+    return currentItem.copyWith(
+      pricing: PricingCorridor.compute(
+        rawMaterialCost: currentItem.pricing?.rawMaterialCost ?? 100,
+        laborDays: currentItem.pricing?.laborDays ?? 1,
+        sellerProposedPrice: 650,
+      ),
     );
   }
 
@@ -33,6 +54,19 @@ class FakeApiService implements ApiService {
 }
 
 class FakeAudioService extends AudioService {
+  @override
+  Future<void> speakText(String hindiText) async {}
+
+  @override
+  Future<void> speakCatalogSummary({
+    required String? titleHi,
+    required int? fairPrice,
+    required String? category,
+    List<String>? materials,
+    int? laborDays,
+    String? descriptionHi,
+  }) async {}
+
   @override
   Future<void> stopTts() async {}
 
@@ -105,6 +139,24 @@ void main() {
       expect(controller.stage, equals(ProcessingStage.done));
       expect(controller.currentItem, isNotNull);
       expect(controller.currentItem!.titleEn, equals('Handmade Silk Shawl'));
+    });
+
+    test('updateCurrentItem updates item and persists', () async {
+      await controller.createFallbackDraft(imagePath: '/tmp/craft.jpg');
+      final updated = controller.currentItem!.copyWith(
+        titleHi: 'संशोधित मिट्टी का दीया',
+      );
+
+      await controller.updateCurrentItem(updated);
+      expect(controller.currentItem!.titleHi, equals('संशोधित मिट्टी का दीया'));
+    });
+
+    test('applyVoiceUpdate invokes AI update and sets new corridor', () async {
+      await controller.createFallbackDraft(imagePath: '/tmp/craft.jpg');
+      await controller.applyVoiceUpdate('कीमत ₹650 कर दो');
+
+      expect(controller.currentItem!.pricing?.sellerProposedPrice, equals(650));
+      expect(controller.currentItem!.pricing?.fairPrice, equals(990));
     });
   });
 }

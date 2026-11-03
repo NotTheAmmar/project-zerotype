@@ -49,7 +49,16 @@ abstract class ApiService {
   Future<CatalogProcessResult> processCatalog({
     required String imagePath,
     required String audioPath,
+    List<String>? audioPaths,
+    String? manualDimensions,
     StageCallback? onStageComplete,
+  });
+
+  Future<String> transcribeAudio(String audioPath);
+
+  Future<CatalogItem> updateCatalogWithInstruction({
+    required CatalogItem currentItem,
+    required String instruction,
   });
 
   Future<Map<String, dynamic>> publishToOndc({
@@ -91,6 +100,8 @@ class MockApiService implements ApiService {
   Future<CatalogProcessResult> processCatalog({
     required String imagePath,
     required String audioPath,
+    List<String>? audioPaths,
+    String? manualDimensions,
     StageCallback? onStageComplete,
   }) async {
     final payload = MockData.catalogs[_mockIndex % MockData.catalogs.length];
@@ -115,6 +126,34 @@ class MockApiService implements ApiService {
       studioImagePath: payload.studioImagePath ?? payload.rawImagePath,
       audioReadbackPath: null,
     );
+  }
+
+  @override
+  Future<String> transcribeAudio(String audioPath) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return 'कीमत 450 रुपये कर दो और सामग्री में पीतल लिखो';
+  }
+
+  @override
+  Future<CatalogItem> updateCatalogWithInstruction({
+    required CatalogItem currentItem,
+    required String instruction,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    final numMatch = RegExp(r'\d+').firstMatch(instruction);
+    if (numMatch != null) {
+      final val = int.tryParse(numMatch.group(0)!);
+      if (val != null && val > 0) {
+        return currentItem.copyWith(
+          pricing: PricingCorridor.compute(
+            rawMaterialCost: currentItem.pricing?.rawMaterialCost ?? 100,
+            laborDays: currentItem.pricing?.laborDays ?? 1,
+            sellerProposedPrice: val,
+          ),
+        );
+      }
+    }
+    return currentItem;
   }
 }
 
@@ -177,13 +216,216 @@ class LiveApiService implements ApiService {
   Future<CatalogProcessResult> processCatalog({
     required String imagePath,
     required String audioPath,
+    List<String>? audioPaths,
+    String? manualDimensions,
     StageCallback? onStageComplete,
   }) async {
     return _processViaBhashini(
       imagePath: imagePath,
       audioPath: audioPath,
+      audioPaths: audioPaths,
+      manualDimensions: manualDimensions,
       onStageComplete: onStageComplete,
     );
+  }
+
+  @override
+  Future<String> transcribeAudio(String audioPath) async {
+    if (audioPath.isEmpty || !File(audioPath).existsSync()) return '';
+    String transcript = '';
+    if (AppConstants.voicePipeline == 'groq' ||
+        (AppConstants.voicePipeline == 'auto' && AppConstants.groqApiKey.isNotEmpty)) {
+      try {
+        transcript = await _transcribeWithGroqWhisper(audioPath);
+        if (transcript.isNotEmpty) return transcript;
+      } catch (e) {
+        debugPrint('[transcribeAudio] Whisper failed: $e');
+      }
+    }
+    if (AppConstants.bhashiniApiKey.isNotEmpty) {
+      try {
+        transcript = await _bhashiniService.transcribe(audioPath);
+        if (transcript.isNotEmpty) return transcript;
+      } catch (e) {
+        debugPrint('[transcribeAudio] Bhashini failed: $e');
+      }
+    }
+    return transcript;
+  }
+
+  @override
+  Future<CatalogItem> updateCatalogWithInstruction({
+    required CatalogItem currentItem,
+    required String instruction,
+  }) async {
+    if (AppConstants.groqApiKey.isNotEmpty) {
+      try {
+        return await _updateWithQwen(currentItem, instruction);
+      } catch (e) {
+        debugPrint('[LiveApiService] Qwen voice update failed: $e');
+      }
+    }
+    return _applyHeuristicUpdate(currentItem, instruction);
+  }
+
+  Future<CatalogItem> _updateWithQwen(
+    CatalogItem currentItem,
+    String instruction,
+  ) async {
+    final apiKey = AppConstants.groqApiKey;
+    String model = AppConstants.qwenModel;
+    final uri = Uri.parse(AppConstants.qwenApiUrl);
+
+    if (AppConstants.qwenApiUrl.contains('groq.com')) {
+      if (model.isEmpty ||
+          model == 'qwen-2.5-32b-it' ||
+          model == 'qwen-2.5-7b-instruct' ||
+          model == 'qwen-2.5-32b') {
+        model = 'qwen/qwen3.8-27b';
+      }
+    }
+
+    final currentDict = {
+      'title_en': currentItem.titleEn ?? '',
+      'title_hi': currentItem.titleHi ?? '',
+      'category': currentItem.craftAttributes?.category ?? '',
+      'materials': currentItem.craftAttributes?.materials ?? [],
+      'labor_days': currentItem.craftAttributes?.laborDays ?? 1,
+      'raw_material_cost': currentItem.pricing?.rawMaterialCost ?? 100,
+      'selling_price': currentItem.pricing?.fairPrice ?? 350,
+      'dimensions': currentItem.craftAttributes?.dimensions ?? '',
+      'net_quantity': currentItem.craftAttributes?.netQuantity ?? '1 unit',
+      'description_en': currentItem.descriptionEn ?? '',
+      'description_hi': currentItem.descriptionHi ?? '',
+    };
+
+    final headers = {
+      'Content-Type': 'application/json',
+      if (apiKey.isNotEmpty) 'Authorization': 'Bearer $apiKey',
+    };
+
+    final payload = {
+      'model': model,
+      'messages': [
+        {
+          'role': 'system',
+          'content': '''You are an expert assistant for Indian artisans updating their craft catalog on BazaarSetu (ONDC network).
+The artisan provides instructions in Hindi, Hinglish, or English to update their product listing.
+You are given the current listing data as JSON and the artisan's update command.
+Update ONLY the fields mentioned or implied by the artisan. Keep all other fields unchanged.
+Always output pure valid JSON with these keys:
+{
+  "title_en": "string",
+  "title_hi": "string",
+  "category": "string",
+  "materials": ["string"],
+  "labor_days": number,
+  "raw_material_cost": number,
+  "selling_price": number,
+  "dimensions": "string",
+  "net_quantity": "string",
+  "description_en": "string",
+  "description_hi": "string"
+}'''
+        },
+        {
+          'role': 'user',
+          'content': '''Current listing:
+${jsonEncode(currentDict)}
+
+Artisan update instruction:
+"$instruction"'''
+        }
+      ],
+      'temperature': 0.2,
+      'response_format': {'type': 'json_object'},
+    };
+
+    http.Response response = await http
+        .post(uri, headers: headers, body: jsonEncode(payload))
+        .timeout(AppConstants.apiTimeout);
+
+    if (response.statusCode == 404 && model != 'qwen/qwen3.8-27b') {
+      payload['model'] = 'qwen/qwen3.8-27b';
+      response = await http
+          .post(uri, headers: headers, body: jsonEncode(payload))
+          .timeout(AppConstants.apiTimeout);
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception('Qwen update failed (${response.statusCode}): ${response.body}');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final choices = body['choices'] as List?;
+    if (choices == null || choices.isEmpty) {
+      throw Exception('Qwen returned empty choices.');
+    }
+    final content = choices.first['message']?['content'] as String?;
+    if (content == null || content.isEmpty) {
+      throw Exception('Qwen message content was empty.');
+    }
+
+    final cleanJson = content
+        .replaceAll(RegExp(r'^```json\s*', multiLine: true), '')
+        .replaceAll(RegExp(r'^```\s*', multiLine: true), '')
+        .trim();
+
+    final j = jsonDecode(cleanJson) as Map<String, dynamic>;
+
+    final updatedMaterials = (j['materials'] is List)
+        ? (j['materials'] as List).map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList()
+        : currentItem.craftAttributes?.materials ?? <String>[];
+
+    final updatedLaborDays = _parseInt(j['labor_days']) ?? currentItem.craftAttributes?.laborDays ?? 1;
+    final updatedRawCost = _parseInt(j['raw_material_cost']) ?? currentItem.pricing?.rawMaterialCost ?? 100;
+    final updatedSellingPrice = _parseInt(j['selling_price']) ?? currentItem.pricing?.fairPrice ?? 350;
+
+    final updatedPricing = PricingCorridor.compute(
+      rawMaterialCost: updatedRawCost,
+      laborDays: updatedLaborDays,
+      sellerProposedPrice: updatedSellingPrice,
+    );
+
+    return currentItem.copyWith(
+      titleEn: j['title_en']?.toString() ?? currentItem.titleEn,
+      titleHi: j['title_hi']?.toString() ?? currentItem.titleHi,
+      descriptionEn: j['description_en']?.toString() ?? currentItem.descriptionEn,
+      descriptionHi: j['description_hi']?.toString() ?? currentItem.descriptionHi,
+      craftAttributes: (currentItem.craftAttributes ?? const CraftAttributes()).copyWith(
+        category: j['category']?.toString() ?? currentItem.craftAttributes?.category,
+        materials: updatedMaterials.isNotEmpty ? updatedMaterials : currentItem.craftAttributes?.materials,
+        laborDays: updatedLaborDays,
+        dimensions: j['dimensions']?.toString() ?? currentItem.craftAttributes?.dimensions,
+        netQuantity: j['net_quantity']?.toString() ?? currentItem.craftAttributes?.netQuantity,
+      ),
+      pricing: updatedPricing,
+    );
+  }
+
+  CatalogItem _applyHeuristicUpdate(CatalogItem currentItem, String instruction) {
+    final lower = instruction.toLowerCase();
+    int? newPrice;
+    final numMatch = RegExp(r'\d+').firstMatch(instruction);
+    if (numMatch != null &&
+        (lower.contains('price') ||
+            lower.contains('कीमत') ||
+            lower.contains('रुपये') ||
+            lower.contains('₹') ||
+            lower.contains('रुपया'))) {
+      newPrice = int.tryParse(numMatch.group(0)!);
+    }
+
+    PricingCorridor? newPricing = currentItem.pricing;
+    if (newPrice != null && newPrice > 0) {
+      newPricing = PricingCorridor.compute(
+        rawMaterialCost: currentItem.pricing?.rawMaterialCost ?? 100,
+        laborDays: currentItem.pricing?.laborDays ?? 1,
+        sellerProposedPrice: newPrice,
+      );
+    }
+
+    return currentItem.copyWith(pricing: newPricing);
   }
 
   // ── Bhashini Cloud (direct client-side calls, no backend) ────────
@@ -193,37 +435,35 @@ class LiveApiService implements ApiService {
   Future<CatalogProcessResult> _processViaBhashini({
     required String imagePath,
     required String audioPath,
+    List<String>? audioPaths,
+    String? manualDimensions,
     StageCallback? onStageComplete,
   }) async {
     // Stage 0: image processing
     onStageComplete?.call(0);
 
-    String transcript = '';
+    final List<String> segments = [];
 
-    // Step 1: Transcribe audio using dual-engine fallback (Groq Whisper / Bhashini)
-    if (audioPath.isNotEmpty && File(audioPath).existsSync()) {
-      // If voicePipeline is "groq" or "auto" or groqApiKey is present, try Groq Whisper first
-      if (AppConstants.voicePipeline == 'groq' ||
-          (AppConstants.voicePipeline == 'auto' && AppConstants.groqApiKey.isNotEmpty)) {
-        try {
-          transcript = await _transcribeWithGroqWhisper(audioPath);
-          debugPrint('[GroqWhisper] Transcribed: $transcript');
-        } catch (e) {
-          debugPrint('[GroqWhisper] Whisper failed, falling back to Bhashini: $e');
-        }
-      }
+    // Step 1: Transcribe multi-step audios or single audioPath
+    final audiosToTranscribe = (audioPaths != null && audioPaths.isNotEmpty)
+        ? audioPaths
+        : (audioPath.isNotEmpty ? [audioPath] : <String>[]);
 
-      // If transcript still empty and Bhashini key present, try Bhashini ASR
-      if (transcript.isEmpty && AppConstants.bhashiniApiKey.isNotEmpty) {
-        try {
-          transcript = await _bhashiniService.transcribe(audioPath);
-          debugPrint('[Bhashini] ASR transcript: $transcript');
-        } catch (e) {
-          debugPrint('[Bhashini] ASR error: $e');
+    for (int i = 0; i < audiosToTranscribe.length; i++) {
+      final p = audiosToTranscribe[i];
+      if (p.isNotEmpty && File(p).existsSync()) {
+        final text = await transcribeAudio(p);
+        if (text.isNotEmpty) {
+          segments.add('Step ${i + 1}: $text');
         }
       }
     }
 
+    if (manualDimensions != null && manualDimensions.isNotEmpty) {
+      segments.add('उत्पाद माप एवं मात्रा / Dimensions & Quantity: $manualDimensions');
+    }
+
+    String transcript = segments.join('. ').trim();
     if (transcript.isEmpty) {
       transcript = 'Handmade artisan craft with natural raw materials, traditional skills, and delicate craftwork.';
     }

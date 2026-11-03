@@ -103,17 +103,23 @@ class AudioService {
 
   // ── TTS Readback ─────────────────────────────────────────────────────────
 
-  /// Read back catalog summary in Hindi via TTS.
+  /// Read back complete generated catalog summary in Hindi via TTS.
   Future<void> speakCatalogSummary({
     required String? titleHi,
     required int? fairPrice,
     required String? category,
+    List<String>? materials,
+    int? laborDays,
+    String? descriptionHi,
   }) async {
     await initTts();
     final text = _buildReadbackText(
       titleHi: titleHi,
       fairPrice: fairPrice,
       category: category,
+      materials: materials,
+      laborDays: laborDays,
+      descriptionHi: descriptionHi,
     );
     await _tts.speak(text);
   }
@@ -157,14 +163,29 @@ class AudioService {
     required String? titleHi,
     required int? fairPrice,
     required String? category,
+    List<String>? materials,
+    int? laborDays,
+    String? descriptionHi,
   }) {
     final parts = <String>[];
-    if (category != null) parts.add('यह उत्पाद $category की श्रेणी में है।');
-    if (titleHi != null) parts.add(titleHi);
-    if (fairPrice != null) {
-      parts.add('इसकी अनुशंसित बाज़ार कीमत $fairPrice रुपये है।');
+    if (titleHi != null && titleHi.isNotEmpty) {
+      parts.add('शिल्प उत्पाद: $titleHi।');
     }
-    parts.add('धन्यवाद।');
+    if (category != null && category.isNotEmpty) {
+      parts.add('श्रेणी: $category।');
+    }
+    if (materials != null && materials.isNotEmpty) {
+      parts.add('सामग्री: ${materials.join(", ")}।');
+    }
+    if (laborDays != null && laborDays > 0) {
+      parts.add('कारीगरी समय: $laborDays दिन।');
+    }
+    if (fairPrice != null && fairPrice > 0) {
+      parts.add('अनुशंसित बाज़ार मूल्य: ₹$fairPrice।');
+    }
+    if (descriptionHi != null && descriptionHi.isNotEmpty) {
+      parts.add('विवरण: $descriptionHi');
+    }
     return parts.join(' ');
   }
 }

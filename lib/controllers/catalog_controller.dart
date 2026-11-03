@@ -71,6 +71,8 @@ class CatalogController extends ChangeNotifier {
   Future<void> processCatalog({
     required String imagePath,
     required String audioPath,
+    List<String>? audioPaths,
+    String? manualDimensions,
   }) async {
     _stage = ProcessingStage.imageProcessing;
     _errorMessage = null;
@@ -81,6 +83,8 @@ class CatalogController extends ChangeNotifier {
       final result = await _apiService.processCatalog(
         imagePath: imagePath,
         audioPath: audioPath,
+        audioPaths: audioPaths,
+        manualDimensions: manualDimensions,
         onStageComplete: (stage) {
           switch (stage) {
             case 0:
@@ -176,6 +180,30 @@ class CatalogController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates current item manually (via edit form or manual adjustments).
+  Future<void> updateCurrentItem(CatalogItem updated) async {
+    _currentItem = updated;
+    await _storageService.saveCatalog(_currentItem!);
+    _updateSavedList(_currentItem!);
+    notifyListeners();
+  }
+
+  /// Modifies current item using AI voice command (Whisper + Qwen/Gemini).
+  Future<void> applyVoiceUpdate(String instruction) async {
+    if (_currentItem == null) return;
+    try {
+      final updated = await _apiService.updateCatalogWithInstruction(
+        currentItem: _currentItem!,
+        instruction: instruction,
+      );
+      await updateCurrentItem(updated);
+      await _audioService.speakText('कैटलॉग अपडेट कर दिया गया है।');
+    } catch (e) {
+      debugPrint('[CatalogController] applyVoiceUpdate error: $e');
+      rethrow;
+    }
+  }
+
   void togglePhotoView() {
     _showStudioImage = !_showStudioImage;
     HapticFeedback.selectionClick();
@@ -189,18 +217,16 @@ class CatalogController extends ChangeNotifier {
     _isSpeaking = true;
     notifyListeners();
 
-    if (AppConstants.bhashiniApiKey.isNotEmpty) {
-      // Build a concise readback sentence in Hindi
-      final cat = _currentItem!.craftAttributes?.category ?? '';
-      final titleHi = _currentItem!.titleHi ?? _currentItem!.titleEn ?? '';
-      final material = _currentItem!.craftAttributes?.materials.isNotEmpty == true
-          ? _currentItem!.craftAttributes!.materials.first
-          : '';
-      final price = _currentItem!.pricing?.fairPrice;
-      
-      final readbackText =
-          'आपका कैटलॉग तैयार है: $cat $titleHi ${material.isNotEmpty ? ', $material' : ''}, कीमत ${price != null ? '₹$price' : ''}। क्या यह सही है?';
+    final cat = _currentItem!.craftAttributes?.category ?? '';
+    final titleHi = _currentItem!.titleHi ?? _currentItem!.titleEn ?? '';
+    final materials = _currentItem!.craftAttributes?.materials ?? [];
+    final laborDays = _currentItem!.craftAttributes?.laborDays;
+    final price = _currentItem!.pricing?.fairPrice;
+    final descHi = _currentItem!.descriptionHi ?? '';
 
+    if (AppConstants.bhashiniApiKey.isNotEmpty) {
+      final readbackText =
+          'शिल्प: $titleHi। श्रेणी: $cat। सामग्री: ${materials.join(", ")}। उचित मूल्य: ₹$price। विवरण: $descHi';
       try {
         final audioPath = await _bhashiniService.synthesize(
           readbackText,
@@ -208,22 +234,22 @@ class CatalogController extends ChangeNotifier {
           gender: 'female',
         );
         await _audioService.playFile(audioPath);
+        _isSpeaking = false;
+        notifyListeners();
+        return;
       } catch (e) {
         debugPrint('[BhashiniTTS] failed, falling back to device TTS: $e');
-        // Graceful fallback to device flutter_tts
-        await _audioService.speakCatalogSummary(
-          titleHi: _currentItem!.titleHi,
-          fairPrice: _currentItem!.pricing?.fairPrice,
-          category: _currentItem!.craftAttributes?.category,
-        );
       }
-    } else {
-      await _audioService.speakCatalogSummary(
-        titleHi: _currentItem!.titleHi,
-        fairPrice: _currentItem!.pricing?.fairPrice,
-        category: _currentItem!.craftAttributes?.category,
-      );
     }
+
+    await _audioService.speakCatalogSummary(
+      titleHi: titleHi,
+      fairPrice: price,
+      category: cat,
+      materials: materials,
+      laborDays: laborDays,
+      descriptionHi: descHi,
+    );
 
     _isSpeaking = false;
     notifyListeners();
