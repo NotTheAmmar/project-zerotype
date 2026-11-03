@@ -62,10 +62,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () => Navigator.pushReplacementNamed(
-                    context,
-                    AppRoutes.explore,
-                  ),
+                  onPressed: () => _navigateBackToExplore(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryTeal,
                     foregroundColor: Colors.white,
@@ -97,10 +94,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
         ? (((mrp - activePrice) / mrp) * 100).round()
         : 20;
 
-    return Scaffold(
-      backgroundColor: AppColors.warmCream,
-      appBar: _buildAppBar(context),
-      body: SafeArea(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _navigateBackToExplore(context);
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.warmCream,
+        appBar: _buildAppBar(context),
+        body: SafeArea(
         child: Column(
           children: [
             // ── Artisan Preview Ribbon ────────────────────────────────────
@@ -168,6 +171,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ],
         ),
       ),
+    ),
+  );
+}
+
+  void _navigateBackToExplore(BuildContext context) {
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRoutes.explore,
+      (route) => false,
     );
   }
 
@@ -179,13 +190,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       scrolledUnderElevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-        onPressed: () {
-          if (Navigator.canPop(context)) {
-            Navigator.pop(context);
-          } else {
-            Navigator.pushReplacementNamed(context, AppRoutes.explore);
-          }
-        },
+        onPressed: () => _navigateBackToExplore(context),
       ),
       title: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1761,10 +1766,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                               ElevatedButton(
                                 onPressed: () {
                                   Navigator.pop(ctx);
-                                  Navigator.pushReplacementNamed(
-                                    context,
-                                    AppRoutes.explore,
-                                  );
+                                  _navigateBackToExplore(context);
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primaryTeal,

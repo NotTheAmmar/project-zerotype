@@ -114,11 +114,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       child: _buildSearchBar(context),
                     ),
 
-                    // ── Prototype & Fair Pledge Banner ────────────────────
-                    SliverToBoxAdapter(
-                      child: _buildPrototypeBanner(context),
-                    ),
-
                     // ── Category Filter Pills ─────────────────────────────
                     SliverToBoxAdapter(
                       child: _buildCategoryFilters(),
@@ -188,29 +183,33 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'BazaarSetu',
-                style: AppTextStyles.serifHeading().copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.3,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'BazaarSetu',
+                  style: AppTextStyles.serifHeading().copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                    letterSpacing: -0.3,
+                  ),
                 ),
-              ),
-              Text(
-                'Karigar AI Studio • Prototype',
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+                Text(
+                  'Karigar AI Studio',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-          const Spacer(),
+          const SizedBox(width: 8),
 
           // New Craft Listing CTA button in Header
           FilledButton.icon(
@@ -292,81 +291,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ── Direct Karigar Fair Pledge Prototype Banner ────────────────────────────
-  Widget _buildPrototypeBanner(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFBECE5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppColors.secondaryTerracotta.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.science_outlined,
-                        color: AppColors.secondaryTerracotta,
-                        size: 15,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'KARIGAR AI PROTOTYPE',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.secondaryTerracotta,
-                          letterSpacing: 0.8,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Voice & Vision Craft Onboarding',
-                    style: AppTextStyles.serifTitle(
-                      color: AppColors.textPrimary,
-                    ).copyWith(fontSize: 17, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Photograph your handmade craft and speak in your language. The AI pipeline analyzes materials, recommends fair pricing, and drafts your ONDC listing.',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textPrimary.withValues(alpha: 0.8),
-                      height: 1.35,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.secondaryTerracotta.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.handshake_rounded,
-                color: AppColors.secondaryTerracotta,
-                size: 24,
               ),
             ),
           ],
@@ -518,7 +442,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Start your prototype journey! Tap below to snap a picture of your craft and speak your artisan story.',
+            'Start your artisan journey! Tap below to snap a picture of your craft and speak your artisan story.',
             style: AppTextStyles.body.copyWith(
               fontSize: 13,
               color: AppColors.textSecondary,

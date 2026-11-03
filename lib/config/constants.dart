@@ -20,7 +20,7 @@ class AppConstants {
       _getEnv('AI_EXTRACTION_PROVIDER')?.toLowerCase() ?? 'groq_qwen';
   static String get groqApiKey => _getEnv('GROQ_API_KEY') ?? '';
   static String get qwenModel =>
-      _getEnv('QWEN_MODEL') ?? 'qwen-2.5-32b-it';
+      _getEnv('QWEN_MODEL') ?? 'qwen/qwen3.8-27b';
   static String get qwenApiUrl =>
       _getEnv('QWEN_API_URL') ?? 'https://api.groq.com/openai/v1/chat/completions';
 

@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 import '../config/constants.dart';
 import '../models/catalog_item.dart';
+import '../models/craft_attributes.dart';
+import '../models/pricing_corridor.dart';
 import '../services/api_service.dart';
 import '../services/audio_service.dart';
 import '../services/bhashini_service.dart';
@@ -126,6 +128,52 @@ class CatalogController extends ChangeNotifier {
       _errorMessage = e.toString();
       notifyListeners();
     }
+  }
+
+  /// Creates a draft catalog directly when network or AI extraction fails,
+  /// preserving artisan captured photos & audio so work is never lost.
+  Future<void> createFallbackDraft({
+    required String imagePath,
+    String? audioPath,
+    String? category,
+  }) async {
+    _currentItem = CatalogItem(
+      id: const Uuid().v4(),
+      createdAt: DateTime.now(),
+      rawImagePath: imagePath,
+      studioImagePath: imagePath,
+      audioPath: audioPath,
+      titleEn: 'Handcrafted Artisan Item',
+      titleHi: 'हस्तनिर्मित शिल्प उत्पाद',
+      descriptionEn:
+          'Authentic handmade craft directly from generational artisan creators.',
+      descriptionHi:
+          'कुशल कारीगर द्वारा पारंपरिक विधि से हस्तनिर्मित उत्कृष्ट उत्पाद।',
+      craftAttributes: CraftAttributes(
+        category: (category != null && category != 'fallback')
+            ? category
+            : 'Handmade Craft',
+        materials: ['Natural Artisan Materials'],
+        laborDays: 1,
+        clusterLocation: 'India Craft Cluster',
+        artisanName: 'BazaarSetu Artisan',
+        countryOfOrigin: 'IND',
+      ),
+      pricing: PricingCorridor.compute(
+        rawMaterialCost: 100,
+        laborDays: 1,
+        sellerProposedPrice: 350,
+      ),
+      availableQuantity: 1,
+      status: CatalogStatus.draft,
+    );
+
+    await _storageService.saveCatalog(_currentItem!);
+    _updateSavedList(_currentItem!);
+
+    _stage = ProcessingStage.done;
+    _errorMessage = null;
+    notifyListeners();
   }
 
   void togglePhotoView() {

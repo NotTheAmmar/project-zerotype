@@ -110,27 +110,29 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                     fit: BoxFit.cover,
                                   ),
                           ),
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.surfaceContainer,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Text(
-                              '${captureCtrl.detectedObject} • ${captureCtrl.detectedCategory.toUpperCase()}',
-                              style: AppTextStyles.labelSmall.copyWith(
-                                color: AppColors.secondaryTerracotta,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
+                          if (captureCtrl.hasDetectedObject) ...[
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.surfaceContainer,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                '${captureCtrl.detectedObject} • ${captureCtrl.detectedCategory.toUpperCase()}',
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: AppColors.secondaryTerracotta,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     const SizedBox(height: AppSpacing.md),
 
-                    // ── Category-Adaptive Question Banner ─────────────────
+                    // ── Craft Story Question Banner ───────────────────────
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -153,7 +155,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'CATEGORY ADAPTIVE QUESTION',
+                                  captureCtrl.hasDetectedObject
+                                      ? 'CATEGORY ADAPTIVE QUESTION'
+                                      : 'CRAFT STORY QUESTIONS • कारीगर विवरण',
                                   style: AppTextStyles.labelSmall.copyWith(
                                     color: AppColors.secondaryTerracotta,
                                     letterSpacing: 0.8,

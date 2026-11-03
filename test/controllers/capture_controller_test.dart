@@ -54,6 +54,9 @@ void main() {
       expect(controller.isBusy, isFalse);
       expect(controller.isQualityWarningBlur, isFalse);
       expect(controller.isQualityWarningLight, isFalse);
+      expect(controller.detectedCategory, equals('fallback'));
+      expect(controller.detectedObject, isEmpty);
+      expect(controller.hasDetectedObject, isFalse);
     });
 
     test('Toggles flash and grid state correctly', () {
@@ -123,6 +126,9 @@ void main() {
       controller.retake();
       expect(controller.isQualityWarningBlur, isFalse);
       expect(controller.isQualityWarningLight, isFalse);
+      expect(controller.detectedCategory, equals('fallback'));
+      expect(controller.detectedObject, isEmpty);
+      expect(controller.hasDetectedObject, isFalse);
     });
 
     test('retakeAngle removes specific angle slot and resets active index', () async {
