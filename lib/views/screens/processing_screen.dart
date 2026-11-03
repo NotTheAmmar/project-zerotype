@@ -58,10 +58,19 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     final voiceCtrl = context.read<VoiceController>();
     final catalogCtrl = context.read<CatalogController>();
 
+    final manualDims = [
+      if (voiceCtrl.manualLength.isNotEmpty || voiceCtrl.manualWidth.isNotEmpty)
+        '${voiceCtrl.manualLength}x${voiceCtrl.manualWidth} ${voiceCtrl.manualUnit}',
+      if (voiceCtrl.manualQuantity.isNotEmpty)
+        'Quantity: ${voiceCtrl.manualQuantity}',
+    ].join(', ');
+
     try {
       await catalogCtrl.processCatalog(
         imagePath: captureCtrl.capturedImagePath ?? '',
         audioPath: voiceCtrl.audioPath ?? '',
+        audioPaths: voiceCtrl.stepAudioPaths.values.toList(),
+        manualDimensions: manualDims.isNotEmpty ? manualDims : null,
       );
     } catch (e) {
       debugPrint('[ProcessingScreen] processing error: $e');

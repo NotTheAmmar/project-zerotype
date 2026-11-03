@@ -139,5 +139,45 @@ void main() {
       expect(controller.recordingSeconds, equals(0));
       expect(controller.hasRecording, isFalse);
     });
+
+    test('Guided 4-step voice interview state and navigation', () {
+      expect(controller.totalSteps, equals(4));
+      expect(controller.currentStep, equals(0));
+      expect(controller.isFirstStep, isTrue);
+      expect(controller.isLastStep, isFalse);
+      expect(controller.currentStepData.key, equals('name'));
+
+      controller.nextStep();
+      expect(controller.currentStep, equals(1));
+      expect(controller.currentStepData.key, equals('material'));
+
+      controller.nextStep();
+      expect(controller.currentStep, equals(2));
+      expect(controller.currentStepData.key, equals('pricing'));
+
+      controller.nextStep();
+      expect(controller.currentStep, equals(3));
+      expect(controller.isLastStep, isTrue);
+      expect(controller.currentStepData.key, equals('dimensions'));
+
+      controller.previousStep();
+      expect(controller.currentStep, equals(2));
+    });
+
+    test('Manual dimensions configuration updates correctly', () {
+      controller.setManualDimensions(
+        length: '25',
+        width: '15',
+        height: '10',
+        unit: 'inch',
+        quantity: '2 units',
+      );
+
+      expect(controller.manualLength, equals('25'));
+      expect(controller.manualWidth, equals('15'));
+      expect(controller.manualHeight, equals('10'));
+      expect(controller.manualUnit, equals('inch'));
+      expect(controller.manualQuantity, equals('2 units'));
+    });
   });
 }
