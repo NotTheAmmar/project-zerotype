@@ -23,9 +23,9 @@ class CaptureController extends ChangeNotifier {
   // Viewfinder controls
   bool _flashOn = false;
   bool _showGrid = true;
-  String _detectedObject = 'Diya';
-  String _detectedCategory = 'pottery'; // 'pottery' | 'apparel' | 'wood_metal' | 'food' | 'fallback'
-  String _detectedStatusLabel = 'Diya detected • अच्छी रोशनी';
+  String _detectedObject = '';
+  String _detectedCategory = 'fallback'; // 'pottery' | 'apparel' | 'wood_metal' | 'food' | 'fallback'
+  String _detectedStatusLabel = 'अच्छी रोशनी में फोटो लें';
 
   CaptureState get state => _state;
   String? get capturedImagePath => _capturedImagePath ?? (_capturedAngles.isNotEmpty ? _capturedAngles.values.first : null);
@@ -45,6 +45,7 @@ class CaptureController extends ChangeNotifier {
   String get detectedObject => _detectedObject;
   String get detectedCategory => _detectedCategory;
   String get detectedStatusLabel => _detectedStatusLabel;
+  bool get hasDetectedObject => _detectedObject.isNotEmpty && _detectedCategory != 'fallback';
 
   Future<void> initCamera() async {
     await _imageService.initCamera();

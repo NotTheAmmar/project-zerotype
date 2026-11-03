@@ -45,7 +45,7 @@ class VoiceController extends ChangeNotifier {
       'en': 'Speak into mic: What is in this packet, what is its net weight, and how long stays fresh?',
     },
     'fallback': {
-      'hi': 'माइक दबाकर 2 बातें बताएं: इस वस्तु का नाम क्या है, और यह किस चीज़ से बनी है?',
+      'hi': 'माइक दबाकर 2 बातें बताएं: इस शिल्प का नाम क्या है, और यह किस सामग्री से बना है?',
       'en': 'Speak into mic 2 things: What is the name of this craft, and what material is it made from?',
     },
   };

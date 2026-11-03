@@ -124,7 +124,7 @@ async def handle_search(request: Request, bg_tasks: BackgroundTasks) -> dict:
         beckn_req = BecknRequest(**body)
     except Exception as exc:
         logger.warning("Failed to parse Beckn request: %s", exc)
-        return nack_response(str(exc))
+        return nack_response("Invalid Beckn request payload schema")
 
     context = beckn_req.context
     bap_uri = context.bap_uri
