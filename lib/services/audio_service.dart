@@ -37,6 +37,9 @@ class AudioService {
 
   // ── Recording ───────────────────────────────────────────────────────────
 
+  /// Check microphone permission.
+  Future<bool> hasPermission() => _recorder.hasPermission();
+
   /// Start recording. Returns amplitude stream (dBFS).
   Future<Stream<double>> startRecording() async {
     final hasPermission = await _recorder.hasPermission();
@@ -169,7 +172,7 @@ class AudioService {
   }) {
     final parts = <String>[];
     if (titleHi != null && titleHi.isNotEmpty) {
-      parts.add('शिल्प उत्पाद: $titleHi।');
+      parts.add('सामान का नाम: $titleHi।');
     }
     if (category != null && category.isNotEmpty) {
       parts.add('श्रेणी: $category।');
@@ -178,10 +181,10 @@ class AudioService {
       parts.add('सामग्री: ${materials.join(", ")}।');
     }
     if (laborDays != null && laborDays > 0) {
-      parts.add('कारीगरी समय: $laborDays दिन।');
+      parts.add('बनाने में लगे: $laborDays दिन।');
     }
     if (fairPrice != null && fairPrice > 0) {
-      parts.add('अनुशंसित बाज़ार मूल्य: ₹$fairPrice।');
+      parts.add('उचित बिक्री मूल्य: $fairPrice रुपये।');
     }
     if (descriptionHi != null && descriptionHi.isNotEmpty) {
       parts.add('विवरण: $descriptionHi');

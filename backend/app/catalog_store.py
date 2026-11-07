@@ -1,20 +1,25 @@
 """
-catalog_store.py — In-memory catalog store for active artisan listings.
+catalog_store.py — Catalog store for active artisan listings with persistent DB backing.
 
 Design:
-  - A simple dict keyed by catalog_id. No external database dependency.
-  - Ships with one pre-loaded Chanderi Silk Dupatta entry so the server
-    responds correctly to ONDC Workbench / Gateway searches immediately,
-    without requiring the Flutter app to POST a listing first.
-  - Thread-safe for asyncio (single event loop; no shared mutable state
-    across threads since Uvicorn runs a single-threaded async loop by default).
-
-To upgrade to SQLite persistence, replace the body of each function with
-SQLite queries — the interface contract (function signatures) stays the same.
+  - An in-memory dict keyed by catalog_id provides instantaneous, zero-latency
+    response times (<1ms) for high-concurrency Beckn discovery /search requests.
+  - Automatically backed by PostgreSQL (Supabase) or SQLite via app.db.
+  - Pre-loads default Chanderi Silk Dupatta entry if DB is empty so Workbench
+    and curl tests work out-of-the-box.
 """
+import logging
 from typing import Dict, List, Optional
 
+from app.db import (
+    delete_listing_db,
+    load_all_listings_db,
+    save_listing_db,
+    update_listing_status_db,
+)
 from app.schemas import ArtisanListingPayload
+
+logger = logging.getLogger("bazaarsetu_bpp.catalog_store")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -68,9 +73,42 @@ _ACTIVE_LISTINGS: Dict[str, ArtisanListingPayload] = {
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+async def populate_from_db() -> int:
+    """
+    Load all active listings from the persistent database into the memory store.
+    Called once during FastAPI lifespan startup.
+    """
+    global _ACTIVE_LISTINGS
+    try:
+        listings = await load_all_listings_db()
+        if listings:
+            _ACTIVE_LISTINGS = {item.catalog_id: item for item in listings}
+            logger.info("Loaded %d listing(s) from persistent database into memory.", len(listings))
+        else:
+            # Seed the default demo item if database has no records yet
+            _ACTIVE_LISTINGS = {_DEFAULT_LISTING.catalog_id: _DEFAULT_LISTING}
+            await save_listing_db(_DEFAULT_LISTING, status="PUBLISHED")
+            logger.info("Database was empty; seeded default demo listing into DB and memory.")
+    except Exception as e:
+        logger.warning("Could not populate listings from DB: %s. Using default listing.", e)
+    return len(_ACTIVE_LISTINGS)
+
+
 def save_active_listing(payload: ArtisanListingPayload) -> None:
-    """Upsert a listing by catalog_id. Newer payloads overwrite older ones."""
+    """Synchronous memory cache update (preserves backwards-compat)."""
     _ACTIVE_LISTINGS[payload.catalog_id] = payload
+
+
+async def save_active_listing_async(
+    payload: ArtisanListingPayload,
+    status: str = "PUBLISHED",
+) -> None:
+    """Upsert a listing in both the memory cache and persistent database."""
+    _ACTIVE_LISTINGS[payload.catalog_id] = payload
+    try:
+        await save_listing_db(payload, status=status)
+    except Exception as e:
+        logger.error("Failed to persist listing %s to DB: %s", payload.catalog_id, e)
 
 
 def get_latest_listing() -> Optional[ArtisanListingPayload]:
@@ -78,11 +116,10 @@ def get_latest_listing() -> Optional[ArtisanListingPayload]:
     Return the most recently added listing.
 
     Falls back to the pre-loaded Chanderi Silk entry if the store is
-    somehow empty (should never happen since we pre-load the default).
+    empty.
     """
     if not _ACTIVE_LISTINGS:
         return _DEFAULT_LISTING
-    # Dicts preserve insertion order in Python 3.7+; last key = most recent.
     return list(_ACTIVE_LISTINGS.values())[-1]
 
 
@@ -97,11 +134,32 @@ def get_listing_by_id(catalog_id: str) -> Optional[ArtisanListingPayload]:
 
 
 def delete_listing(catalog_id: str) -> bool:
-    """Remove a listing. Returns True if it existed."""
+    """Remove a listing from memory cache synchronously."""
     if catalog_id in _ACTIVE_LISTINGS:
         del _ACTIVE_LISTINGS[catalog_id]
         return True
     return False
+
+
+async def delete_listing_async(catalog_id: str) -> bool:
+    """Remove a listing from both memory cache and persistent database."""
+    in_mem = delete_listing(catalog_id)
+    in_db = False
+    try:
+        in_db = await delete_listing_db(catalog_id)
+    except Exception as e:
+        logger.error("Failed to delete listing %s from DB: %s", catalog_id, e)
+    return in_mem or in_db
+
+
+async def unlist_listing_async(catalog_id: str) -> bool:
+    """Mark a listing as UNLISTED/DRAFT in DB and remove from active Beckn search."""
+    delete_listing(catalog_id)
+    try:
+        return await update_listing_status_db(catalog_id, "UNLISTED")
+    except Exception as e:
+        logger.error("Failed to unlist %s in DB: %s", catalog_id, e)
+        return False
 
 
 def listing_count() -> int:

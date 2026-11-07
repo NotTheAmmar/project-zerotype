@@ -60,7 +60,9 @@ class _ProcessingScreenState extends State<ProcessingScreen>
 
     final manualDims = [
       if (voiceCtrl.manualLength.isNotEmpty || voiceCtrl.manualWidth.isNotEmpty)
-        '${voiceCtrl.manualLength}x${voiceCtrl.manualWidth} ${voiceCtrl.manualUnit}',
+        'Dimensions: ${voiceCtrl.manualLength}x${voiceCtrl.manualWidth} ${voiceCtrl.manualUnit}',
+      if (voiceCtrl.manualWeight.isNotEmpty)
+        'Weight: ${voiceCtrl.manualWeight}${voiceCtrl.manualWeightUnit}',
       if (voiceCtrl.manualQuantity.isNotEmpty)
         'Quantity: ${voiceCtrl.manualQuantity}',
     ].join(', ');
@@ -96,7 +98,7 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     _hasNavigated = true;
     Navigator.of(context).pushNamedAndRemoveUntil(
       AppRoutes.catalog,
-      ModalRoute.withName(AppRoutes.explore),
+      (route) => route.isFirst,
     );
   }
 

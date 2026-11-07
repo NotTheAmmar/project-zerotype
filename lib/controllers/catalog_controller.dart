@@ -217,39 +217,31 @@ class CatalogController extends ChangeNotifier {
     _isSpeaking = true;
     notifyListeners();
 
-    final cat = _currentItem!.craftAttributes?.category ?? '';
-    final titleHi = _currentItem!.titleHi ?? _currentItem!.titleEn ?? '';
-    final materials = _currentItem!.craftAttributes?.materials ?? [];
-    final laborDays = _currentItem!.craftAttributes?.laborDays;
-    final price = _currentItem!.pricing?.fairPrice;
-    final descHi = _currentItem!.descriptionHi ?? '';
+    final descHi = _currentItem!.descriptionHi?.trim() ?? '';
+    final descEn = _currentItem!.descriptionEn?.trim() ?? '';
+    final textToSpeak = descHi.isNotEmpty
+        ? descHi
+        : (descEn.isNotEmpty ? descEn : (_currentItem!.titleHi ?? _currentItem!.titleEn ?? ''));
 
-    if (AppConstants.bhashiniApiKey.isNotEmpty) {
-      final readbackText =
-          'शिल्प: $titleHi। श्रेणी: $cat। सामग्री: ${materials.join(", ")}। उचित मूल्य: ₹$price। विवरण: $descHi';
-      try {
-        final audioPath = await _bhashiniService.synthesize(
-          readbackText,
-          sourceLanguage: 'hi',
-          gender: 'female',
-        );
-        await _audioService.playFile(audioPath);
-        _isSpeaking = false;
-        notifyListeners();
-        return;
-      } catch (e) {
-        debugPrint('[BhashiniTTS] failed, falling back to device TTS: $e');
+    if (textToSpeak.isNotEmpty) {
+      if (AppConstants.bhashiniApiKey.isNotEmpty && descHi.isNotEmpty) {
+        try {
+          final audioPath = await _bhashiniService.synthesize(
+            textToSpeak,
+            sourceLanguage: 'hi',
+            gender: 'female',
+          );
+          await _audioService.playFile(audioPath);
+          _isSpeaking = false;
+          notifyListeners();
+          return;
+        } catch (e) {
+          debugPrint('[BhashiniTTS] failed, falling back to device TTS: $e');
+        }
       }
-    }
 
-    await _audioService.speakCatalogSummary(
-      titleHi: titleHi,
-      fairPrice: price,
-      category: cat,
-      materials: materials,
-      laborDays: laborDays,
-      descriptionHi: descHi,
-    );
+      await _audioService.speakText(textToSpeak);
+    }
 
     _isSpeaking = false;
     notifyListeners();
@@ -347,6 +339,21 @@ class CatalogController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> unpublishCatalog(CatalogItem item) async {
+    final draftItem = item.copyWith(status: CatalogStatus.draft);
+    _currentItem = draftItem;
+    await _storageService.saveCatalog(draftItem);
+    _updateSavedList(draftItem);
+    _publishSuccess = false;
+    notifyListeners();
+
+    try {
+      await _apiService.unlistFromOndc(item.id);
+    } catch (e) {
+      debugPrint('[CatalogController] unlist failed: $e');
+    }
+  }
+
   Future<void> deleteCatalog(String id) async {
     await _storageService.deleteCatalog(id);
     _savedCatalogs.removeWhere((item) => item.id == id);
@@ -354,6 +361,12 @@ class CatalogController extends ChangeNotifier {
       _currentItem = null;
     }
     notifyListeners();
+
+    try {
+      await _apiService.deleteFromOndc(id);
+    } catch (e) {
+      debugPrint('[CatalogController] deleteFromOndc failed: $e');
+    }
   }
 
   @override

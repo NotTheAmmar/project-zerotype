@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import '../../config/constants.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/capture_controller.dart';
@@ -10,6 +12,7 @@ import '../../models/craft_attributes.dart';
 import '../../models/pricing_corridor.dart';
 import '../../services/api_service.dart';
 import '../../services/audio_service.dart';
+import '../widgets/bilingual_text.dart';
 
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -142,9 +145,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
         body: SafeArea(
         child: Column(
           children: [
-            // ── Artisan Preview Ribbon ────────────────────────────────────
-            _buildArtisanRibbon(),
-
             // ── Scrollable Content ────────────────────────────────────────
             Expanded(
               child: Center(
@@ -155,13 +155,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // 0. Quick Action Edit Bar (Two options: Voice Edit AI + Manual Form)
-                        _buildEditQuickActionBar(context, catalogCtrl, item),
-                        const SizedBox(height: 14),
-
                         // 1. Hero Image Section
                         _buildImageSection(item),
                         const SizedBox(height: 14),
+
+                        // ONDC Live Status Banner (if published)
+                        if (item.status == CatalogStatus.published) ...[
+                          _buildLiveOndcBanner(item),
+                          const SizedBox(height: 14),
+                        ],
 
                         // 2. Title & Tactile Pricing Card
                         _buildTitleAndPriceCard(
@@ -185,14 +187,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
                         // 5. Product Specifications Card
                         _buildSpecificationsCard(item),
-                        const SizedBox(height: 14),
-
-                        // 6. Fulfilment & Delivery Card
-                        _buildDeliveryCard(),
-                        const SizedBox(height: 14),
-
-                        // 7. Buyer Interface Simulation
-                        _buildBuyerSimulation(activePrice),
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -236,30 +230,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
         icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
         onPressed: () => _navigateBackToExplore(context),
       ),
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: AppColors.secondaryTerracotta.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Icon(
-              Icons.temple_hindu_rounded,
-              color: AppColors.secondaryTerracotta,
-              size: 16,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            'Product Detail',
-            style: AppTextStyles.label.copyWith(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
+      title: Text(
+        'Product Detail',
+        style: AppTextStyles.label.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+        ),
       ),
       centerTitle: true,
       actions: [
@@ -275,155 +251,296 @@ class _CatalogScreenState extends State<CatalogScreen> {
             icon: const Icon(Icons.edit_note_rounded, color: AppColors.primaryTeal),
             onPressed: () => _showManualEditSheet(context, item, catalogCtrl),
           ),
+        if (item != null && catalogCtrl != null)
+          IconButton(
+            tooltip: 'शिल्प हटाएं • Delete Craft',
+            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.alertRed),
+            onPressed: () => _confirmDeleteCraft(context, item, catalogCtrl),
+          ),
         IconButton(
+          tooltip: 'नेटवर्क विवरण • Network Info',
           icon: const Icon(Icons.share_outlined, color: AppColors.textPrimary),
-          onPressed: () {},
+          onPressed: () {
+            if (item != null) {
+              _showNetworkStatusDialog(context, item);
+            }
+          },
         ),
         const SizedBox(width: 8),
       ],
     );
   }
 
-  // ── Artisan Ribbon ─────────────────────────────────────────────────────────
-  Widget _buildArtisanRibbon() {
+  // ── ONDC Live Status Banner & Actions ───────────────────────────────────────
+
+  Widget _buildLiveOndcBanner(CatalogItem item) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      color: const Color(0xFF8E4D32),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFA5D6A7)),
+      ),
       child: Row(
         children: [
           Container(
-            width: 7,
-            height: 7,
+            width: 36,
+            height: 36,
             decoration: const BoxDecoration(
-              color: AppColors.tertiarySaffron,
+              color: Color(0xFF2E7D32),
               shape: BoxShape.circle,
             ),
+            child: const Icon(
+              Icons.verified_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              'Artisan Preview Mode • This is how customers see your craft on BazaarSetu',
-              style: AppTextStyles.caption.copyWith(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF2E7D32),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'LIVE ON ONDC NETWORK',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.6,
+                        color: Color(0xFF1B5E20),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Active on Beckn rails • ओएनडीसी क्रेता ऐप्स पर उपलब्ध',
+                  style: AppTextStyles.caption.copyWith(
+                    color: const Color(0xFF2E7D32),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              'Draft v1.2',
-              style: AppTextStyles.caption.copyWith(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+          IconButton(
+            tooltip: 'नेटवर्क विवरण देखें • Network Info',
+            icon: const Icon(Icons.info_outline_rounded, color: Color(0xFF2E7D32), size: 20),
+            onPressed: () => _showNetworkStatusDialog(context, item),
           ),
         ],
       ),
     );
   }
 
-  // ── 0. Quick Action Edit Bar (Two Options: Voice AI + Manual Form) ────────
-  Widget _buildEditQuickActionBar(
+  void _confirmDeleteCraft(
     BuildContext context,
-    CatalogController catalogCtrl,
     CatalogItem item,
+    CatalogController catalogCtrl,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.25)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_outline_rounded, color: AppColors.alertRed, size: 24),
+            const SizedBox(width: 8),
+            Text('Delete Craft? • शिल्प हटाएं?', style: AppTextStyles.serifTitle().copyWith(fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to permanently delete "${item.titleEn}"? This action cannot be undone.\n\nक्या आप वाकई इस शिल्प को स्थायी रूप से हटाना चाहते हैं?',
+          style: AppTextStyles.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel • रद्द करें', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await catalogCtrl.deleteCatalog(item.id);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Craft deleted successfully • शिल्प हटा दिया गया'),
+                  backgroundColor: AppColors.textPrimary,
+                ),
+              );
+              _navigateBackToExplore(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.alertRed,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete • हटाएं'),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.auto_fix_high_rounded, color: AppColors.primaryTeal, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                'कैटलॉग में सुधार करें • Two Edit Options',
-                style: AppTextStyles.label.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
+    );
+  }
+
+  void _confirmUnlistCraft(
+    BuildContext context,
+    CatalogItem item,
+    CatalogController catalogCtrl,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.unpublished_outlined, color: AppColors.secondaryTerracotta, size: 24),
+            const SizedBox(width: 8),
+            Text('Unlist Craft? • अनलिस्ट करें?', style: AppTextStyles.serifTitle().copyWith(fontSize: 18)),
+          ],
+        ),
+        content: Text(
+          'This will remove "${item.titleEn}" from active buyer searches on ONDC and revert it to a local draft.\n\nयह शिल्प ओएनडीसी क्रेता खोज से हट जाएगा और ड्राफ्ट में वापस आ जाएगा।',
+          style: AppTextStyles.body,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel • रद्द करें', style: TextStyle(color: AppColors.textSecondary)),
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              // Option B (Preferred AI Voice Edit)
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _showVoiceEditSheet(context, catalogCtrl),
-                  icon: const Icon(Icons.mic_rounded, size: 18, color: Colors.white),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'बोलकर सुधारें • AI Voice',
-                      style: AppTextStyles.buttonLabel.copyWith(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondaryTerracotta,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await catalogCtrl.unpublishCatalog(item);
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Craft unlisted from ONDC • शिल्प ड्राफ्ट में बदल दिया गया'),
+                  backgroundColor: AppColors.secondaryTerracotta,
                 ),
-              ),
-              const SizedBox(width: 8),
-              // Option A (Manual Keyboard / UI Edit)
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _showManualEditSheet(context, item, catalogCtrl),
-                  icon: const Icon(Icons.edit_note_rounded, size: 18, color: AppColors.primaryTeal),
-                  label: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'मैन्युअल सुधारें • Form',
-                      style: AppTextStyles.label.copyWith(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryTeal,
-                      ),
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                    side: const BorderSide(color: AppColors.primaryTeal),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ),
-            ],
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.secondaryTerracotta,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Unlist • अनलिस्ट करें'),
           ),
         ],
       ),
+    );
+  }
+
+  void _showNetworkStatusDialog(BuildContext context, CatalogItem item) {
+    final bppUri = '${AppConstants.bppBackendUrl}/beckn';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.hub_rounded, color: AppColors.primaryTeal, size: 24),
+            const SizedBox(width: 8),
+            Text('ONDC Network Status', style: AppTextStyles.serifTitle().copyWith(fontSize: 18)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildNetworkDetailRow('Status', item.status == CatalogStatus.published ? 'LIVE ON NETWORK' : 'DRAFT', isBadge: true),
+              const SizedBox(height: 8),
+              _buildNetworkDetailRow('Catalog SKU', item.id),
+              const SizedBox(height: 8),
+              _buildNetworkDetailRow('Artisan Name', item.craftAttributes?.artisanName ?? 'BazaarSetu Artisan'),
+              const SizedBox(height: 8),
+              _buildNetworkDetailRow('Cluster', item.craftAttributes?.clusterLocation ?? 'Chanderi Handloom'),
+              const SizedBox(height: 8),
+              _buildNetworkDetailRow('ONDC Category', '${item.craftAttributes?.category ?? "Craft"} (ONDC:RET12)'),
+              const SizedBox(height: 8),
+              _buildNetworkDetailRow('Fair Price', '₹${item.pricing?.fairPrice ?? 0}'),
+              const SizedBox(height: 8),
+              _buildNetworkDetailRow('BPP Node', bppUri),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: item.id));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Catalog ID copied to clipboard')),
+              );
+            },
+            child: const Text('Copy ID'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryTeal,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Done • पूर्ण'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNetworkDetailRow(String label, String value, {bool isBadge = false}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: AppTextStyles.caption.copyWith(
+            fontSize: 10,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        if (isBadge)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: const Color(0xFFA5D6A7)),
+            ),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF1B5E20),
+              ),
+            ),
+          )
+        else
+          Text(
+            value,
+            style: AppTextStyles.body.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+      ],
     );
   }
 
@@ -605,37 +722,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   ),
                 );
               }),
-
-              // 360 View Button
-              Expanded(
-                child: Container(
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFBECE5),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: AppColors.secondaryTerracotta.withValues(alpha: 0.25),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.view_in_ar_rounded,
-                        color: AppColors.secondaryTerracotta,
-                        size: 20,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '360° View',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: AppColors.secondaryTerracotta,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ],
@@ -679,7 +765,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                onPressed: () => _openVoiceEditDrawer(context, activePrice),
+                onPressed: () => _showVoiceEditSheet(context, context.read<CatalogController>()),
                 icon: const Icon(
                   Icons.edit_outlined,
                   size: 18,
@@ -691,12 +777,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 6),
 
-          // Title
-          Text(
-            item.titleEn ?? 'Handmade Terracotta Diya',
-            style: AppTextStyles.serifHeading(
+          // Bilingual Title: English prominently, Hindi/local below
+          BilingualText(
+            english: item.titleEn ?? 'Handcrafted Artisan Item',
+            local: item.titleHi,
+            englishStyle: AppTextStyles.serifHeading(
               color: AppColors.textPrimary,
             ).copyWith(fontSize: 22, fontWeight: FontWeight.w700),
+            localStyle: AppTextStyles.label.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
 
@@ -901,42 +993,29 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Nudge buttons: [- ₹50] and [+ ₹50]
+          // Custom price input row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    final curr = _overridePrice ?? activePrice;
-                    if (curr > 50) _overridePrice = curr - 50;
-                  });
-                },
-                icon: const Icon(Icons.remove, size: 14),
-                label: const Text('- ₹50'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(80, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
               Text(
-                'Nudge Price • कीमत बदलें',
+                'Custom Price • अपनी कीमत',
                 style: AppTextStyles.caption.copyWith(fontSize: 11, color: AppColors.textSecondary),
               ),
               OutlinedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    final curr = _overridePrice ?? activePrice;
-                    _overridePrice = curr + 50;
-                  });
-                },
-                icon: const Icon(Icons.add, size: 14),
-                label: const Text('+ ₹50'),
+                onPressed: () => _showCustomPriceDialog(context, activePrice),
+                icon: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryTeal),
+                label: Text(
+                  '₹$activePrice  •  बदलें',
+                  style: AppTextStyles.label.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryTeal,
+                  ),
+                ),
                 style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(80, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  side: const BorderSide(color: AppColors.primaryTeal),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ],
@@ -1026,10 +1105,48 @@ class _CatalogScreenState extends State<CatalogScreen> {
     );
   }
 
-  // ── Voice Edit Assistant Drawer ───────────────────────────────────────────
-  void _openVoiceEditDrawer(BuildContext context, int currentPrice) {
-    final catalogCtrl = context.read<CatalogController>();
-    _showVoiceEditSheet(context, catalogCtrl);
+  // ── Custom Price Dialog ────────────────────────────────────────────────────
+  void _showCustomPriceDialog(BuildContext context, int currentPrice) {
+    final controller = TextEditingController(text: '$currentPrice');
+    showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('कीमत दर्ज करें\nEnter Custom Price'),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          decoration: InputDecoration(
+            prefixText: '₹ ',
+            hintText: 'e.g. 350',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('रद्द करें • Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryTeal,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              final val = int.tryParse(controller.text.trim());
+              Navigator.of(ctx).pop(val);
+            },
+            child: const Text('ठीक है • OK'),
+          ),
+        ],
+      ),
+    ).then((val) {
+      if (val != null && val > 0) {
+        setState(() => _overridePrice = val);
+      }
+    });
   }
 
   void _showVoiceEditSheet(BuildContext context, CatalogController catalogCtrl) {
@@ -1073,16 +1190,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
             children: [
               const Icon(Icons.auto_awesome, color: AppColors.primaryTeal, size: 18),
               const SizedBox(width: 6),
-              Text(
-                'About this craft • शिल्प विवरण',
-                style: AppTextStyles.serifTitle().copyWith(fontSize: 17),
+              Expanded(
+                child: Text(
+                  'About Craft • शिल्प विवरण',
+                  style: AppTextStyles.serifTitle().copyWith(fontSize: 16),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () {
                   _showVoiceEditSheet(context, catalogCtrl);
                 },
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.mic_outlined, size: 14, color: AppColors.secondaryTerracotta),
                     const SizedBox(width: 4),
@@ -1100,27 +1222,22 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Story description
-          Text(
-            item.descriptionHi ?? item.descriptionEn ??
-                'पारंपरिक कारीगरी द्वारा हस्तनिर्मित उत्कृष्ट उत्पाद।',
-            style: AppTextStyles.body.copyWith(
+          // Bilingual Story description: English first, Hindi/local underneath
+          BilingualText(
+            english: item.descriptionEn ?? 'Authentic handcrafted product made with traditional techniques and generational artisan skill.',
+            local: item.descriptionHi,
+            englishStyle: AppTextStyles.body.copyWith(
               color: AppColors.textPrimary,
               fontSize: 14,
               height: 1.5,
             ),
-          ),
-          if (item.descriptionEn != null && item.descriptionHi != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              item.descriptionEn!,
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary,
-                fontSize: 12,
-                height: 1.4,
-              ),
+            localStyle: AppTextStyles.caption.copyWith(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              height: 1.4,
             ),
-          ],
+            spacing: 8.0,
+          ),
           const SizedBox(height: 14),
 
           // Audio Voice Note Player Card (Synthesized generated listing readback)
@@ -1374,12 +1491,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   // ── 5. Product Specifications Card ─────────────────────────────────────────
   Widget _buildSpecificationsCard(CatalogItem item) {
-    final materials = item.craftAttributes?.materials.isNotEmpty == true
-        ? item.craftAttributes!.materials.join(', ')
-        : 'Natural Terracotta Clay';
-    final guild = item.guildName ?? 'Pune Rural Pottery Cluster';
-    final dimensions = item.craftAttributes?.dimensions ?? '180g • 3.5 x 2.0 inches';
-    final technique = item.craftTechnique ?? 'Hand Wheel & Embossed Carving';
+    final attrs = item.craftAttributes;
+    final materials = attrs?.materials.isNotEmpty == true
+        ? attrs!.materials.join(', ')
+        : null;
+    final guild = item.guildName;
+    final dimensions = attrs?.dimensions;
+    final weight = attrs?.weight;
+    final technique = item.craftTechnique;
+    final category = attrs?.category ?? item.craftAttributes?.genericName;
+
+    // Combine weight + dimensions if both present, otherwise show whichever exists
+    final weightDimensions = [
+      if (weight != null && weight.isNotEmpty) weight,
+      if (dimensions != null && dimensions.isNotEmpty) dimensions,
+    ].join(' • ');
+
+    int rowIndex = 0;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1397,11 +1525,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 12),
 
-          _buildSpecRow('Category', 'Festive Home Decor', true),
-          _buildSpecRow('Material', materials, false),
-          _buildSpecRow('Craft Technique', technique, true),
-          _buildSpecRow('Origin Guild', guild, false),
-          _buildSpecRow('Weight & Dimensions', dimensions, true),
+          if (category != null && category.isNotEmpty)
+            _buildSpecRow('Category', category, rowIndex++ % 2 == 0),
+          if (materials != null)
+            _buildSpecRow('Material', materials, rowIndex++ % 2 == 0),
+          if (technique != null && technique.isNotEmpty)
+            _buildSpecRow('Craft Technique', technique, rowIndex++ % 2 == 0),
+          if (guild != null && guild.isNotEmpty)
+            _buildSpecRow('Craft Cluster', guild, rowIndex++ % 2 == 0),
+          if (weightDimensions.isNotEmpty)
+            _buildSpecRow('Weight & Dimensions', weightDimensions, rowIndex++ % 2 == 0),
         ],
       ),
     );
@@ -1430,212 +1563,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
             child: Text(
               value,
               style: AppTextStyles.label.copyWith(fontSize: 12),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── 6. Fulfilment & Delivery Card ──────────────────────────────────────────
-  Widget _buildDeliveryCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.local_shipping_outlined, color: AppColors.primaryTeal, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                'Fulfilment & Delivery',
-                style: AppTextStyles.serifTitle().copyWith(fontSize: 17),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEEAE0),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  'Free Delivery',
-                  style: AppTextStyles.labelSmall.copyWith(color: AppColors.secondaryTerracotta),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFBECE5).withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Estimated Arrival: 12 – 15 Oct',
-                  style: AppTextStyles.label.copyWith(fontSize: 13),
-                ),
-                const SizedBox(height: 2),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textSecondary),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Delivering to: Mumbai 400001',
-                      style: AppTextStyles.caption,
-                    ),
-                    const Spacer(),
-                    Text(
-                      'Change Pin',
-                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryTeal),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 10),
-
-          Row(
-            children: [
-              _buildTrustTag(Icons.eco_outlined, 'Eco Packaging'),
-              const SizedBox(width: 12),
-              _buildTrustTag(Icons.security_outlined, 'Breakage Guaranteed'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTrustTag(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 13, color: AppColors.textSecondary),
-        const SizedBox(width: 4),
-        Text(text, style: AppTextStyles.caption.copyWith(fontSize: 11)),
-      ],
-    );
-  }
-
-  // ── 7. Buyer Simulation ────────────────────────────────────────────────────
-  Widget _buildBuyerSimulation(int activePrice) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'BUYER INTERFACE SIMULATION',
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: AppColors.textSecondary,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const Spacer(),
-              const Icon(Icons.visibility_outlined, size: 14, color: AppColors.textSecondary),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 44),
-                    side: const BorderSide(color: AppColors.cardBorder),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.shopping_bag_outlined, size: 16, color: AppColors.textPrimary),
-                      const SizedBox(width: 6),
-                      Text('Add to Cart', style: AppTextStyles.labelSmall),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryDark,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(0, 44),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.bolt_rounded, size: 16),
-                      const SizedBox(width: 4),
-                      Text('Buy Now', style: AppTextStyles.labelSmall.copyWith(color: Colors.white)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          Center(
-            child: GestureDetector(
-              onTap: () => _openVoiceEditDrawer(context, activePrice),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryTeal,
-                  borderRadius: BorderRadius.circular(999),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryTeal.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.mic_rounded, color: Colors.white, size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Edit by Voice • आवाज़ से बदलें',
-                      style: AppTextStyles.labelSmall.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
         ],
@@ -1711,140 +1638,213 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ),
             ),
           ),
-          Row(
-            children: [
-          Expanded(
-            flex: 1,
-            child: OutlinedButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Draft saved locally in Karigar archive!'),
-                    backgroundColor: AppColors.textPrimary,
-                  ),
-                );
-              },
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                minimumSize: const Size(0, 48),
-                side: const BorderSide(color: AppColors.cardBorder),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.bookmark_border_rounded, size: 16, color: AppColors.textPrimary),
-                    const SizedBox(width: 4),
-                    Text('Save Draft', style: AppTextStyles.labelSmall),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton(
-              onPressed: _isPublishing
-                  ? null
-                  : () async {
-                      setState(() => _isPublishing = true);
-                      try {
-                        await catalogCtrl.publishToOndc(
-                          null,
-                          _quantity,
-                        );
-                        if (!context.mounted) return;
-                        showDialog(
-                          context: context,
-                          builder: (ctx) => AlertDialog(
-                            backgroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            title: Row(
-                              children: [
-                                const Icon(
-                                  Icons.check_circle_rounded,
-                                  color: AppColors.successGreen,
-                                  size: 24,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Published to ONDC!',
-                                  style: AppTextStyles.serifTitle(),
-                                ),
-                              ],
-                            ),
-                            content: Text(
-                              'Your craft "${item.titleEn}" has been successfully broadcast to ONDC buyer apps via BazaarSetu BPP.',
-                              style: AppTextStyles.body,
-                            ),
-                            actions: [
-                              ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  _navigateBackToExplore(context);
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryTeal,
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Text('Back to Home'),
-                              ),
-                            ],
-                          ),
-                        );
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Publish result: $e'),
-                            backgroundColor: AppColors.primaryTeal,
-                          ),
-                        );
-                      } finally {
-                        if (mounted) setState(() => _isPublishing = false);
-                      }
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryDark,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(0, 48),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
-              ),
-              child: _isPublishing
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
+          if (item.status == CatalogStatus.published)
+            Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: OutlinedButton(
+                    onPressed: () => _confirmUnlistCraft(context, item, catalogCtrl),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      minimumSize: const Size(0, 48),
+                      side: const BorderSide(color: AppColors.secondaryTerracotta),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    )
-                  : Row(
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.unpublished_outlined,
+                            size: 16,
+                            color: AppColors.secondaryTerracotta,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Unlist • ड्राफ्ट बनाएं',
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: AppColors.secondaryTerracotta,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: () => _showNetworkStatusDialog(context, item),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryTeal,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.rocket_launch_rounded, size: 16),
+                        const Icon(Icons.hub_outlined, size: 16),
                         const SizedBox(width: 6),
                         Text(
-                          'Publish Product',
-                          style: AppTextStyles.buttonLabel.copyWith(fontSize: 14),
+                          'Network Info • ओएनडीसी स्थिति',
+                          style: AppTextStyles.buttonLabel.copyWith(fontSize: 13),
                         ),
                       ],
                     ),
+                  ),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Draft saved locally in Karigar archive! • ड्राफ्ट सुरक्षित है'),
+                          backgroundColor: AppColors.textPrimary,
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      minimumSize: const Size(0, 48),
+                      side: const BorderSide(color: AppColors.cardBorder),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.bookmark_border_rounded, size: 16, color: AppColors.textPrimary),
+                          const SizedBox(width: 4),
+                          Text('Save Draft', style: AppTextStyles.labelSmall),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: _isPublishing
+                        ? null
+                        : () async {
+                            setState(() => _isPublishing = true);
+                            try {
+                              await catalogCtrl.publishToOndc(
+                                null,
+                                _quantity,
+                              );
+                              if (!context.mounted) return;
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  backgroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.check_circle_rounded,
+                                        color: AppColors.successGreen,
+                                        size: 24,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Published to ONDC!',
+                                        style: AppTextStyles.serifTitle(),
+                                      ),
+                                    ],
+                                  ),
+                                  content: Text(
+                                    'Your craft "${item.titleEn}" has been successfully broadcast to ONDC buyer apps via BazaarSetu BPP.\n\nयह शिल्प ओएनडीसी नेटवर्क पर सक्रिय हो चुका है।',
+                                    style: AppTextStyles.body,
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('Stay on Listing'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        _navigateBackToExplore(context);
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primaryTeal,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: const Text('Back to Crafts'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Publish result: $e'),
+                                  backgroundColor: AppColors.primaryTeal,
+                                ),
+                              );
+                            } finally {
+                              if (mounted) setState(() => _isPublishing = false);
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryDark,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: _isPublishing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.rocket_launch_rounded, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Publish Product',
+                                style: AppTextStyles.buttonLabel.copyWith(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
         ],
       ),
     );

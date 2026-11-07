@@ -9,14 +9,17 @@ Docs (auto-generated):
     http://localhost:8000/redoc  (ReDoc)
 """
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
-from app.catalog_store import listing_count
+from app.catalog_store import listing_count, populate_from_db
 from app.config import get_settings
+from app.db import close_db, init_db
 from app.routes.app_routes import router as app_router
 from app.routes.beckn_routes import router as beckn_router
 
@@ -39,7 +42,7 @@ logger = logging.getLogger("bazaarsetu_bpp")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ANN001
-    """Log startup summary and verify settings on boot."""
+    """Log startup summary, initialize database, and populate catalog store."""
     settings = get_settings()
     logger.info("=" * 60)
     logger.info("  BazaarSetu BPP — ONDC Beckn Provider Platform")
@@ -49,10 +52,21 @@ async def lifespan(app: FastAPI):  # noqa: ANN001
         "  Signing Key   : %s",
         "✓ configured" if settings.bpp_signing_private_key else "⚠ NOT SET (mock mode)",
     )
-    logger.info("  Catalog store : %d listing(s) pre-loaded", listing_count())
+
+    # Initialize Database (Postgres / Supabase or SQLite)
+    db_type = await init_db()
+    logger.info("  Database Backing: %s", db_type.upper())
+
+    # Populate active listings from DB
+    loaded = await populate_from_db()
+    logger.info("  Catalog Store : %d listing(s) ready", loaded)
     logger.info("=" * 60)
+
     yield
-    logger.info("BazaarSetu BPP shutting down.")
+
+    logger.info("BazaarSetu BPP shutting down. Closing database pools...")
+    await close_db()
+    logger.info("BazaarSetu BPP shutdown complete.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -112,6 +126,14 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Static file hosting (fallback for uploaded craft images)
+# ─────────────────────────────────────────────────────────────────────────────
+
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Routers
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -120,11 +142,11 @@ app.include_router(beckn_router)  # /beckn/*       — ONDC Gateway / BAP webhoo
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Root
+# Root & Health Check (Supports GET and HEAD for UptimeRobot / pingers)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@app.get("/", tags=["Health"], status_code=status.HTTP_200_OK)
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Health"], status_code=status.HTTP_200_OK)
 async def root() -> dict:
     """Health check — confirms the BPP is alive and shows active listing count."""
     settings = get_settings()
@@ -136,3 +158,9 @@ async def root() -> dict:
         "active_listings": listing_count(),
         "docs": "/docs",
     }
+
+
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["Health"], status_code=status.HTTP_200_OK)
+async def health() -> dict:
+    """Dedicated health endpoint for monitors and load balancers."""
+    return {"status": "healthy", "service": "BazaarSetu BPP"}

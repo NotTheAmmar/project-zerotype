@@ -51,6 +51,19 @@ class FakeApiService implements ApiService {
   }) async {
     return {'status': 'PUBLISHED', 'catalog_id': item.id};
   }
+
+  @override
+  Future<bool> unlistFromOndc(String catalogId) async => true;
+
+  @override
+  Future<bool> deleteFromOndc(String catalogId) async => true;
+
+  @override
+  Future<String?> uploadImage(
+    String filePath, {
+    String imageType = 'studio',
+    String? catalogId,
+  }) async => 'https://example.com/mock.jpg';
 }
 
 class FakeAudioService extends AudioService {

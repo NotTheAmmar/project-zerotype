@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'controllers/capture_controller.dart';
 import 'controllers/catalog_controller.dart';
+import 'controllers/language_controller.dart';
 import 'controllers/pricing_controller.dart';
 import 'controllers/voice_controller.dart';
 import 'services/api_service.dart';
@@ -27,6 +28,9 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(
+          create: (_) => LanguageController(),
+        ),
         ChangeNotifierProvider(
           create: (_) => CaptureController(imageService: imageService),
         ),
