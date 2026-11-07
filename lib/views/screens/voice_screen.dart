@@ -39,6 +39,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
     final question = voiceCtrl.currentStepData.questionHi;
     try {
+      await _tts.stop();
       await _tts.setLanguage('hi-IN');
       await _tts.speak(question);
     } catch (e) {
@@ -49,11 +50,18 @@ class _VoiceScreenState extends State<VoiceScreen> {
   Future<void> _replayTts() async {
     final voiceCtrl = context.read<VoiceController>();
     try {
+      await _tts.stop();
       await _tts.setLanguage('hi-IN');
       await _tts.speak(voiceCtrl.currentStepData.questionHi);
     } catch (e) {
       debugPrint('[VoiceScreen] TTS replay error: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    _tts.stop();
+    super.dispose();
   }
 
   @override
@@ -75,12 +83,16 @@ class _VoiceScreenState extends State<VoiceScreen> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-                        onPressed: () {
+                        onPressed: () async {
+                          await _tts.stop();
                           if (!voiceCtrl.isFirstStep) {
-                            voiceCtrl.previousStep();
-                            _speakCurrentStepQuestion();
+                            await voiceCtrl.previousStep();
+                            if (context.mounted) _speakCurrentStepQuestion();
                           } else {
-                            Navigator.of(context).maybePop();
+                            if (voiceCtrl.state == VoiceState.recording) {
+                              await voiceCtrl.stopRecordingIfActive();
+                            }
+                            if (context.mounted) Navigator.of(context).maybePop();
                           }
                         },
                       ),
@@ -122,9 +134,27 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
                       return Expanded(
                         child: GestureDetector(
-                          onTap: () {
-                            voiceCtrl.jumpToStep(idx);
-                            _speakCurrentStepQuestion();
+                          onTap: () async {
+                            if (idx == voiceCtrl.currentStep) return;
+                            if (idx < voiceCtrl.currentStep) {
+                              await _tts.stop();
+                              await voiceCtrl.jumpToStep(idx);
+                              if (context.mounted) _speakCurrentStepQuestion();
+                              return;
+                            }
+                            if (!voiceCtrl.isCurrentStepSatisfied) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('कृपया पहले इस सवाल का उत्तर दें • Please answer this question first'),
+                                  duration: Duration(seconds: 2),
+                                  backgroundColor: AppColors.secondaryTerracotta,
+                                ),
+                              );
+                              return;
+                            }
+                            await _tts.stop();
+                            await voiceCtrl.jumpToStep(idx);
+                            if (context.mounted) _speakCurrentStepQuestion();
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -254,7 +284,10 @@ class _VoiceScreenState extends State<VoiceScreen> {
                         // ── Mic Button ─────────────────────────────────────
                         MicButton(
                           isRecording: voiceCtrl.state == VoiceState.recording,
-                          onTap: voiceCtrl.toggleRecording,
+                          onTap: () async {
+                            await _tts.stop();
+                            await voiceCtrl.toggleRecording();
+                          },
                         ),
                         const SizedBox(height: 14),
 
@@ -309,12 +342,13 @@ class _VoiceScreenState extends State<VoiceScreen> {
                   ),
                   child: Row(
                     children: [
-                      // Back / Skip
+                      // Back
                       if (!voiceCtrl.isFirstStep) ...[
                         OutlinedButton(
-                          onPressed: () {
-                            voiceCtrl.previousStep();
-                            _speakCurrentStepQuestion();
+                          onPressed: () async {
+                            await _tts.stop();
+                            await voiceCtrl.previousStep();
+                            if (context.mounted) _speakCurrentStepQuestion();
                           },
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: AppColors.cardBorder),
@@ -329,12 +363,58 @@ class _VoiceScreenState extends State<VoiceScreen> {
                       // Forward / Next or Finish
                       Expanded(
                         child: ElevatedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
+                            await _tts.stop();
+
+                            // 1. If currently recording, stop and save it first
+                            if (voiceCtrl.state == VoiceState.recording) {
+                              await voiceCtrl.stopRecordingIfActive();
+                            }
+
+                            // 2. Validate current step is satisfied
+                            if (!voiceCtrl.isCurrentStepSatisfied) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'कृपया पहले इस सवाल का उत्तर दें • Please answer this question before proceeding',
+                                    ),
+                                    duration: Duration(seconds: 2),
+                                    backgroundColor: AppColors.secondaryTerracotta,
+                                  ),
+                                );
+                              }
+                              return;
+                            }
+
+                            // 3. Advance to next step or finish
                             if (!voiceCtrl.isLastStep) {
-                              voiceCtrl.nextStep();
-                              _speakCurrentStepQuestion();
+                              await voiceCtrl.nextStep();
+                              if (context.mounted) _speakCurrentStepQuestion();
                             } else {
-                              Navigator.of(context).pushNamed(AppRoutes.processing);
+                              // On last step, verify all steps are satisfied
+                              if (!voiceCtrl.areAllStepsSatisfied) {
+                                final missing = voiceCtrl.firstIncompleteStep;
+                                if (missing != -1) {
+                                  await voiceCtrl.jumpToStep(missing);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'कृपया सवाल ${missing + 1} का उत्तर पूरा करें • Please complete question ${missing + 1}',
+                                        ),
+                                        duration: const Duration(seconds: 2),
+                                        backgroundColor: AppColors.secondaryTerracotta,
+                                      ),
+                                    );
+                                    _speakCurrentStepQuestion();
+                                  }
+                                  return;
+                                }
+                              }
+                              if (context.mounted) {
+                                Navigator.of(context).pushNamed(AppRoutes.processing);
+                              }
                             }
                           },
                           style: ElevatedButton.styleFrom(
@@ -347,13 +427,19 @@ class _VoiceScreenState extends State<VoiceScreen> {
                             elevation: 0,
                           ),
                           icon: Icon(
-                            voiceCtrl.isLastStep ? Icons.auto_awesome_rounded : Icons.arrow_forward_rounded,
+                            voiceCtrl.state == VoiceState.recording
+                                ? Icons.stop_circle_outlined
+                                : (voiceCtrl.isLastStep ? Icons.auto_awesome_rounded : Icons.arrow_forward_rounded),
                             size: 18,
                           ),
                           label: Text(
-                            voiceCtrl.isLastStep
-                                ? 'कैटलॉग बनाएं • Create Catalog'
-                                : 'अगला सवाल • Next Step →',
+                            voiceCtrl.state == VoiceState.recording
+                                ? (voiceCtrl.isLastStep
+                                    ? 'रिकॉर्डिंग रोकें और कैटलॉग बनाएं • Finish & Create'
+                                    : 'रिकॉर्डिंग रोकें और अगला सवाल • Finish & Next →')
+                                : (voiceCtrl.isLastStep
+                                    ? 'कैटलॉग बनाएं • Create Catalog'
+                                    : 'अगला सवाल • Next Step →'),
                             style: AppTextStyles.buttonLabel.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,

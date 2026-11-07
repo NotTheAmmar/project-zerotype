@@ -46,15 +46,20 @@ This guide provides direct, step-by-step instructions for deploying the **Bazaar
 
 ---
 
-### Step 2: Get Database Connection URI
-1. In your Supabase Dashboard, go to **Project Settings** (gear icon) $\rightarrow$ **Database**.
-2. Scroll to **Connection string** $\rightarrow$ select the **URI** tab.
-3. Select **Mode: Session** (port `5432` or transaction pooler `6543`).
-4. Copy the connection string:
+### Step 2: Get Database Connection URI (Connection Pooler for Render IPv4)
+
+> [!IMPORTANT]
+> **Why Connection Pooler?** Render free web services **do not support IPv6 routing**. Supabase's direct host (`db.[ref].supabase.co`) resolves to IPv6 on new projects and cannot be reached by Render. You **must use the Supabase Connection Pooler** (IPv4).
+
+1. In Supabase Dashboard, go to **Project Settings** (gear icon) $\rightarrow$ **Database**.
+2. Scroll to **Connection string** $\rightarrow$ select **Connection Pooler** (or select the **URI** tab under Connection Pooler).
+3. **Mode**: Choose **Transaction (Port 6543)** or **Session (Port 5432)**.
+4. Note that the username in the connection pooler is `postgres.[YOUR-PROJECT-REF]`, NOT just `postgres`.
+5. Format your `DATABASE_URL` as:
    ```properties
-   postgresql+asyncpg://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+   postgresql+asyncpg://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
    ```
-   *(Replace `[YOUR-PASSWORD]` with the password set in Step 1).*
+   *(e.g., if region is `ap-south-1`, host is `aws-0-ap-south-1.pooler.supabase.com:6543`)*
 
 ---
 
@@ -159,7 +164,7 @@ BPP_PUBLIC_URI=https://project-zerotype-bpp.onrender.com/beckn
 BPP_UK_ID=key-1
 BPP_SIGNING_PRIVATE_KEY=<base64-ed25519-seed>
 BPP_SIGNING_PUBLIC_KEY=<base64-ed25519-public-key>
-DATABASE_URL=postgresql+asyncpg://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres
+DATABASE_URL=postgresql+asyncpg://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
 SUPABASE_URL=https://[YOUR-PROJECT-REF].supabase.co
 SUPABASE_KEY=[YOUR-SUPABASE-SERVICE-ROLE-KEY]
 SUPABASE_STORAGE_BUCKET=craft-images

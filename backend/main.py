@@ -146,7 +146,8 @@ app.include_router(beckn_router)  # /beckn/*       — ONDC Gateway / BAP webhoo
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@app.api_route("/", methods=["GET", "HEAD"], tags=["Health"], status_code=status.HTTP_200_OK)
+@app.get("/", tags=["Health"], status_code=status.HTTP_200_OK, operation_id="root_get")
+@app.head("/", tags=["Health"], status_code=status.HTTP_200_OK, operation_id="root_head")
 async def root() -> dict:
     """Health check — confirms the BPP is alive and shows active listing count."""
     settings = get_settings()
@@ -160,7 +161,8 @@ async def root() -> dict:
     }
 
 
-@app.api_route("/health", methods=["GET", "HEAD"], tags=["Health"], status_code=status.HTTP_200_OK)
+@app.get("/health", tags=["Health"], status_code=status.HTTP_200_OK, operation_id="health_get")
+@app.head("/health", tags=["Health"], status_code=status.HTTP_200_OK, operation_id="health_head")
 async def health() -> dict:
     """Dedicated health endpoint for monitors and load balancers."""
     return {"status": "healthy", "service": "BazaarSetu BPP"}

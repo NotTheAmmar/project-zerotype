@@ -158,7 +158,62 @@ class VoiceController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void nextStep() {
+  bool isStepSatisfied(int stepIndex) {
+    if (_stepAudioPaths.containsKey(stepIndex)) {
+      return true;
+    }
+    if (_currentStep == stepIndex && _state == VoiceState.recording) {
+      return true;
+    }
+    if (stepIndex == 3) {
+      final hasDims = _manualLength.trim().isNotEmpty && _manualWidth.trim().isNotEmpty;
+      final hasWeight = _manualWeight.trim().isNotEmpty;
+      return hasDims || hasWeight;
+    }
+    return false;
+  }
+
+  bool get isCurrentStepSatisfied => isStepSatisfied(_currentStep);
+
+  bool get areAllStepsSatisfied {
+    for (int i = 0; i < guidedSteps.length; i++) {
+      if (!isStepSatisfied(i)) return false;
+    }
+    return true;
+  }
+
+  int get firstIncompleteStep {
+    for (int i = 0; i < guidedSteps.length; i++) {
+      if (!isStepSatisfied(i)) return i;
+    }
+    return -1;
+  }
+
+  /// Safely stops recording if currently active, saving the audio to the current step.
+  Future<String?> stopRecordingIfActive() async {
+    if (_state == VoiceState.recording) {
+      _timer?.cancel();
+      _timer = null;
+      await _amplitudeSub?.cancel();
+      _amplitudeSub = null;
+
+      final recorded = await _audioService.stopRecording();
+      _state = VoiceState.stopped;
+      if (recorded != null) {
+        _audioPath = recorded;
+        _stepAudioPaths[_currentStep] = recorded;
+      }
+      HapticFeedback.lightImpact();
+      notifyListeners();
+      return recorded;
+    }
+    return null;
+  }
+
+  Future<void> nextStep() async {
+    if (_state == VoiceState.recording) {
+      await stopRecordingIfActive();
+    }
     if (_currentStep < guidedSteps.length - 1) {
       _currentStep++;
       _recordingSeconds = 0;
@@ -168,7 +223,10 @@ class VoiceController extends ChangeNotifier {
     }
   }
 
-  void previousStep() {
+  Future<void> previousStep() async {
+    if (_state == VoiceState.recording) {
+      await stopRecordingIfActive();
+    }
     if (_currentStep > 0) {
       _currentStep--;
       _recordingSeconds = 0;
@@ -178,7 +236,10 @@ class VoiceController extends ChangeNotifier {
     }
   }
 
-  void jumpToStep(int step) {
+  Future<void> jumpToStep(int step) async {
+    if (_state == VoiceState.recording) {
+      await stopRecordingIfActive();
+    }
     if (step >= 0 && step < guidedSteps.length) {
       _currentStep = step;
       _recordingSeconds = 0;
