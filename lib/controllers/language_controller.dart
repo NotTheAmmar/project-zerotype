@@ -30,6 +30,7 @@ class LanguageController extends ChangeNotifier {
   String _currentLanguageCode = 'hi';
   bool _isLanguageSetupDone = false;
   bool _isLoaded = false;
+  Future<void>? _initFuture;
 
   String get currentLanguageCode => _currentLanguageCode;
   bool get isLanguageSetupDone => _isLanguageSetupDone;
@@ -41,8 +42,10 @@ class LanguageController extends ChangeNotifier {
         orElse: () => supportedLanguages.first,
       );
 
-  LanguageController() {
-    loadLanguagePreference();
+  LanguageController({bool autoLoad = true}) {
+    if (autoLoad) {
+      _initFuture = loadLanguagePreference();
+    }
   }
 
   Future<void> loadLanguagePreference() async {
@@ -60,8 +63,14 @@ class LanguageController extends ChangeNotifier {
   }
 
   Future<void> setLanguage(String code) async {
+    // Await any in-flight initial load to prevent race condition overwrites
+    if (_initFuture != null) {
+      await _initFuture;
+    }
+
     _currentLanguageCode = code;
     _isLanguageSetupDone = true;
+    _isLoaded = true;
     notifyListeners();
 
     try {

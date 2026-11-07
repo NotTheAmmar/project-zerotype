@@ -59,24 +59,34 @@ async def upload_image(
     elif "webp" in content_type:
         ext = "webp"
 
-    cid = catalog_id or f"craft_{uuid4().hex[:10]}"
+    cid = re.sub(r"[^a-zA-Z0-9_-]", "", catalog_id) if catalog_id else f"craft_{uuid4().hex[:10]}"
+    if not cid:
+        cid = f"craft_{uuid4().hex[:10]}"
     safe_type = re.sub(r"[^a-zA-Z0-9_-]", "", image_type)
+    if not safe_type:
+        safe_type = "studio"
     filename = f"{cid}_{safe_type}.{ext}"
 
     # 1. Try Supabase Storage CDN
     public_url = await upload_image_to_storage(content, filename, content_type)
     storage_type = "supabase"
 
-    # 2. Fallback to local /uploads/ directory
+    # 2. Fallback to local /uploads/ directory with strict path sanitization
     if not public_url:
-        upload_dir = "uploads"
+        upload_dir = os.path.abspath("uploads")
         os.makedirs(upload_dir, exist_ok=True)
-        local_path = os.path.join(upload_dir, filename)
+        safe_basename = os.path.basename(filename)
+        local_path = os.path.abspath(os.path.join(upload_dir, safe_basename))
+        if not local_path.startswith(upload_dir + os.sep):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid filename path",
+            )
         with open(local_path, "wb") as f:
             f.write(content)
 
         base_url = str(request.base_url).rstrip("/")
-        public_url = f"{base_url}/uploads/{filename}"
+        public_url = f"{base_url}/uploads/{safe_basename}"
         storage_type = "local"
 
     return {

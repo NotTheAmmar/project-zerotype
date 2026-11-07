@@ -12,6 +12,7 @@ import logging
 import os
 import re
 from typing import List, Optional
+from urllib.parse import urlparse
 
 import httpx
 
@@ -57,7 +58,10 @@ async def init_db() -> str:
         clean_url = _clean_postgres_url(db_url)
         try:
             logger.info("Connecting to PostgreSQL database at %s...", clean_url.split("@")[-1])
-            ssl_mode = "require" if ("supabase.co" in clean_url or "pooler.supabase.com" in clean_url or "render.com" in clean_url) else None
+            parsed_db_url = urlparse(clean_url)
+            db_hostname = (parsed_db_url.hostname or "").lower()
+            # Require SSL for any remote database host (Supabase, Render, Neon, AWS, etc.)
+            ssl_mode = "require" if db_hostname and db_hostname not in ("localhost", "127.0.0.1") else None
             _pool = await asyncpg.create_pool(
                 clean_url,
                 min_size=1,
