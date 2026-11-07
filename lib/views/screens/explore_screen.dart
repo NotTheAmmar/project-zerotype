@@ -5,8 +5,12 @@ import 'package:provider/provider.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/catalog_controller.dart';
+import '../../controllers/language_controller.dart';
+import 'language_selection_screen.dart';
 import '../../models/catalog_item.dart';
+import '../../services/api_service.dart';
 import '../../services/audio_service.dart';
+import '../widgets/bilingual_text.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -19,6 +23,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   int _bottomNavIndex = 0;
   int _selectedCategoryIndex = 0;
   final AudioService _audioService = AudioService();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  bool _isVoiceSearching = false;
   bool _isPlayingStory = false;
 
   final List<String> _categories = [
@@ -32,6 +39,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _audioService.dispose();
     super.dispose();
   }
@@ -42,6 +50,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
     final savedCatalogs = catalogCtrl.savedCatalogs;
 
     final filteredCatalogs = savedCatalogs.where((item) {
+      // 1. Text Search Filter
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        final titleEn = (item.titleEn ?? '').toLowerCase();
+        final titleHi = (item.titleHi ?? '').toLowerCase();
+        final cat = (item.craftAttributes?.category ?? '').toLowerCase();
+        final cluster = (item.craftAttributes?.clusterLocation ?? '').toLowerCase();
+        final materials = (item.craftAttributes?.materials ?? []).map((m) => m.toLowerCase()).join(' ');
+        final matches = titleEn.contains(q) ||
+            titleHi.contains(q) ||
+            cat.contains(q) ||
+            cluster.contains(q) ||
+            materials.contains(q);
+        if (!matches) return false;
+      }
+
+      // 2. Category Filter
       if (_selectedCategoryIndex == 0) return true;
       final selectedCat = _categories[_selectedCategoryIndex].toLowerCase();
       final cat = (item.craftAttributes?.category ?? '').toLowerCase();
@@ -211,6 +236,44 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           const SizedBox(width: 8),
 
+          // Language Switcher Pill
+          Consumer<LanguageController>(
+            builder: (context, langCtrl, _) => InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const LanguageSelectionScreen(isInitialSetup: false),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.translate_rounded, size: 14, color: AppColors.secondaryTerracotta),
+                    const SizedBox(width: 4),
+                    Text(
+                      langCtrl.currentLanguage.nativeName,
+                      style: AppTextStyles.caption.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+
           // New Craft Listing CTA button in Header
           FilledButton.icon(
             onPressed: () {
@@ -237,7 +300,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
-  // ── Search Bar with Voice Mic ──────────────────────────────────────────────
+  // ── Search Bar with Functional Text & Voice Input ──────────────────────────
   Widget _buildSearchBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -258,45 +321,150 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                'Search craft products...',
-                style: AppTextStyles.body.copyWith(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) {
+                  setState(() {
+                    _searchQuery = val.trim();
+                  });
+                },
+                decoration: const InputDecoration(
+                  hintText: 'Search crafts by name, material...',
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
                 ),
+                style: AppTextStyles.body.copyWith(fontSize: 14),
               ),
             ),
-            // Voice Mic Button -> Opens AI Capture
-            GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, AppRoutes.capture);
-              },
-              child: Container(
-                margin: const EdgeInsets.all(4),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryTeal.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.mic_rounded,
-                      color: AppColors.primaryTeal,
-                      size: 18,
-                    ),
-                  ],
+            if (_searchQuery.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textSecondary),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+              )
+            else
+              GestureDetector(
+                onTap: _startVoiceSearch,
+                child: Container(
+                  margin: const EdgeInsets.all(4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _isVoiceSearching
+                        ? AppColors.alertRed.withValues(alpha: 0.15)
+                        : AppColors.primaryTeal.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _isVoiceSearching ? Icons.graphic_eq_rounded : Icons.mic_rounded,
+                        color: _isVoiceSearching ? AppColors.alertRed : AppColors.primaryTeal,
+                        size: 18,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _startVoiceSearch() async {
+    if (_isVoiceSearching) return;
+    setState(() => _isVoiceSearching = true);
+
+    try {
+      final hasPerm = await _audioService.hasPermission();
+      if (!hasPerm) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Microphone permission required for voice search')),
+          );
+        }
+        setState(() => _isVoiceSearching = false);
+        return;
+      }
+
+      await _audioService.startRecording();
+      if (!mounted) return;
+
+      await showModalBottomSheet(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.mic_rounded, size: 32, color: AppColors.primaryTeal),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'बोलकर खोजें • Speak to Search',
+                style: AppTextStyles.serifTitle().copyWith(fontSize: 18),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'उदा: "सिल्क साड़ी", "टेराकोटा दीया", "लकड़ी के खिलौने"',
+                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(ctx),
+                icon: const Icon(Icons.check_rounded, size: 18),
+                label: const Text('खोजें • Search Now'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryTeal,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 44),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final audioPath = await _audioService.stopRecording();
+      if (audioPath != null && audioPath.isNotEmpty) {
+        final apiService = ApiService();
+        final text = await apiService.transcribeAudio(audioPath);
+        if (text.isNotEmpty && mounted) {
+          _searchController.text = text;
+          setState(() {
+            _searchQuery = text.trim();
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('[VoiceSearch] error: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isVoiceSearching = false);
+      }
+    }
   }
 
   // ── Category Filter Pills ──────────────────────────────────────────────────
@@ -566,7 +734,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Guild / Location
+                  // Cluster / Location
                   Row(
                     children: [
                       const Icon(
@@ -577,9 +745,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       const SizedBox(width: 2),
                       Expanded(
                         child: Text(
-                          item.guildName ??
-                              item.craftAttributes?.clusterLocation ??
-                              'Artisan Guild',
+                          item.craftAttributes?.clusterLocation ??
+                              item.guildName ??
+                              'India Craft Cluster',
                           style: AppTextStyles.caption.copyWith(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -646,9 +814,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
   void _showQuickView(BuildContext context, CatalogItem item) {
     final fairPrice = item.pricing?.fairPrice ?? 0;
     final mrp = item.mrp ?? (fairPrice > 0 ? (fairPrice * 1.25).round() : 0);
-    final desc = item.descriptionHi ??
-        item.descriptionEn ??
-        'पारंपरिक हस्तशिल्प उत्पाद। कुशल कारीगर द्वारा हस्तनिर्मित।';
 
     showModalBottomSheet(
       context: context,
@@ -698,28 +863,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              item.titleEn ?? 'Handmade Craft',
-                              style: AppTextStyles.serifTitle().copyWith(
+                            BilingualText(
+                              english: item.titleEn ?? 'Handmade Craft',
+                              local: item.titleHi,
+                              englishStyle: AppTextStyles.serifTitle().copyWith(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),
-                              maxLines: 1,
+                              localStyle: AppTextStyles.body.copyWith(
+                                fontSize: 13,
+                                color: AppColors.secondaryTerracotta,
+                              ),
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
-                            if (item.titleHi != null &&
-                                item.titleHi!.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                item.titleHi!,
-                                style: AppTextStyles.body.copyWith(
-                                  fontSize: 13,
-                                  color: AppColors.secondaryTerracotta,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
                             const SizedBox(height: 6),
                             Row(
                               children: [
@@ -745,7 +902,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Cluster: ${item.craftAttributes?.clusterLocation ?? "Pune, Maharashtra"}',
+                              'Cluster: ${item.craftAttributes?.clusterLocation ?? "India Craft Cluster"}',
                               style: AppTextStyles.caption.copyWith(
                                 color: AppColors.textSecondary,
                                 fontSize: 11,
@@ -778,7 +935,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Karigar Story • कारीगर की कहानी',
+                              'Craft Story • कारीगरी विवरण',
                               style: AppTextStyles.labelSmall.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primaryTeal,
@@ -787,14 +944,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             const Spacer(),
                             GestureDetector(
                               onTap: () async {
+                                final textToSpeak = item.descriptionHi?.trim().isNotEmpty == true
+                                    ? item.descriptionHi!
+                                    : (item.descriptionEn ?? '');
                                 if (_isPlayingStory) {
                                   await _audioService.stopTts();
                                   setModalState(() => _isPlayingStory = false);
                                   setState(() => _isPlayingStory = false);
-                                } else {
+                                } else if (textToSpeak.isNotEmpty) {
                                   setModalState(() => _isPlayingStory = true);
                                   setState(() => _isPlayingStory = true);
-                                  await _audioService.speakText(desc);
+                                  await _audioService.speakText(textToSpeak);
                                   setModalState(() => _isPlayingStory = false);
                                   setState(() => _isPlayingStory = false);
                                 }
@@ -820,7 +980,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      _isPlayingStory ? 'Stop' : 'सुनें',
+                                      _isPlayingStory ? 'Stop' : 'Listen • सुनें',
                                       style: AppTextStyles.labelSmall.copyWith(
                                         color: Colors.white,
                                         fontSize: 11,
@@ -832,15 +992,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          desc,
-                          style: AppTextStyles.body.copyWith(
-                            fontSize: 12,
+                        const SizedBox(height: 8),
+                        BilingualText(
+                          english: item.descriptionEn ?? 'Handcrafted artisan product.',
+                          local: item.descriptionHi,
+                          englishStyle: AppTextStyles.body.copyWith(
+                            fontSize: 13,
                             height: 1.4,
                             color: AppColors.textPrimary,
                           ),
-                          maxLines: 3,
+                          localStyle: AppTextStyles.caption.copyWith(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                            height: 1.3,
+                          ),
+                          maxLines: 4,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -848,65 +1014,31 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Actions: Guild Basket Pledge & View Full Catalog
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(modalCtx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Added to Guild Basket! Direct artisan pledge recorded.',
-                                ),
-                                backgroundColor: AppColors.secondaryTerracotta,
-                              ),
-                            );
-                          },
-                          icon: const Icon(
-                            Icons.shopping_basket_outlined,
-                            size: 16,
-                          ),
-                          label: const Text('Guild Basket'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(0, 46),
-                            side: const BorderSide(
-                              color: AppColors.secondaryTerracotta,
-                            ),
-                            foregroundColor: AppColors.secondaryTerracotta,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
+                  // Action: View and Edit Full Catalog
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(modalCtx);
+                        final catalogController =
+                            context.read<CatalogController>();
+                        catalogController.setItem(item);
+                        Navigator.pushNamed(context, AppRoutes.catalog);
+                      },
+                      icon: const Icon(
+                        Icons.edit_note_rounded,
+                        size: 20,
+                      ),
+                      label: const Text('View & Edit Listing • कैटलॉग देखें'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryTeal,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(modalCtx);
-                            final catalogController =
-                                context.read<CatalogController>();
-                            catalogController.setItem(item);
-                            Navigator.pushNamed(context, AppRoutes.catalog);
-                          },
-                          icon: const Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 16,
-                          ),
-                          label: const Text('View Catalog'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryTeal,
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(0, 46),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ],
               ),

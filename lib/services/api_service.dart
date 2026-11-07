@@ -9,7 +9,6 @@ import '../config/constants.dart';
 import '../models/craft_attributes.dart';
 import '../models/pricing_corridor.dart';
 import '../models/catalog_item.dart';
-import '../data/mock_data.dart'; //delete
 import 'bhashini_service.dart';
 
 /// Response from the catalog processing pipeline.
@@ -67,6 +66,16 @@ abstract class ApiService {
     required int availableQuantity,
   });
 
+  Future<bool> unlistFromOndc(String catalogId);
+
+  Future<bool> deleteFromOndc(String catalogId);
+
+  Future<String?> uploadImage(
+    String filePath, {
+    String imageType = 'studio',
+    String? catalogId,
+  });
+
   factory ApiService() {
     if (AppConstants.useMockData) {
       return MockApiService();
@@ -94,7 +103,26 @@ class MockApiService implements ApiService {
     };
   }
 
-  int _mockIndex = 0;
+  @override
+  Future<bool> unlistFromOndc(String catalogId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return true;
+  }
+
+  @override
+  Future<bool> deleteFromOndc(String catalogId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return true;
+  }
+
+  @override
+  Future<String?> uploadImage(
+    String filePath, {
+    String imageType = 'studio',
+    String? catalogId,
+  }) async {
+    return 'https://images.unsplash.com/photo-1610030469983-98e550d6193c';
+  }
 
   @override
   Future<CatalogProcessResult> processCatalog({
@@ -104,9 +132,6 @@ class MockApiService implements ApiService {
     String? manualDimensions,
     StageCallback? onStageComplete,
   }) async {
-    final payload = MockData.catalogs[_mockIndex % MockData.catalogs.length];
-    _mockIndex++;
-
     await Future.delayed(AppConstants.mockStage1Delay);
     onStageComplete?.call(0);
 
@@ -117,14 +142,36 @@ class MockApiService implements ApiService {
     onStageComplete?.call(2);
 
     return CatalogProcessResult(
-      titleEn: payload.titleEn,
-      titleHi: payload.titleHi,
-      descriptionEn: payload.descriptionEn,
-      descriptionHi: payload.descriptionHi,
-      craftAttributes: payload.craftAttributes,
-      pricing: payload.pricing,
-      studioImagePath: payload.studioImagePath ?? payload.rawImagePath,
+      titleEn: 'Handmade Terracotta Craft',
+      titleHi: 'हाथ से बना मिट्टी का दीया',
+      descriptionEn:
+          'Beautiful handmade craft crafted using traditional techniques passed down through generations. Perfect for home decor and festive celebrations.',
+      descriptionHi:
+          'कारीगर द्वारा हाथ से तैयार किया गया सुंदर पारंपरिक दीया। प्राकृतिक मिट्टी से बना और धूप में सुखाया गया।',
+      craftAttributes: CraftAttributes(
+        category: 'Terracotta Pottery',
+        materials: const ['Natural Terracotta Clay', 'Earthen Pigments'],
+        laborDays: 2,
+        clusterLocation: 'Pune Craft Cluster, Maharashtra',
+        artisanName: 'Savita Patil',
+        dimensions: manualDimensions ?? '5 x 5 inches',
+        weight: '180g',
+        genericName: 'Earthen Diya',
+        netQuantity: '1 unit',
+        countryOfOrigin: 'IND',
+      ),
+      pricing: const PricingCorridor(
+        rawMaterialCost: 80,
+        laborDays: 2,
+        dailyWageRate: 400,
+        overheadPercent: 0.10,
+        floorPrice: 240,
+        fairPrice: 300,
+        premiumPrice: 400,
+      ),
+      studioImagePath: imagePath.isNotEmpty ? imagePath : null,
       audioReadbackPath: null,
+      spokenQuantity: 1,
     );
   }
 
@@ -170,6 +217,43 @@ class LiveApiService implements ApiService {
   }) async {
     final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/publish');
 
+    // 1. Upload raw and studio images to Supabase CDN if stored as local files
+    String? finalRawImageUrl = item.rawImagePath?.startsWith('http') == true ? item.rawImagePath : null;
+    String? finalStudioImageUrl = item.studioImagePath?.startsWith('http') == true ? item.studioImagePath : null;
+
+    if (item.rawImagePath != null &&
+        !item.rawImagePath!.startsWith('http') &&
+        File(item.rawImagePath!).existsSync()) {
+      try {
+        final uploadedRaw = await uploadImage(
+          item.rawImagePath!,
+          imageType: 'raw',
+          catalogId: item.id,
+        );
+        if (uploadedRaw != null) finalRawImageUrl = uploadedRaw;
+      } catch (e) {
+        debugPrint('[LiveApiService] Raw image upload skipped: $e');
+      }
+    }
+
+    if (item.studioImagePath != null &&
+        !item.studioImagePath!.startsWith('http') &&
+        File(item.studioImagePath!).existsSync()) {
+      try {
+        final uploadedStudio = await uploadImage(
+          item.studioImagePath!,
+          imageType: 'studio',
+          catalogId: item.id,
+        );
+        if (uploadedStudio != null) finalStudioImageUrl = uploadedStudio;
+      } catch (e) {
+        debugPrint('[LiveApiService] Studio image upload skipped: $e');
+      }
+    }
+
+    // Default fallback image if neither is online
+    finalStudioImageUrl ??= 'https://images.unsplash.com/photo-1610030469983-98e550d6193c';
+
     final body = {
       'catalog_id': item.id,
       'artisan_name': item.craftAttributes?.artisanName ?? 'BazaarSetu Artisan',
@@ -186,9 +270,9 @@ class LiveApiService implements ApiService {
       'floor_price': pricing.floorPrice.toDouble(),
       'fair_price': pricing.fairPrice.toDouble(),
       'premium_price': pricing.premiumPrice.toDouble(),
-      'studio_image_url':
-          item.studioImagePath ??
-          'https://images.unsplash.com/photo-1610030469983-98e550d6193c',
+      'raw_image_url': finalRawImageUrl,
+      'studio_image_url': finalStudioImageUrl,
+      'gallery_images': <String>[],
       'available_qty': availableQuantity,
     };
 
@@ -209,6 +293,70 @@ class LiveApiService implements ApiService {
       throw Exception(
         'Publish failed (${response.statusCode}): ${response.body}',
       );
+    }
+  }
+
+  @override
+  Future<String?> uploadImage(
+    String filePath, {
+    String imageType = 'studio',
+    String? catalogId,
+  }) async {
+    try {
+      final file = File(filePath);
+      if (!file.existsSync()) return null;
+
+      final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/upload-image');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['bypass-tunnel-reminder'] = 'true';
+      if (catalogId != null) {
+        request.fields['catalog_id'] = catalogId;
+      }
+      request.fields['image_type'] = imageType;
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+
+      final streamedResponse = await request.send().timeout(AppConstants.apiTimeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['url'] as String?;
+      }
+    } catch (e) {
+      debugPrint('[LiveApiService] uploadImage failed: $e');
+    }
+    return null;
+  }
+
+  @override
+  Future<bool> unlistFromOndc(String catalogId) async {
+    try {
+      final uri = Uri.parse(
+        '${AppConstants.bppBackendUrl}/api/v1/bpp/listings/$catalogId/unlist',
+      );
+      final response = await http
+          .post(uri, headers: {'bypass-tunnel-reminder': 'true'})
+          .timeout(AppConstants.apiTimeout);
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[LiveApiService] unlistFromOndc failed: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> deleteFromOndc(String catalogId) async {
+    try {
+      final uri = Uri.parse(
+        '${AppConstants.bppBackendUrl}/api/v1/bpp/listings/$catalogId',
+      );
+      final response = await http
+          .delete(uri, headers: {'bypass-tunnel-reminder': 'true'})
+          .timeout(AppConstants.apiTimeout);
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('[LiveApiService] deleteFromOndc failed: $e');
+      return false;
     }
   }
 
@@ -294,6 +442,7 @@ class LiveApiService implements ApiService {
       'raw_material_cost': currentItem.pricing?.rawMaterialCost ?? 100,
       'selling_price': currentItem.pricing?.fairPrice ?? 350,
       'dimensions': currentItem.craftAttributes?.dimensions ?? '',
+      'weight': currentItem.craftAttributes?.weight ?? '',
       'net_quantity': currentItem.craftAttributes?.netQuantity ?? '1 unit',
       'description_en': currentItem.descriptionEn ?? '',
       'description_hi': currentItem.descriptionHi ?? '',
@@ -323,6 +472,7 @@ Always output pure valid JSON with these keys:
   "raw_material_cost": number,
   "selling_price": number,
   "dimensions": "string",
+  "weight": "string",
   "net_quantity": "string",
   "description_en": "string",
   "description_hi": "string"
@@ -397,6 +547,7 @@ Artisan update instruction:
         materials: updatedMaterials.isNotEmpty ? updatedMaterials : currentItem.craftAttributes?.materials,
         laborDays: updatedLaborDays,
         dimensions: j['dimensions']?.toString() ?? currentItem.craftAttributes?.dimensions,
+        weight: j['weight']?.toString() ?? currentItem.craftAttributes?.weight,
         netQuantity: j['net_quantity']?.toString() ?? currentItem.craftAttributes?.netQuantity,
       ),
       pricing: updatedPricing,
@@ -636,6 +787,8 @@ Artisan update instruction:
 
     final spokenPrice = _parseInt(j['spoken_price']);
     final spokenQty = _parseInt(j['spoken_quantity']);
+    final dimensions = j['dimensions']?.toString();
+    final weight = j['weight']?.toString();
 
     final pricing = PricingCorridor.compute(
       rawMaterialCost: rawCost,
@@ -671,6 +824,8 @@ Artisan update instruction:
         clusterLocation: location,
         artisanName: 'Savita Patil',
         countryOfOrigin: 'IND',
+        dimensions: dimensions,
+        weight: weight,
         netQuantity: netQty,
         genericName: commodity ?? 'Diya',
         timeToShip: 'PT24H',
@@ -835,10 +990,12 @@ Schema:
   "work_type": "string or null (e.g. Hand-carved, Handwoven, Lost-wax cast, Embroidered)",
   "net_quantity": "string (e.g. 1 unit, 500g, 6.2 meters, or 1 unit by default)",
   "cluster_location": "string or null (e.g. Pune, Chanderi, Bastar, Jaipur if mentioned)",
+  "dimensions": "string or null (e.g. 5x5 inches, 10x6 inches, 2.5 meters, or null if unknown)",
+  "weight": "string or null (e.g. 250g, 1.2kg, 500 grams, or null if unknown)",
   "title_en": "SEO-friendly attractive product title in English (max 70 chars)",
-  "title_hi": "Clean Hindi product title in Devanagari script",
+  "title_hi": "Simple, natural, conversational Hindi product title in Devanagari script (use everyday words, NOT heavy or overly formal Sanskritized Hindi)",
   "description_en": "Engaging artisan storytelling description in English (80-120 words)",
-  "description_hi": "Rich artisan storytelling description in Hindi (Devanagari)",
+  "description_hi": "Warm, natural artisan storytelling description in simple conversational Hindi (Devanagari). Use everyday spoken words, NOT formal or archaic Sanskritized terms.",
   "pricing_inputs": {
     "raw_material_cost": "integer or null (cost of raw materials mentioned by seller)",
     "labor_days": "integer or null (days or time taken to craft this item)"

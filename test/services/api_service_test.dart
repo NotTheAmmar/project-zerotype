@@ -67,6 +67,8 @@ void main() {
         },
         'spoken_price': 400,
         'spoken_quantity': 4,
+        'dimensions': '5 x 5 inches',
+        'weight': '250g',
         'title_en': 'Traditional Terracotta Clay Diya Set',
         'title_hi': 'पारंपरिक मिट्टी का दीया सेट',
         'description_en': 'Artisanal clay lamps made from fine natural terracotta.',
@@ -89,6 +91,8 @@ void main() {
       expect(craft.materials, containsAll(['Mitti', 'Red Clay']));
       expect(craft.laborDays, equals(2));
       expect(craft.clusterLocation, equals('Khurja Pottery Cluster, UP'));
+      expect(craft.dimensions, equals('5 x 5 inches'));
+      expect(craft.weight, equals('250g'));
 
       final pricing = result.pricing;
       expect(pricing, isNotNull);

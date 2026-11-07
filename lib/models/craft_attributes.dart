@@ -4,7 +4,8 @@ class CraftAttributes {
   final int? laborDays;
   final String? clusterLocation;
   final String? artisanName;
-  final String? dimensions; // e.g. "6.2 meters"
+  final String? dimensions; // e.g. "5 x 5 inches"
+  final String? weight; // e.g. "250g", "1.2kg"
 
   // ONDC Mandatory Critical
   final String? categoryId;
@@ -29,6 +30,7 @@ class CraftAttributes {
     this.clusterLocation,
     this.artisanName,
     this.dimensions,
+    this.weight,
     this.categoryId,
     this.fulfillmentId,
     this.locationId,
@@ -50,6 +52,7 @@ class CraftAttributes {
     String? clusterLocation,
     String? artisanName,
     String? dimensions,
+    String? weight,
     String? categoryId,
     String? fulfillmentId,
     String? locationId,
@@ -70,6 +73,7 @@ class CraftAttributes {
       clusterLocation: clusterLocation ?? this.clusterLocation,
       artisanName: artisanName ?? this.artisanName,
       dimensions: dimensions ?? this.dimensions,
+      weight: weight ?? this.weight,
       categoryId: categoryId ?? this.categoryId,
       fulfillmentId: fulfillmentId ?? this.fulfillmentId,
       locationId: locationId ?? this.locationId,
@@ -92,6 +96,7 @@ class CraftAttributes {
         'clusterLocation': clusterLocation,
         'artisanName': artisanName,
         'dimensions': dimensions,
+        'weight': weight,
         'categoryId': categoryId,
         'fulfillmentId': fulfillmentId,
         'locationId': locationId,
@@ -117,6 +122,7 @@ class CraftAttributes {
         clusterLocation: json['clusterLocation'] as String?,
         artisanName: json['artisanName'] as String?,
         dimensions: json['dimensions'] as String?,
+        weight: json['weight'] as String?,
         categoryId: json['categoryId'] as String?,
         fulfillmentId: json['fulfillmentId'] as String?,
         locationId: json['locationId'] as String?,

@@ -450,6 +450,43 @@ class _VoiceScreenState extends State<VoiceScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 12),
+
+          // Weight Input Row
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  initialValue: voiceCtrl.manualWeight,
+                  decoration: const InputDecoration(
+                    labelText: 'वज़न / Weight (e.g. 250, 1.2)',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                  onChanged: (val) => voiceCtrl.setManualDimensions(weight: val),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 1,
+                child: Wrap(
+                  spacing: 6,
+                  children: ['g', 'kg'].map((wUnit) {
+                    final isSel = voiceCtrl.manualWeightUnit == wUnit;
+                    return ChoiceChip(
+                      label: Text(wUnit, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : AppColors.textPrimary)),
+                      selected: isSel,
+                      selectedColor: AppColors.primaryTeal,
+                      backgroundColor: AppColors.surfaceContainer,
+                      onSelected: (_) => voiceCtrl.setManualDimensions(weightUnit: wUnit),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

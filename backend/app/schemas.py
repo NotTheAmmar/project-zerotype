@@ -30,6 +30,10 @@ class ArtisanListingPayload(BaseModel):
     catalog_id: str = Field(
         ..., description="Unique SKU / catalog ID from the Flutter app."
     )
+    seller_id: str = Field(
+        default="default_artisan",
+        description="Seller / artisan account ID for multi-tenant isolation.",
+    )
     artisan_name: str = Field(
         default="BazaarSetu Artisan",
         description="Full name of the artisan / weaver.",
@@ -86,9 +90,17 @@ class ArtisanListingPayload(BaseModel):
     )
 
     # ── Media ─────────────────────────────────────────────────────
+    raw_image_url: Optional[str] = Field(
+        default=None,
+        description="Public URL of the raw camera photo uploaded to Supabase Storage.",
+    )
     studio_image_url: str = Field(
         default="https://images.unsplash.com/photo-1610030469983-98e550d6193c",
-        description="URL of the studio-processed product image.",
+        description="URL of the studio-processed / AI-enhanced product image.",
+    )
+    gallery_images: List[str] = Field(
+        default_factory=list,
+        description="Optional list of additional multi-angle craft photos.",
     )
 
     # ── Inventory ─────────────────────────────────────────────────

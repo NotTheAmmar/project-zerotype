@@ -17,6 +17,8 @@ jobs:
   flutter-ci:
     name: Flutter Lint & Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -57,6 +59,8 @@ jobs:
   backend-ci:
     name: Backend Lint & Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository

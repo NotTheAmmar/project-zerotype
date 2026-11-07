@@ -40,6 +40,19 @@ class Settings(BaseSettings):
     gateway_url: str = ""
     """ONDC Gateway URL for proactive catalog pushes. Leave empty for Workbench testing."""
 
+    # ── Database & Storage (Supabase) ─────────────────────────────
+    database_url: str = "sqlite:///./bazaarsetu.db"
+    """Database connection string (Supabase PostgreSQL or local SQLite)."""
+
+    supabase_url: str = ""
+    """Supabase project URL (e.g. https://[REF].supabase.co) for Storage & CDN."""
+
+    supabase_key: str = ""
+    """Supabase service role or anon API key for Storage uploads."""
+
+    supabase_storage_bucket: str = "craft-images"
+    """Supabase Storage bucket name for raw and studio craft images."""
+
     # ── Server ────────────────────────────────────────────────────
     host: str = "0.0.0.0"
     port: int = 8000

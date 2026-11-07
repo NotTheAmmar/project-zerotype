@@ -12,6 +12,9 @@ jobs:
   auto-assign:
     name: Assign @NotTheAmmar
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
     steps:
       - name: Assign Assignee and Reviewer
         uses: actions/github-script@v9

@@ -23,6 +23,8 @@ jobs:
   build-apk:
     name: Build & Package Android Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository

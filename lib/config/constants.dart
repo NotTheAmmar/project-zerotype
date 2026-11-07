@@ -12,7 +12,7 @@ class AppConstants {
   static String get baseUrl =>
       _getEnv('API_BASE_URL') ?? 'https://api.bazaarsetu.in/v1';
   static bool get useMockData =>
-      (_getEnv('USE_MOCK_DATA') ?? 'true').toLowerCase() == 'true';
+      (_getEnv('USE_MOCK_DATA') ?? 'false').toLowerCase() == 'true';
   static Duration get apiTimeout => const Duration(seconds: 120);
 
   // AI Extraction (Qwen / Gemini)

@@ -47,41 +47,43 @@ class VoiceController extends ChangeNotifier {
   String _manualLength = '';
   String _manualWidth = '';
   String _manualHeight = '';
-  String _manualUnit = 'cm'; // 'cm', 'inch', 'meter', 'g', 'kg'
+  String _manualUnit = 'inch'; // 'inch', 'cm', 'meter'
+  String _manualWeight = '';
+  String _manualWeightUnit = 'g'; // 'g', 'kg'
   String _manualQuantity = '1 unit';
 
   static const List<GuidedVoiceStep> guidedSteps = [
     GuidedVoiceStep(
       key: 'name',
-      titleHi: 'उत्पाद का नाम',
+      titleHi: 'सामान का नाम',
       titleEn: 'Craft Name',
-      questionHi: 'इस हस्तशिल्प उत्पाद का क्या नाम है? (जैसे: चंदेरी सिल्क साड़ी, या पीतल की घंटी)',
+      questionHi: 'इस सामान का क्या नाम है? (जैसे: चंदेरी सिल्क साड़ी, या पीतल की घंटी)',
       questionEn: 'What is the name and type of this handcrafted product?',
-      hintHi: 'माइक दबाकर उत्पाद का नाम बताएं',
+      hintHi: 'माइक दबाकर नाम बताएं',
     ),
     GuidedVoiceStep(
       key: 'material',
-      titleHi: 'सामग्री एवं कारीगरी',
+      titleHi: 'सामग्री और कारीगरी',
       titleEn: 'Materials & Craft',
-      questionHi: 'यह किस सामग्री से बना है और क्या खास काम है? (जैसे: शुद्ध रेशम, ज़री का काम, या मिट्टी)',
+      questionHi: 'यह किस चीज़ से बना है और इसपर क्या खास काम है? (जैसे: रेशम, ज़री का काम, या मिट्टी)',
       questionEn: 'What materials are used and what is the crafting technique?',
       hintHi: 'सामग्री और बनाने का तरीका बताएं',
     ),
     GuidedVoiceStep(
       key: 'pricing',
-      titleHi: 'कीमत एवं लागत',
+      titleHi: 'कीमत और मेहनत',
       titleEn: 'Price & Labor',
-      questionHi: 'आप इसे कितने रुपये में बेचना चाहते हैं, कच्चा माल कितने का पड़ा, और कितने दिन लगे?',
+      questionHi: 'आप इसे कितने में बेचना चाहते हैं, कच्चा माल कितने का पड़ा, और कितने दिन लगे?',
       questionEn: 'What is your selling price, raw material cost, and days of labor to make it?',
-      hintHi: 'विक्रय मूल्य, लागत और समय बताएं',
+      hintHi: 'बेचने की कीमत और लागत बताएं',
     ),
     GuidedVoiceStep(
       key: 'dimensions',
-      titleHi: 'माप एवं वज़न',
-      titleEn: 'Dimensions & Measure',
-      questionHi: 'इसकी लंबाई, चौड़ाई या वज़न कितना है? (बोलें या नीचे दिए गए बॉक्स में भी चुन सकते हैं)',
-      questionEn: 'What are the dimensions or weight? (Speak or choose below)',
-      hintHi: 'लंबाई, चौड़ाई या वज़न बताएं',
+      titleHi: 'नाप और वज़न',
+      titleEn: 'Dimensions & Weight',
+      questionHi: 'इसकी लंबाई-चौड़ाई और वज़न कितना है? (जैसे: 5x5 इंच, और 250 ग्राम)',
+      questionEn: 'What are the dimensions and weight? (e.g. 5x5 inches, and 250 grams)',
+      hintHi: 'लंबाई, चौड़ाई और वज़न बताएं',
     ),
   ];
 
@@ -133,6 +135,8 @@ class VoiceController extends ChangeNotifier {
   String get manualWidth => _manualWidth;
   String get manualHeight => _manualHeight;
   String get manualUnit => _manualUnit;
+  String get manualWeight => _manualWeight;
+  String get manualWeightUnit => _manualWeightUnit;
   String get manualQuantity => _manualQuantity;
 
   void setManualDimensions({
@@ -140,12 +144,16 @@ class VoiceController extends ChangeNotifier {
     String? width,
     String? height,
     String? unit,
+    String? weight,
+    String? weightUnit,
     String? quantity,
   }) {
     if (length != null) _manualLength = length;
     if (width != null) _manualWidth = width;
     if (height != null) _manualHeight = height;
     if (unit != null) _manualUnit = unit;
+    if (weight != null) _manualWeight = weight;
+    if (weightUnit != null) _manualWeightUnit = weightUnit;
     if (quantity != null) _manualQuantity = quantity;
     notifyListeners();
   }
