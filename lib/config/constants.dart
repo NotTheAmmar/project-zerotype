@@ -15,7 +15,7 @@ class AppConstants {
       (_getEnv('USE_MOCK_DATA') ?? 'false').toLowerCase() == 'true';
   static Duration get apiTimeout => const Duration(seconds: 120);
 
-  // AI Extraction (Qwen / Gemini)
+  // AI Extraction (Qwen / Groq)
   static String get aiExtractionProvider =>
       _getEnv('AI_EXTRACTION_PROVIDER')?.toLowerCase() ?? 'groq_qwen';
   static String get groqApiKey => _getEnv('GROQ_API_KEY') ?? '';
@@ -23,11 +23,6 @@ class AppConstants {
       _getEnv('QWEN_MODEL') ?? 'qwen/qwen3.8-27b';
   static String get qwenApiUrl =>
       _getEnv('QWEN_API_URL') ?? 'https://api.groq.com/openai/v1/chat/completions';
-
-  // Gemini (Fallback)
-  static String get geminiApiKey => _getEnv('GEMINI_API_KEY') ?? '';
-  static String get geminiModel =>
-      _getEnv('GEMINI_MODEL') ?? 'gemini-2.5-flash';
 
   // Bhashini (Bhashini Cloud)
   static String get bhashiniApiKey => _getEnv('BHASHINI_API_KEY') ?? '';

@@ -66,8 +66,9 @@ async def init_db() -> str:
                 clean_url,
                 min_size=1,
                 max_size=5,
-                timeout=10.0,
+                timeout=20.0,
                 ssl=ssl_mode,
+                statement_cache_size=0,
             )
             async with _pool.acquire() as conn:
                 # 1. Sellers table (ready for future seller profiles)
@@ -130,7 +131,21 @@ async def init_db() -> str:
             logger.info("✓ PostgreSQL schema and migrations verified on Supabase")
             return _db_type
         except Exception as e:
-            logger.error("Failed to connect to PostgreSQL (%s). Falling back to SQLite.", e)
+            logger.error(
+                "Failed to connect to PostgreSQL (%s: %s). Falling back to SQLite.",
+                type(e).__name__,
+                e,
+            )
+            parsed = urlparse(clean_url)
+            host = (parsed.hostname or "").lower()
+            if host.startswith("db.") and host.endswith(".supabase.co"):
+                logger.warning(
+                    "💡 Render / Cloud Notice: Host '%s' uses IPv6-only routing. "
+                    "Render free instances cannot reach IPv6 endpoints. "
+                    "Please use the Supabase Connection Pooler (IPv4) URI instead: "
+                    "e.g. postgresql://postgres.[YOUR-PROJECT-REF]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres",
+                    host,
+                )
 
     # Case 2: SQLite
     try:
