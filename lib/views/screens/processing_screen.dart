@@ -21,24 +21,63 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     with SingleTickerProviderStateMixin {
   bool _started = false;
   bool _hasNavigated = false;
-  late final AnimationController _dashPulse;
-  Timer? _stepTimer;
-  int _completedSteps = 1;
+  late final AnimationController _pulseController;
+  Timer? _progressTimer;
+  Timer? _tipTimer;
+  int _progressPercent = 15;
+  int _currentTipIndex = 0;
+
+  static const List<Map<String, String>> _craftTips = [
+    {
+      'icon': '✨',
+      'title': 'High-Impact Photos',
+      'subtitle': 'Clean studio lighting increases buyer orders on ONDC by over 3x.',
+      'hi': 'अच्छी रोशनी और साफ बैकग्राउंड से ओएनडीसी पर 3 गुना अधिक ऑर्डर मिलते हैं।',
+    },
+    {
+      'icon': '🌿',
+      'title': 'Authentic Heritage',
+      'subtitle': 'Mentioning traditional materials and your craft cluster builds buyer trust.',
+      'hi': 'सामग्री और शिल्प क्षेत्र (क्लस्टर) की जानकारी से खरीदारों का भरोसा बढ़ता है।',
+    },
+    {
+      'icon': '⚖️',
+      'title': 'Fair Artisan Pricing',
+      'subtitle': 'BazaarSetu ensures you earn 100% of your labor value without broker cuts.',
+      'hi': 'बाज़ारसेतु सुनिश्चित करता है कि आपकी पूरी मेहनत की कमाई सीधे आपको मिले।',
+    },
+    {
+      'icon': '🚀',
+      'title': 'Nationwide Reach',
+      'subtitle': 'Your product will be discoverable on major buyer apps across India.',
+      'hi': 'आपका शिल्प पूरे भारत के बड़े खरीदार ऐप्स (पेटीएम, माईस्टोर) पर दिखेगा।',
+    },
+  ];
 
   @override
   void initState() {
     super.initState();
-    _dashPulse = AnimationController(
+    _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 3),
     )..repeat();
 
-    _stepTimer = Timer.periodic(const Duration(milliseconds: 1200), (timer) {
+    // Gradually advance progress percentage
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 900), (timer) {
       if (mounted) {
         setState(() {
-          if (_completedSteps < 5) {
-            _completedSteps++;
+          if (_progressPercent < 90) {
+            _progressPercent += 12;
           }
+        });
+      }
+    });
+
+    // Rotate tips every 3.5 seconds
+    _tipTimer = Timer.periodic(const Duration(milliseconds: 3500), (timer) {
+      if (mounted) {
+        setState(() {
+          _currentTipIndex = (_currentTipIndex + 1) % _craftTips.length;
         });
       }
     });
@@ -82,10 +121,9 @@ class _ProcessingScreenState extends State<ProcessingScreen>
 
     if (catalogCtrl.stage == ProcessingStage.done) {
       setState(() {
-        _completedSteps = 6;
+        _progressPercent = 100;
       });
-      // Auto-navigate to CatalogScreen after a brief 600ms visual confirmation
-      Future.delayed(const Duration(milliseconds: 600), () {
+      Future.delayed(const Duration(milliseconds: 700), () {
         if (mounted && !_hasNavigated) {
           _navigateToListingPreview();
         }
@@ -120,8 +158,9 @@ class _ProcessingScreenState extends State<ProcessingScreen>
 
   @override
   void dispose() {
-    _stepTimer?.cancel();
-    _dashPulse.dispose();
+    _progressTimer?.cancel();
+    _tipTimer?.cancel();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -133,112 +172,212 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     final isError = catalogCtrl.stage == ProcessingStage.error;
     final isDone = catalogCtrl.stage == ProcessingStage.done;
 
-    // Calculate real effective steps
-    int activeStepCount = _completedSteps;
-    if (isDone) {
-      activeStepCount = 6;
-    } else if (catalogCtrl.stage == ProcessingStage.voiceProcessing) {
-      activeStepCount = activeStepCount < 3 ? 3 : activeStepCount;
-    } else if (catalogCtrl.stage == ProcessingStage.pricing) {
-      activeStepCount = activeStepCount < 5 ? 5 : activeStepCount;
-    }
+    final tip = _craftTips[_currentTipIndex];
 
     return Scaffold(
       backgroundColor: AppColors.warmCream,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 620),
+            constraints: const BoxConstraints(maxWidth: 560),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // ── Top Pill Badge ──────────────────────────────────────────
-                  Center(
+                  // ── Top AI Badge ──────────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBECE5),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: AppColors.secondaryTerracotta.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 15,
+                          color: AppColors.secondaryTerracotta,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'BAZAARSETU KARIGAR AI',
+                          style: AppTextStyles.labelSmall.copyWith(
+                            color: AppColors.secondaryTerracotta,
+                            letterSpacing: 0.8,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // ── Title & Subtitle ──────────────────────────────────────
+                  Text(
+                    isDone
+                        ? 'Catalog Ready!'
+                        : (isError ? 'Notice' : 'Crafting your listing...'),
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.serifHeadingLarge(
+                      color: isError ? AppColors.alertRed : AppColors.textPrimary,
+                    ).copyWith(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    isDone
+                        ? 'आपका डिजिटल कैटलॉग तैयार है!'
+                        : (isError
+                            ? 'कैटलॉग निर्माण में कुछ देरी हुई'
+                            : 'डिजिटल कैटलॉग तैयार किया जा रहा है...'),
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.serifTitle(
+                      color: isDone ? AppColors.primaryTeal : AppColors.secondaryTerracotta,
+                    ).copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ── Hero Craft Photo Centerpiece with Breathing Ring ──────
+                  _buildHeroCraftPreview(captureCtrl.capturedImagePath, isDone),
+                  const SizedBox(height: 24),
+
+                  // ── Sleek Progress Bar with Percentage Counter ────────────
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.cardBorder),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              isDone
+                                  ? 'Analysis Complete • पूर्ण हुआ'
+                                  : _getStageHeadline(catalogCtrl.stage),
+                              style: AppTextStyles.label.copyWith(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: isDone ? AppColors.primaryTeal : AppColors.textPrimary,
+                              ),
+                            ),
+                            Text(
+                              isDone ? '100%' : '$_progressPercent%',
+                              style: AppTextStyles.labelSmall.copyWith(
+                                color: AppColors.primaryTeal,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: isDone ? 1.0 : (_progressPercent / 100.0).clamp(0.05, 0.95),
+                            minHeight: 8,
+                            backgroundColor: AppColors.surfaceContainer,
+                            valueColor: AlwaysStoppedAnimation(
+                              isDone ? AppColors.primaryTeal : AppColors.secondaryTerracotta,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          isDone
+                            ? 'All product details and fair pricing are ready.'
+                            : _getStageDetail(catalogCtrl.stage),
+                          style: AppTextStyles.caption.copyWith(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // ── Rotating Artisan Knowledge / Tips Card ────────────────
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      key: ValueKey<int>(_currentTipIndex),
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFBECE5),
-                        borderRadius: BorderRadius.circular(999),
+                        color: const Color(0xFFF9F7F4),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: AppColors.secondaryTerracotta.withValues(alpha: 0.25),
+                          color: AppColors.secondaryTerracotta.withValues(alpha: 0.2),
                         ),
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Icon(
-                            Icons.auto_awesome_rounded,
-                            size: 14,
-                            color: AppColors.primaryTeal,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'BAZAARSETU KARIGAR AI',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: AppColors.secondaryTerracotta,
-                              letterSpacing: 0.8,
-                              fontWeight: FontWeight.w700,
+                          Text(tip['icon']!, style: const TextStyle(fontSize: 22)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  tip['title']!,
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  tip['hi']!,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.secondaryTerracotta,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  tip['subtitle']!,
+                                  style: AppTextStyles.caption.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 10.5,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // ── Title ───────────────────────────────────────────────────
-                  Text(
-                    isError
-                        ? 'Processing Note'
-                        : 'Creating your product\nlisting...',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.serifHeadingLarge(
-                      color: isError ? AppColors.alertRed : AppColors.textPrimary,
-                    ).copyWith(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      height: 1.25,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // ── Hindi Subtitle ──────────────────────────────────────────
-                  Text(
-                    isError
-                        ? 'कैटलॉग निर्माण में कुछ देरी हुई'
-                        : 'आपके उत्पाद की जानकारी तैयार की जा रही है',
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.serifTitle(
-                      color: AppColors.secondaryTerracotta,
-                    ).copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // ── Explanatory description ─────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      isError
-                          ? 'इंटरनेट कनेक्शन या AI सेवा में रुकावट आई। आप दोबारा प्रयास कर सकते हैं या सीधे ड्राफ्ट में जाकर विवरण भर सकते हैं।'
-                          : 'Crafting bilingual storytelling, fair-price corridor, and marketplace tags directly from your craft photo & voice.',
-                      textAlign: TextAlign.center,
-                      style: AppTextStyles.body.copyWith(
-                        color: AppColors.textPrimary.withValues(alpha: 0.75),
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 20),
 
-                  // ── Circular Photo Frame with Dashed Arc ─────────────────────
-                  _buildCircularPreview(captureCtrl.capturedImagePath),
-                  const SizedBox(height: 24),
-
-                  // ── Error Banner (if error occurred) ────────────────────────
+                  // ── Error Banner (if connection issue) ─────────────────────
                   if (isError) ...[
                     Container(
                       width: double.infinity,
@@ -256,7 +395,7 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                               const Icon(Icons.info_outline_rounded, color: AppColors.warningAmber, size: 20),
                               const SizedBox(width: 8),
                               Text(
-                                'AI विश्लेषण सहायता • AI Assistance',
+                                'AI सहायता • AI Assistance',
                                 style: AppTextStyles.label.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textPrimary,
@@ -264,23 +403,21 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
-                            catalogCtrl.errorMessage ?? 'सर्वर से जवाब नहीं मिला। आपकी खींची गई फोटो सुरक्षित है।',
+                            catalogCtrl.errorMessage ?? 'सर्वर से जवाब नहीं मिला। आपकी खींची गई फोटो और आवाज़ सुरक्षित है।',
                             style: AppTextStyles.caption.copyWith(
                               color: AppColors.textPrimary,
                               fontSize: 12,
                             ),
                           ),
-                          const SizedBox(height: 14),
+                          const SizedBox(height: 12),
                           Row(
                             children: [
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () {
-                                    setState(() {
-                                      _completedSteps = 1;
-                                    });
+                                    setState(() => _progressPercent = 15);
                                     _startProcessing();
                                   },
                                   icon: const Icon(Icons.refresh_rounded, size: 16),
@@ -311,133 +448,67 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                     const SizedBox(height: 18),
                   ],
 
-                  // ── 6 Step Progress Cards ───────────────────────────────────
-                  _buildStepCard(
-                    stepNumber: 1,
-                    title: 'Photos received & analyzed',
-                    subtitle: 'Angles captured and image quality verified',
-                    isCompleted: activeStepCount >= 1,
-                    isActive: activeStepCount == 0,
-                    completedBadge: '100%',
-                  ),
-                  const SizedBox(height: 10),
-
-                  _buildStepCard(
-                    stepNumber: 2,
-                    title: 'Voice notes transcribed',
-                    subtitle: 'Speech-to-text transcription via Whisper / Bhashini',
-                    isCompleted: activeStepCount >= 2,
-                    isActive: activeStepCount == 1,
-                    completedBadge: 'Done',
-                  ),
-                  const SizedBox(height: 10),
-
-                  _buildStepCard(
-                    stepNumber: 3,
-                    title: 'Craft attributes extracted',
-                    subtitle: 'Analyzing materials, craft cluster, and dimensions',
-                    isCompleted: activeStepCount >= 3,
-                    isActive: activeStepCount == 2,
-                    completedBadge: 'Done',
-                  ),
-                  const SizedBox(height: 10),
-
-                  _buildStepCard(
-                    stepNumber: 4,
-                    title: 'Creating bilingual descriptions',
-                    subtitle: 'Writing Hindi & English artisan storytelling...',
-                    isCompleted: activeStepCount >= 4,
-                    isActive: activeStepCount == 3,
-                    activeBadge: 'Writing',
-                    completedBadge: 'Done',
-                  ),
-                  const SizedBox(height: 10),
-
-                  _buildStepCard(
-                    stepNumber: 5,
-                    title: 'Suggesting category & pricing',
-                    subtitle: 'Fair artisan rate corridor computed from raw material & labor',
-                    isCompleted: activeStepCount >= 5,
-                    isActive: activeStepCount == 4,
-                    activeBadge: 'Pricing',
-                    completedBadge: 'Done',
-                  ),
-                  const SizedBox(height: 10),
-
-                  _buildStepCard(
-                    stepNumber: 6,
-                    title: 'Preparing marketplace listing',
-                    subtitle: 'Formatting verified ONDC Beckn catalog data',
-                    isCompleted: activeStepCount >= 6,
-                    isActive: activeStepCount == 5,
-                    activeBadge: 'Listing',
-                    completedBadge: 'Done',
-                  ),
-                  const SizedBox(height: 24),
-
-                  // ── Footer Status ───────────────────────────────────────────
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(isDone ? '✅ ' : '⏳ ', style: const TextStyle(fontSize: 16)),
-                      Text(
-                        isDone
-                            ? 'Ready! सूची तैयार है'
-                            : (isError ? 'Action required • नीचे चुनें' : 'Almost ready... लगभग तैयार है'),
-                        style: AppTextStyles.label.copyWith(
-                          color: isDone ? AppColors.primaryTeal : AppColors.secondaryTerracotta,
-                          fontWeight: FontWeight.bold,
+                  // ── Bottom Action Button ──────────────────────────────────
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: isDone
+                          ? _navigateToListingPreview
+                          : (isError ? _createManualDraftAndProceed : null),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDone ? AppColors.primaryTeal : AppColors.primaryDark,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.black12,
+                        disabledForegroundColor: Colors.black38,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        elevation: 0,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // ── Primary Action Button ───────────────────────────────────
-                  ElevatedButton(
-                    onPressed: isDone
-                        ? _navigateToListingPreview
-                        : (isError ? _createManualDraftAndProceed : null),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDone ? AppColors.primaryTeal : AppColors.primaryDark,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.black12,
-                      disabledForegroundColor: Colors.black38,
-                      minimumSize: const Size(double.infinity, 52),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          isDone
-                              ? 'View Listing Preview → सूची देखें'
-                              : (isError ? 'Open Draft Listing • ड्राफ्ट खोलें' : 'Analyzing craft... कृपया प्रतीक्षा करें'),
-                          style: AppTextStyles.buttonLabel.copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (!isDone && !isError) ...[
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                          ],
+                          Text(
+                            isDone
+                                ? 'View Listing Preview → सूची देखें'
+                                : (isError
+                                    ? 'Open Draft Listing • ड्राफ्ट खोलें'
+                                    : 'Processing craft details... प्रतीक्षा करें'),
+                            style: AppTextStyles.buttonLabel.copyWith(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        if (isDone) ...[
-                          const SizedBox(width: 6),
-                          const Icon(Icons.arrow_forward_rounded, size: 18),
+                          if (isDone) ...[
+                            const SizedBox(width: 6),
+                            const Icon(Icons.arrow_forward_rounded, size: 18),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
 
                   Text(
-                    'All artisan work is safely stored on your device',
+                    '🔒 All artisan photos & voice recordings are saved locally',
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.textSecondary,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),
@@ -447,29 +518,31 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     );
   }
 
-  // ── Circular Image Frame with Dashed Radial Outer Ring ───────────────────────────
-  Widget _buildCircularPreview(String? localImagePath) {
-    const double size = 160;
+  // ── Hero Craft Photo with Animated Glowing Ambient Ring ───────────────────
+  Widget _buildHeroCraftPreview(String? localImagePath, bool isDone) {
+    const double size = 150;
     return Center(
       child: Stack(
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: [
-          // Dashed Outer Ring
+          // Ambient Breathing Outer Ring
           RotationTransition(
-            turns: _dashPulse,
+            turns: _pulseController,
             child: SizedBox(
-              width: size + 24,
-              height: size + 24,
+              width: size + 28,
+              height: size + 28,
               child: CustomPaint(
                 painter: _DashedCirclePainter(
-                  color: AppColors.primaryTeal.withValues(alpha: 0.6),
+                  color: isDone
+                      ? AppColors.primaryTeal
+                      : AppColors.secondaryTerracotta.withValues(alpha: 0.6),
                 ),
               ),
             ),
           ),
 
-          // Circular Image Container
+          // Craft Image
           Container(
             width: size,
             height: size,
@@ -477,8 +550,9 @@ class _ProcessingScreenState extends State<ProcessingScreen>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.textPrimary.withValues(alpha: 0.1),
-                  blurRadius: 16,
+                  color: (isDone ? AppColors.primaryTeal : AppColors.secondaryTerracotta)
+                      .withValues(alpha: 0.2),
+                  blurRadius: 18,
                   offset: const Offset(0, 4),
                 ),
               ],
@@ -496,7 +570,7 @@ class _ProcessingScreenState extends State<ProcessingScreen>
             ),
           ),
 
-          // Bottom Pill: "● AI Crafting"
+          // Floating Status Pill
           Positioned(
             bottom: -10,
             child: Container(
@@ -504,10 +578,12 @@ class _ProcessingScreenState extends State<ProcessingScreen>
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppColors.cardBorder),
+                border: Border.all(
+                  color: isDone ? AppColors.primaryTeal : AppColors.cardBorder,
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.textPrimary.withValues(alpha: 0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -516,18 +592,19 @@ class _ProcessingScreenState extends State<ProcessingScreen>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: const BoxDecoration(
-                      color: AppColors.tertiarySaffron,
-                      shape: BoxShape.circle,
-                    ),
+                  Icon(
+                    isDone ? Icons.check_circle_rounded : Icons.auto_fix_high_rounded,
+                    size: 14,
+                    color: isDone ? AppColors.primaryTeal : AppColors.secondaryTerracotta,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   Text(
-                    'AI Crafting',
-                    style: AppTextStyles.labelSmall.copyWith(color: AppColors.textPrimary),
+                    isDone ? 'Craft Ready • पूर्ण हुआ' : 'AI Craft Studio',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: isDone ? AppColors.primaryTeal : AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
@@ -538,158 +615,36 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     );
   }
 
-  // ── Step Card Widget ───────────────────────────────────────────────────────
-  Widget _buildStepCard({
-    required int stepNumber,
-    required String title,
-    required String subtitle,
-    required bool isCompleted,
-    required bool isActive,
-    String? activeBadge,
-    required String completedBadge,
-  }) {
-    Color cardBg = Colors.white;
-    Color borderColor = AppColors.cardBorder;
-
-    if (isActive) {
-      cardBg = const Color(0xFFFDF1EC);
-      borderColor = AppColors.secondaryTerracotta.withValues(alpha: 0.35);
-    } else if (!isCompleted) {
-      cardBg = const Color(0xFFFAF6F2);
+  String _getStageHeadline(ProcessingStage stage) {
+    switch (stage) {
+      case ProcessingStage.imageProcessing:
+        return 'Enhancing Studio Photography • फोटो संपादन';
+      case ProcessingStage.voiceProcessing:
+        return 'Transcribing Artisan Speech • आवाज़ का विश्लेषण';
+      case ProcessingStage.pricing:
+        return 'Calculating Fair Price • उचित मूल्य निर्धारण';
+      case ProcessingStage.done:
+        return 'Listing Completed • कैटलॉग तैयार';
+      case ProcessingStage.error:
+        return 'Attention Needed • सहायता आवश्यक';
+      default:
+        return 'Analyzing Craft Details • विश्लेषण जारी';
     }
+  }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        children: [
-          if (isCompleted)
-            Container(
-              width: 26,
-              height: 26,
-              decoration: const BoxDecoration(
-                color: AppColors.primaryTeal,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.check_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            )
-          else if (isActive)
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                color: AppColors.primaryTeal.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Center(
-                child: SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primaryTeal,
-                  ),
-                ),
-              ),
-            )
-          else
-            Container(
-              width: 26,
-              height: 26,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.textSecondary.withValues(alpha: 0.35),
-                  width: 1.5,
-                ),
-              ),
-            ),
-          const SizedBox(width: 12),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: AppTextStyles.label.copyWith(
-                    color: isCompleted || isActive
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
-                    fontWeight: isCompleted || isActive
-                        ? FontWeight.w700
-                        : FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: AppTextStyles.caption.copyWith(
-                    color: isActive
-                        ? AppColors.secondaryTerracotta
-                        : AppColors.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-
-          if (isCompleted)
-            Text(
-              completedBadge,
-              style: AppTextStyles.labelSmall.copyWith(
-                color: AppColors.primaryTeal,
-                fontWeight: FontWeight.w700,
-              ),
-            )
-          else if (isActive && activeBadge != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFBECE5),
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 5,
-                    height: 5,
-                    decoration: const BoxDecoration(
-                      color: AppColors.secondaryTerracotta,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    activeBadge,
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.secondaryTerracotta,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            Text(
-              'Pending',
-              style: AppTextStyles.caption.copyWith(
-                color: AppColors.textSecondary.withValues(alpha: 0.6),
-                fontSize: 11,
-              ),
-            ),
-        ],
-      ),
-    );
+  String _getStageDetail(ProcessingStage stage) {
+    switch (stage) {
+      case ProcessingStage.imageProcessing:
+        return 'Preparing studio photography for buyer apps...';
+      case ProcessingStage.voiceProcessing:
+        return 'Transcribing voice notes and extracting craft attributes...';
+      case ProcessingStage.pricing:
+        return 'Computing statutory floor & fair market corridor...';
+      case ProcessingStage.done:
+        return 'All product details and fair pricing are ready.';
+      default:
+        return 'Formatting Beckn ONDC schema and attributes...';
+    }
   }
 }
 

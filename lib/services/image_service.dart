@@ -48,9 +48,30 @@ class ImageService {
   }
 
   Future<void> dispose() async {
+    try {
+      await _cameraController?.setFlashMode(FlashMode.off);
+    } catch (_) {}
     await _cameraController?.dispose();
     _cameraController = null;
     _isInitialized = false;
+  }
+
+  /// Toggle hardware flash mode (torch for illumination, fallback to always/off).
+  Future<void> setFlashMode(bool enable) async {
+    if (_cameraController == null || !_isInitialized) return;
+    try {
+      if (enable) {
+        try {
+          await _cameraController!.setFlashMode(FlashMode.torch);
+        } catch (_) {
+          await _cameraController!.setFlashMode(FlashMode.always);
+        }
+      } else {
+        await _cameraController!.setFlashMode(FlashMode.off);
+      }
+    } catch (e) {
+      debugPrint('[ImageService] setFlashMode error: $e');
+    }
   }
 
   /// Capture a photo from the live viewfinder

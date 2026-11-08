@@ -27,6 +27,19 @@ class _CatalogScreenState extends State<CatalogScreen> {
   bool _isPublishing = false;
   int? _overridePrice;
   String _selectedTier = 'fair'; // 'floor' | 'fair' | 'premium'
+  CatalogController? _catalogCtrl;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _catalogCtrl = context.read<CatalogController>();
+  }
+
+  @override
+  void dispose() {
+    _catalogCtrl?.stopReadback();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -230,6 +243,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 }
 
   void _navigateBackToExplore(BuildContext context) {
+    _catalogCtrl?.stopReadback();
     Navigator.of(context).pushNamedAndRemoveUntil(
       AppRoutes.explore,
       (route) => false,
@@ -1042,85 +1056,239 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 16),
 
-          // ── TACTILE QUANTITY SELECTOR (Pill Chips: 1, 2, 5, 10 + Stepper) ──
-          Text(
-            'AVAILABLE STOCK / उपलब्ध मात्रा',
-            style: AppTextStyles.caption.copyWith(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: AppColors.secondaryTerracotta,
-              letterSpacing: 0.6,
-            ),
-          ),
-          const SizedBox(height: 8),
-
+          // ── TACTILE QUANTITY SELECTOR (Pill Chips: 1, 2, 5, 10, 25, 50 + Custom Numeric Entry) ──
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              ...[1, 2, 5, 10].map((qty) {
-                final isSelected = _quantity == qty;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: GestureDetector(
-                    onTap: () => _setQuantity(qty, item, context.read<CatalogController>()),
-                    child: Container(
-                      width: 42,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppColors.primaryTeal : Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isSelected ? AppColors.primaryTeal : AppColors.cardBorder,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        '$qty',
-                        style: AppTextStyles.label.copyWith(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected ? Colors.white : AppColors.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-              const Spacer(),
-
-              // Stepper for custom counts
-              Container(
-                height: 38,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.cardBorder),
+              Text(
+                'AVAILABLE STOCK / उपलब्ध मात्रा',
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.secondaryTerracotta,
+                  letterSpacing: 0.6,
                 ),
+              ),
+              GestureDetector(
+                onTap: () => _showCustomQuantityDialog(context, item, context.read<CatalogController>()),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        if (_quantity > 1) {
-                          _setQuantity(_quantity - 1, item, context.read<CatalogController>());
-                        }
-                      },
-                      child: const Icon(Icons.remove, size: 16, color: AppColors.textPrimary),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: Text(
-                        '$_quantity',
-                        style: AppTextStyles.label.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
+                    const Icon(Icons.edit_outlined, size: 13, color: AppColors.primaryTeal),
+                    const SizedBox(width: 3),
+                    Text(
+                      'संख्या लिखें • Enter Custom',
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.primaryTeal,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
                       ),
-                    ),
-                    GestureDetector(
-                      onTap: () => _setQuantity(_quantity + 1, item, context.read<CatalogController>()),
-                      child: const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
                     ),
                   ],
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ...[1, 2, 5, 10, 25, 50].map((qty) {
+                  final isSelected = _quantity == qty;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: GestureDetector(
+                      onTap: () => _setQuantity(qty, item, context.read<CatalogController>()),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primaryTeal : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primaryTeal : AppColors.cardBorder,
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '$qty',
+                          style: AppTextStyles.label.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isSelected ? Colors.white : AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+
+                // Custom Chip
+                GestureDetector(
+                  onTap: () => _showCustomQuantityDialog(context, item, context.read<CatalogController>()),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: ![1, 2, 5, 10, 25, 50].contains(_quantity)
+                          ? AppColors.primaryTeal
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: ![1, 2, 5, 10, 25, 50].contains(_quantity)
+                            ? AppColors.primaryTeal
+                            : AppColors.cardBorder,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.edit_note_rounded,
+                          size: 15,
+                          color: ![1, 2, 5, 10, 25, 50].contains(_quantity)
+                              ? Colors.white
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          ![1, 2, 5, 10, 25, 50].contains(_quantity) ? '$_quantity' : 'Custom',
+                          style: AppTextStyles.label.copyWith(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: ![1, 2, 5, 10, 25, 50].contains(_quantity)
+                                ? Colors.white
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // Stepper for custom counts
+                Container(
+                  height: 38,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          if (_quantity > 1) {
+                            _setQuantity(_quantity - 1, item, context.read<CatalogController>());
+                          }
+                        },
+                        child: const Icon(Icons.remove, size: 16, color: AppColors.textPrimary),
+                      ),
+                      GestureDetector(
+                        onTap: () => _showCustomQuantityDialog(context, item, context.read<CatalogController>()),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: Text(
+                            '$_quantity',
+                            style: AppTextStyles.label.copyWith(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                              decorationStyle: TextDecorationStyle.dotted,
+                            ),
+                          ),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => _setQuantity(_quantity + 1, item, context.read<CatalogController>()),
+                        child: const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Custom Quantity Dialog (for large quantities like 100, 250, 500) ─────────
+  void _showCustomQuantityDialog(BuildContext context, CatalogItem? item, CatalogController? catalogCtrl) {
+    final controller = TextEditingController(text: '$_quantity');
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.inventory_2_outlined, color: AppColors.primaryTeal),
+            const SizedBox(width: 8),
+            Text(
+              'उपलब्ध स्टॉक • Set Stock',
+              style: AppTextStyles.label.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'आपके पास कुल कितने पीस उपलब्ध हैं? (उदा: 50, 100, 500)',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'स्टॉक मात्रा / Total Units',
+                hintText: 'उदा: 100',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.tag_rounded),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [10, 25, 50, 100, 250, 500].map((quick) {
+                return ActionChip(
+                  label: Text('+$quick'),
+                  onPressed: () {
+                    final curr = int.tryParse(controller.text) ?? 0;
+                    controller.text = '${curr + quick}';
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('रद्द करें • Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final val = int.tryParse(controller.text);
+              if (val != null && val > 0) {
+                _setQuantity(val, item, catalogCtrl);
+              }
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryTeal,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('लागू करें • Apply'),
           ),
         ],
       ),
@@ -1824,19 +1992,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.rocket_launch_rounded, size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            'ओएनडीसी पर प्रकाशित करें • Publish to ONDC',
-                            style: AppTextStyles.buttonLabel.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.rocket_launch_rounded, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'ओएनडीसी पर प्रकाशित करें • Publish to ONDC',
+                              style: AppTextStyles.buttonLabel.copyWith(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
               ),
             ),

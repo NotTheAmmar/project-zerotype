@@ -248,7 +248,7 @@ class CatalogController extends ChangeNotifier {
   }
 
   Future<void> stopReadback() async {
-    await _audioService.stopTts();
+    await _audioService.stopAllAudio();
     _isSpeaking = false;
     notifyListeners();
   }
