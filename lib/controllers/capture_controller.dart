@@ -52,10 +52,11 @@ class CaptureController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleFlash() {
+  Future<void> toggleFlash() async {
     _flashOn = !_flashOn;
     HapticFeedback.selectionClick();
     notifyListeners();
+    await _imageService.setFlashMode(_flashOn);
   }
 
   void toggleGrid() {

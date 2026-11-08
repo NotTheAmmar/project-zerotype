@@ -21,25 +21,16 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   int _bottomNavIndex = 0;
-  int _selectedCategoryIndex = 0;
   final AudioService _audioService = AudioService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isVoiceSearching = false;
   bool _isPlayingStory = false;
 
-  final List<String> _categories = [
-    'All Crafts',
-    'Pottery & Clay',
-    'Clothing & Weaves',
-    'Home Decor',
-    'Tribal Metalcraft',
-    'Festive Special',
-  ];
-
   @override
   void dispose() {
     _searchController.dispose();
+    _audioService.stopAllAudio();
     _audioService.dispose();
     super.dispose();
   }
@@ -65,50 +56,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
             materials.contains(q);
         if (!matches) return false;
       }
-
-      // 2. Category Filter
-      if (_selectedCategoryIndex == 0) return true;
-      final selectedCat = _categories[_selectedCategoryIndex].toLowerCase();
-      final cat = (item.craftAttributes?.category ?? '').toLowerCase();
-      final title = (item.titleEn ?? '').toLowerCase();
-      if (selectedCat.contains('pottery') &&
-          (cat.contains('pottery') ||
-              cat.contains('clay') ||
-              title.contains('diya') ||
-              title.contains('pot') ||
-              title.contains('cup'))) {
-        return true;
-      }
-      if (selectedCat.contains('clothing') &&
-          (cat.contains('apparel') ||
-              cat.contains('cloth') ||
-              cat.contains('sari') ||
-              cat.contains('shawl') ||
-              title.contains('kurta') ||
-              title.contains('silk'))) {
-        return true;
-      }
-      if (selectedCat.contains('decor') &&
-          (cat.contains('decor') ||
-              title.contains('lamp') ||
-              title.contains('vase') ||
-              title.contains('hanging'))) {
-        return true;
-      }
-      if (selectedCat.contains('metal') &&
-          (cat.contains('metal') ||
-              cat.contains('brass') ||
-              cat.contains('bell') ||
-              title.contains('brass'))) {
-        return true;
-      }
-      if (selectedCat.contains('festive') &&
-          (title.contains('diya') ||
-              title.contains('puja') ||
-              title.contains('festive'))) {
-        return true;
-      }
-      return false;
+      return true;
     }).toList();
 
     return Scaffold(
@@ -139,10 +87,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       child: _buildSearchBar(context),
                     ),
 
-                    // ── Category Filter Pills ─────────────────────────────
-                    SliverToBoxAdapter(
-                      child: _buildCategoryFilters(),
-                    ),
                     const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
                     // ── Section Header ────────────────────────────────────
@@ -461,49 +405,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
     } catch (e) {
       debugPrint('[VoiceSearch] error: $e');
     } finally {
+      _audioService.stopAllAudio();
       if (mounted) {
         setState(() => _isVoiceSearching = false);
       }
     }
   }
 
-  // ── Category Filter Pills ──────────────────────────────────────────────────
-  Widget _buildCategoryFilters() {
-    return SizedBox(
-      height: 38,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _categories.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
-        itemBuilder: (context, index) {
-          final isSelected = _selectedCategoryIndex == index;
-          return ChoiceChip(
-            label: Text(_categories[index]),
-            selected: isSelected,
-            onSelected: (selected) {
-              if (selected) {
-                setState(() => _selectedCategoryIndex = index);
-              }
-            },
-            selectedColor: AppColors.primaryTeal,
-            backgroundColor: Colors.white,
-            labelStyle: AppTextStyles.labelSmall.copyWith(
-              color: isSelected ? Colors.white : AppColors.textPrimary,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            ),
-            side: BorderSide(
-              color: isSelected ? AppColors.primaryTeal : AppColors.cardBorder,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            showCheckmark: false,
-          );
-        },
-      ),
-    );
-  }
+
 
   // ── Section Header ─────────────────────────────────────────────────────────
   Widget _buildSectionHeader(int itemCount) {
@@ -1046,7 +955,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      _audioService.stopAllAudio();
+      if (mounted) setState(() => _isPlayingStory = false);
+    });
   }
 
   Widget _buildProductImage(CatalogItem item) {

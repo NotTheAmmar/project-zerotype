@@ -131,6 +131,15 @@ class AudioService {
     await _tts.stop();
   }
 
+  Future<void> stopAllAudio() async {
+    try {
+      await stopPlayback();
+    } catch (_) {}
+    try {
+      await stopTts();
+    } catch (_) {}
+  }
+
   /// Speak an error / warning prompt in Hindi
   Future<void> speakText(String hindiText) async {
     try {
