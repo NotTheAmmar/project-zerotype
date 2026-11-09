@@ -27,7 +27,6 @@ from app.catalog_store import (
     save_active_listing_async,
     unlist_listing_async,
 )
-from app.config import get_settings
 from app.db import upload_image_to_storage
 from app.schemas import ArtisanListingPayload
 

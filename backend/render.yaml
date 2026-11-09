@@ -1,25 +1,22 @@
 services:
   - type: web
-    name: bazaarsetu-bpp
+    name: project-zerotype-bpp
     runtime: python
-    buildCommand: "pip install -r backend/requirements.txt"
-    startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"
     plan: free
-    region: oregon
+    region: singapore
     envVars:
       - key: BPP_SUBSCRIBER_ID
-        value: bazaarsetu-bpp.onrender.com
+        value: bazaarsetu.bpp.org
       - key: BPP_PUBLIC_URI
-        value: https://bazaarsetu-bpp.onrender.com
-      - key: BPP_COUNTRY
-        value: IND
-      - key: BPP_CITY
-        value: std:080
-      - key: BPP_SIGNING_PRIVATE_KEY
-        generateValue: false
-      - key: BPP_SIGNING_PUBLIC_KEY
-        generateValue: false
-      - key: BPP_ENCRYPTION_PRIVATE_KEY
-        generateValue: false
-      - key: BPP_ENCRYPTION_PUBLIC_KEY
-        generateValue: false
+        sync: false # Set to https://<your-render-app-name>.onrender.com/beckn
+      - key: DATABASE_URL
+        sync: false # Set to Supabase IPv4 Pooler: postgresql+asyncpg://postgres.[REF]:[PASS]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+      - key: SUPABASE_URL
+        sync: false # e.g. https://[REF].supabase.co
+      - key: SUPABASE_KEY
+        sync: false # Service role secret
+      - key: SUPABASE_STORAGE_BUCKET
+        value: craft-images
