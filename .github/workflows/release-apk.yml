@@ -3,13 +3,18 @@ name: Build Release APK
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+*'
+      - 'v*'
   workflow_dispatch:
     inputs:
       version:
-        description: 'Semantic Version (e.g. 1.0.0). Leave blank to use pubspec.yaml version.'
+        description: 'Semantic Version (e.g. 0.1.0-alpha.1 or 1.0.0). Leave blank to use pubspec.yaml version.'
         required: false
         default: ''
+      prerelease:
+        description: 'Mark as Pre-release on GitHub (auto-detected if version contains alpha/beta/rc)'
+        required: false
+        type: boolean
+        default: false
       create_release:
         description: 'Publish as GitHub Release'
         required: true
@@ -42,27 +47,35 @@ jobs:
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             RAW_VER="${GITHUB_REF_NAME#v}"
           else
-            # Extract from pubspec.yaml
-            RAW_VER=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+            # Extract version from pubspec.yaml (e.g. 1.0.0+1 -> 1.0.0)
+            RAW_VER=$(grep '^version:' pubspec.yaml | sed -E 's/version: *([0-9]+\.[0-9]+\.[0-9]+[^ ]*)\+[0-9]+/\1/' | sed -E 's/version: *//')
           fi
 
-          # 2. Strict SemVer validation (MAJOR.MINOR.PATCH)
+          # 2. Strict SemVer validation (accepts standard X.Y.Z or X.Y.Z-prerelease)
           if [[ ! "$RAW_VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-            echo "::error::Version '$RAW_VER' does not match strict Semantic Versioning (X.Y.Z)."
+            echo "::error::Version '$RAW_VER' does not match Semantic Versioning (e.g., 1.0.0 or 0.1.0-alpha.1)."
             exit 1
           fi
 
-          # 3. Monotonically increasing build number
+          # 3. Detect pre-release status
+          IS_PRERELEASE="false"
+          if [[ "${{ github.event.inputs.prerelease }}" == "true" ]] || [[ "$RAW_VER" =~ (alpha|beta|rc|dev|preview) ]]; then
+            IS_PRERELEASE="true"
+          fi
+
+          # 4. Monotonically increasing build number
           BUILD_NUM="${{ github.run_number }}"
           APK_BASENAME="BazaarSetu-v${RAW_VER}-build${BUILD_NUM}"
 
           echo "version_name=${RAW_VER}" >> "$GITHUB_OUTPUT"
           echo "build_number=${BUILD_NUM}" >> "$GITHUB_OUTPUT"
           echo "apk_basename=${APK_BASENAME}" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=${IS_PRERELEASE}" >> "$GITHUB_OUTPUT"
 
           echo "=============================================="
           echo " Building BazaarSetu Release APK"
           echo " Semantic Version : $RAW_VER"
+          echo " Pre-release      : $IS_PRERELEASE"
           echo " Build Number     : $BUILD_NUM"
           echo " Artifact Name    : ${APK_BASENAME}.apk"
           echo "=============================================="
@@ -80,7 +93,17 @@ jobs:
           cache: true
 
       - name: Prepare environment file (.env)
-        run: cp .env.example .env
+        env:
+          APP_ENV: ${{ secrets.APP_ENV }}
+        run: |
+          if [ -n "$APP_ENV" ]; then
+            echo "✓ Found repository secret APP_ENV. Injecting into .env for release build..."
+            printf '%s\n' "$APP_ENV" > .env
+          else
+            echo "⚠️ Secret APP_ENV not configured; falling back to .env.example..."
+            cp .env.example .env
+          fi
+          test -s .env && echo "✓ .env file ready ($(wc -l < .env) lines)"
 
       - name: Install dependencies
         run: flutter pub get
@@ -118,5 +141,5 @@ jobs:
             build/app/outputs/flutter-apk/${{ steps.semver.outputs.apk_basename }}.apk
             build/app/outputs/flutter-apk/${{ steps.semver.outputs.apk_basename }}.sha256
           draft: false
-          prerelease: false
+          prerelease: ${{ steps.semver.outputs.is_prerelease == 'true' }}
           generate_release_notes: true
