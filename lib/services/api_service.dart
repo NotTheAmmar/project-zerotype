@@ -70,6 +70,8 @@ abstract class ApiService {
 
   Future<bool> deleteFromOndc(String catalogId);
 
+  Future<List<CatalogItem>> fetchPublishedListings();
+
   Future<String?> uploadImage(
     String filePath, {
     String imageType = 'studio',
@@ -113,6 +115,11 @@ class MockApiService implements ApiService {
   Future<bool> deleteFromOndc(String catalogId) async {
     await Future.delayed(const Duration(milliseconds: 300));
     return true;
+  }
+
+  @override
+  Future<List<CatalogItem>> fetchPublishedListings() async {
+    return [];
   }
 
   @override
@@ -358,6 +365,34 @@ class LiveApiService implements ApiService {
       debugPrint('[LiveApiService] deleteFromOndc failed: $e');
       return false;
     }
+  }
+
+  @override
+  Future<List<CatalogItem>> fetchPublishedListings() async {
+    try {
+      final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/listings');
+      debugPrint('[LiveApiService] Fetching published listings from: $uri');
+      final response = await http
+          .get(uri, headers: {
+            'Accept': 'application/json',
+            'bypass-tunnel-reminder': 'true',
+          })
+          .timeout(AppConstants.apiTimeout);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final rawListings = data['listings'] as List<dynamic>? ?? [];
+        debugPrint('[LiveApiService] Loaded ${rawListings.length} listing(s) from BPP backend');
+        return rawListings
+            .map((item) => CatalogItem.fromBppListing(item as Map<String, dynamic>))
+            .toList();
+      } else {
+        debugPrint('[LiveApiService] fetchPublishedListings failed (${response.statusCode}): ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('[LiveApiService] fetchPublishedListings error: $e');
+    }
+    return [];
   }
 
   @override

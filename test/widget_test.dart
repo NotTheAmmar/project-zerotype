@@ -57,4 +57,45 @@ void main() {
     expect(find.text('BazaarSetu'), findsOneWidget);
     expect(find.text('Karigar Hub'), findsOneWidget);
   });
+
+  testWidgets('BazaarSetu first launch opens language selection screen', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+
+    final imageService = ImageService();
+    final audioService = AudioService();
+    final storageService = StorageService();
+    final apiService = ApiService();
+    final languageCtrl = LanguageController();
+    await languageCtrl.loadLanguagePreference();
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: languageCtrl),
+          ChangeNotifierProvider(
+            create: (_) => CaptureController(imageService: imageService),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => VoiceController(audioService: audioService),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => CatalogController(
+              apiService: apiService,
+              audioService: audioService,
+              storageService: storageService,
+            ),
+          ),
+          ChangeNotifierProvider(
+            create: (_) => PricingController(),
+          ),
+        ],
+        child: const BazaarSetuApp(),
+      ),
+    );
+
+    await tester.pump();
+
+    // Verify Language selection title is shown on first launch
+    expect(find.text('अपनी क्षेत्रीय भाषा चुनें\nChoose Your Regional Language'), findsOneWidget);
+  });
 }

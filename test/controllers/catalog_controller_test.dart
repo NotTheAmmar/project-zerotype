@@ -59,6 +59,9 @@ class FakeApiService implements ApiService {
   Future<bool> deleteFromOndc(String catalogId) async => true;
 
   @override
+  Future<List<CatalogItem>> fetchPublishedListings() async => [];
+
+  @override
   Future<String?> uploadImage(
     String filePath, {
     String imageType = 'studio',
