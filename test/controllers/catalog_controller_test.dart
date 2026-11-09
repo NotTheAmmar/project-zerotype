@@ -169,7 +169,7 @@ void main() {
       await controller.applyVoiceUpdate('कीमत ₹650 कर दो');
 
       expect(controller.currentItem!.pricing?.sellerProposedPrice, equals(650));
-      expect(controller.currentItem!.pricing?.fairPrice, equals(990));
+      expect(controller.currentItem!.pricing?.fairPrice, equals(650));
     });
   });
 }

@@ -23,17 +23,19 @@ Bounding Geometry             MIC opened (No 15s limit)         Floor/Fair/Premi
 1. **Vision / Camera Modality (Primary Anchor)**:
    - Guided multi-angle capture (Front, Side, Back, Detail slots).
    - Real-time heuristic/vision classifier detects craft category (`ONDC:RET12` Apparel, `ONDC:RET16` Pottery & Crafts, `ONDC:RET10` Packaged Food).
-2. **Category-Adaptive Audio Anchor (Speech Input)**:
-   - Plays a 5–8s localized Indic dialect question tailored to the detected category (e.g. for pottery: *"यह दीया किस मिट्टी से बना है और इसपर क्या नक्काशी है?"*).
+2. **Guided 4-Step Voice Interview (Speech Input)**:
+   - Structured 4-stage guided prompts: (1) Craft & Material, (2) Dimensions & Weight with manual fallback dialog, (3) Price & Labor Effort, (4) Artisan Story & Heritage.
    - Mic opens for open-ended spoken narration (unlimited recording duration; no 15-second cap).
-   - Speech transcribed via Bhashini ASR / Whisper and structured via **Qwen** (Qwen-2.5-32B-Instruct via Groq free API or dedicated backend).
-3. **Tactile Zero-Typing Controls (Quantities & Pricing)**:
-   - Available stock configured via tactile preset pills (`[1]`, `[2]`, `[5]`, `[10]`) + quick stepper.
-   - Pricing selected via 3 Fair-Price Corridor Cards (**Floor Price**, **Fair Price**, **Premium Price**) with `[±₹50]` quick adjustment nudges.
-4. **Automated Background Prefill**:
+   - Speech transcribed via Bhashini ASR / Whisper and structured via **Qwen** (Qwen-2.5 / Qwen-3.8 via Groq free API or dedicated backend).
+3. **Tactile & Direct Zero-Typing Controls (Quantities & Pricing)**:
+   - Available stock configured via tactile preset pills (`[1]`, `[2]`, `[5]`, `[10]`, `[25]`, `[50]`) or custom quantity dialog with batch chips (`+10` to `+500`).
+   - Pricing selected via 3 Fair-Price Corridor Cards (**Floor Price**, **Fair Price**, **Premium Price**) with `[±₹50]` quick adjustment nudges, or direct **Set Exact Price** numeric entry. Stated selling prices are respected directly.
+4. **Automated Background Prefill & Persistence**:
    - Zero typing for statutory, regulatory, and logistics fields. Automated merchant KYC prefill (`country_of_origin="IND"`, `time_to_ship="PT24H"`, `return_window="P7D"`, `cancellable=true`, `contact_details_consumer_care`).
+   - Active catalogs and drafts persistently saved in Supabase PostgreSQL with real-time in-memory caching for sub-millisecond Beckn discovery responses.
 5. **Auditory Verification & Readback Loop**:
    - Readback in artisan's native language (*"आपका कैटलॉग तैयार है: $cat $title, कीमत ₹$price। क्या यह सही है?"*).
+   - Audio halts safely immediately when leaving or dismissing screens.
    - Instant 1-tap broadcast to ONDC BPP.
 
 ---

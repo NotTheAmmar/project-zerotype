@@ -69,7 +69,7 @@ Expected startup output:
 22:58:00  INFO     bazaarsetu_bpp —   Subscriber ID : bazaarsetu.bpp.org
 22:58:00  INFO     bazaarsetu_bpp —   Public URI    : http://localhost:8000/beckn
 22:58:00  INFO     bazaarsetu_bpp —   Signing Key   : ⚠ NOT SET (mock mode)
-22:58:00  INFO     bazaarsetu_bpp —   Catalog store : 1 listing(s) pre-loaded
+22:58:00  INFO     bazaarsetu_bpp —   Catalog store : 0 listing(s) pre-loaded (ready for artisan catalogs)
 22:58:00  INFO     bazaarsetu_bpp — ============================================================
 INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
@@ -81,13 +81,13 @@ Browse to **http://localhost:8000/docs** for interactive Swagger UI.
 ## Step 4 — Verify Endpoints
 
 ```bash
-# Health check
+# Health check (supports GET and HEAD for UptimeRobot monitoring)
 curl http://localhost:8000/
-# → {"status":"ok","service":"BazaarSetu BPP","active_listings":1,...}
+# → {"status":"ok","service":"BazaarSetu BPP","active_listings":0,...}
 
-# Fetch the pre-loaded Chanderi Silk listing
+# Fetch active artisan listings
 curl http://localhost:8000/api/v1/bpp/listings
-# → {"count":1,"listings":[{"catalog_id":"cat_chanderi_001",...}]}
+# → {"count":0,"listings":[]}
 
 # Simulate a Beckn /search from Gateway/BAP
 curl -X POST http://localhost:8000/beckn/search \

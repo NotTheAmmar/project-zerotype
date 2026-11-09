@@ -781,6 +781,7 @@ Artisan update instruction:
     final pricing = PricingCorridor.compute(
       rawMaterialCost: rawCost,
       laborDays: laborDays,
+      itemsProduced: (spokenQty != null && spokenQty > 0) ? spokenQty : 1,
       sellerProposedPrice: spokenPrice ?? 0,
     );
 

@@ -56,31 +56,28 @@ Traditional artisans and handloom weavers across India face severe barriers when
    - Offers 6 Indic regional languages: Hindi, Marathi, Gujarati, Bengali, Tamil, Telugu.
    - Spoken audio greeting button playing native guidance.
 2. **Explore Screen (`/`)**:
-   - Filter crafts by category pills (`All Crafts`, `Pottery & Clay`, `Clothing & Weaves`, `Home Decor`, `Tribal Metalcraft`, `Festive Special`).
-   - Product cards with craft provenance, GI tags, and direct Karigar Fair Pledge banner.
-   - **Product Quick View Modal**: Preview craft details, listen to the Karigar story audio snippet with play/pause, add to Guild Basket, or inspect full ONDC catalog node.
+   - Streamlined artisan catalog feed displaying active and published crafts with provenance, GI tags, and direct Karigar Fair Pledge banner.
+   - **Product Quick View Modal**: Preview craft details, listen to the Karigar story audio snippet with automatic lifecycle stop on dismissal, or inspect full ONDC catalog node.
 3. **Capture Screen (`/capture`)**:
-   - 4:3 Camera Viewfinder with golden corner brackets, crosshairs, grid, and flash controls.
+   - 4:3 Camera Viewfinder with golden corner brackets, crosshairs, grid, and hardware torch flash controls.
    - Real-time detection status chip (`Apparel RET12`, `Pottery RET16`, `Food RET10`).
    - Spoken tips banner (*"दीया बीच में रखें और अच्छी रोशनी रखें"*).
    - 4-slot multi-angle capture tracker (Front, Side, Back, Detail).
 4. **Voice Screen (`/voice`)**:
-   - Plays localized category-adaptive question via TTS before opening the mic.
-   - Open-ended recording (unlimited duration; no 15-second cap).
-   - Real-time 30-bar waveform and silence warning.
+   - **Guided 4-Step Voice Interview**: Step 1: Product & Craft Details; Step 2: Dimensions & Weight (with optional manual dimensions fallback); Step 3: Pricing & Labor; Step 4: Story & Heritage.
+   - Category-adaptive audio question prompt before each step.
+   - Open-ended recording (no arbitrary 15s limit) with 30-bar live waveform.
 5. **Processing Screen (`/processing`)**:
-   - Studio background matting via BiRefNet backend.
-   - Speech-to-text via Bhashini ASR.
-   - Entity extraction and schema structuring via **Qwen-2.5-32B-Instruct**.
-   - Readback TTS audio generation.
+   - Modern Karigar AI experience featuring artisan craft photo centerpiece with breathing glow ring.
+   - Dynamic stage indicator (transcription, studio enhancement, bilingual storytelling, statutory corridor, ONDC packaging).
+   - Sleek progress bar with smooth percentage transitions and rotating artisan wisdom tips every 3.5s.
 6. **Catalog Screen (`/catalog`)**:
-   - Raw photo vs. studio photo comparison.
-   - GI Cluster Origin badge.
-   - **Tactile Price Corridor**: Floor (₹200), Fair (₹350), Premium (₹450) cards + `[±₹50]` quick adjustment nudges.
-   - Tactile stock selection pills: `[1]`, `[2]`, `[5]`, `[10]` + stepper.
-   - Voice Edit modal drawer for spoken corrections.
-   - Audio readback banner: *"सुनें: ऑडियो पुष्टि • Listen to audio summary"*.
-   - 1-tap live publish to ONDC BPP.
+   - Bilingual presentation (English primary + regional vernacular translation directly below).
+   - High-impact photo gallery with GI Cluster Origin badge.
+   - **Tactile Price Corridor**: Floor, Fair, and Premium cards + `[±₹50]` nudges + direct exact numeric price entry.
+   - **Flexible Inventory Controls**: Tactile pills (`1`, `2`, `5`, `10`, `25`, `50`) + custom quantity dialog with batch chips (`+10`, `+25`, `+50`, `+100`, `+250`, `+500`).
+   - **Dual Editing**: Edit attributes manually or use conversational voice updates (*"कीमत ₹650 कर दो"*).
+   - **ONDC Lifecycle Management**: Publish to ONDC, auto-save drafts, unlist active listings back to draft, and audio playback that halts immediately on navigation.
 
 ---
 
