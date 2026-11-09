@@ -14,74 +14,81 @@ In professional mobile engineering, daily pull requests and commits to `main` ru
 
 ---
 
-## 🔢 2. How Strict Versioning Works (Automated)
+## 🔐 2. Production Secrets & Environment File Injection (`.env`)
 
-Android and Flutter distinguish between two version identifiers:
-* **Version Name (`versionName` / `--build-name`)**: The human-readable Semantic Version shown in app settings, ONDC network registries, and app stores (e.g., `1.0.0`, `1.1.2`).
-* **Version Code (`versionCode` / `--build-number`)**: An integer that **strictly increases monotonically** with each build. Android OS and Google Play use this integer to determine whether an APK is an upgrade over the currently installed version.
+Flutter packages the `.env` asset into the APK at compile time. To ensure release APKs contain real API credentials (`GROQ_API_KEY`, `BHASHINI_*`, `BACKEND_URL`) rather than placeholder `.env.example` values, GitHub Actions injects the repository secret **`APP_ENV`**:
 
-### Automated Version Resolution in GitHub Actions:
-Our workflow ([`.github/workflows/release-apk.yml`](file:///home/ammar/Programs/project-zerotype/.github/workflows/release-apk.yml)) automates this completely:
-
-```mermaid
-flowchart LR
-    A["Push Git Tag (e.g. v1.0.0)"] --> B["Validate SemVer (MAJOR.MINOR.PATCH)"]
-    B --> C["Inject --build-name=1.0.0"]
-    B --> D["Inject --build-number=RUN_NUMBER"]
-    C & D --> E["Compile ARM64 APK"]
-    E --> F["Generate SHA256 Checksum"]
-    F --> G["Publish GitHub Release + Attach APK"]
+### How to set the `APP_ENV` Secret:
+**Option A: 1-Click via GitHub CLI (Recommended)**:
+```bash
+# Upload your local .env as an encrypted GitHub secret
+gh secret set APP_ENV < .env
 ```
 
-1. **Tag Parsing**: When you push tag `v1.0.0`, the workflow validates that it matches strict Semantic Versioning (`^[0-9]+\.[0-9]+\.[0-9]+`).
-2. **Build Number Injection**: The workflow automatically injects GitHub's monotonically increasing `${{ github.run_number }}` as `--build-number`. You never have to manually increment build numbers in code!
-3. **Artifact Naming**: The resulting file is formatted with its version:
-   `BazaarSetu-v1.0.0-build<N>.apk`
-   `BazaarSetu-v1.0.0-build<N>.sha256`
+**Option B: Via GitHub Web Interface**:
+1. Go to repository **Settings** $\rightarrow$ **Secrets and variables** $\rightarrow$ **Actions**.
+2. Click **New repository secret**.
+3. Name: `APP_ENV`
+4. Value: Paste the full contents of your production `.env` file $\rightarrow$ **Add secret**.
+
+If `APP_ENV` is configured, GitHub Actions automatically writes it to `.env` before running `flutter build apk --release`.
 
 ---
 
-## 🚀 3. How to Trigger an APK Release
+## 🔢 3. How Strict Versioning & Alpha Releases Work
 
-You can trigger a release through either of two methods:
+Android and Flutter distinguish between two version identifiers:
+* **Version Name (`versionName` / `--build-name`)**: The human-readable Semantic Version (e.g., `0.1.0-alpha.1`, `1.0.0`).
+* **Version Code (`versionCode` / `--build-number`)**: An integer that **strictly increases monotonically** with each build (`${{ github.run_number }}`).
 
-### Method A: Via Git Tag (Recommended & Standard)
+### Alpha / Pre-Release Detection:
+When publishing an alpha, beta, or release candidate:
+- If the version name contains `alpha`, `beta`, `rc`, `dev`, or `preview` (e.g., `v0.1.0-alpha.1`), GitHub Actions automatically flags the release as a **Pre-release** on GitHub.
 
-Run these commands in your local terminal:
+```mermaid
+flowchart LR
+    A["Trigger Tag / Dispatch (e.g. v0.1.0-alpha.1)"] --> B["Validate SemVer & Detect Pre-release"]
+    B --> C["Inject Secrets (.env from APP_ENV)"]
+    C --> D["Compile ARM64 Release APK"]
+    D --> E["Generate SHA256 Checksum"]
+    E --> F["Publish GitHub Pre-Release + Attach APK"]
+```
+
+---
+
+## 🚀 4. How to Trigger an Alpha or Production Release
+
+### Method A: Via Git Tag (Recommended)
 
 ```bash
 # 1. Ensure you are on main and up to date
 git checkout main
 git pull origin main
 
-# 2. Create an annotated SemVer tag
-git tag -a v1.0.0 -m "Release v1.0.0: Initial BazaarSetu prototype release"
+# 2. Tag the release (e.g. Alpha v0.1.0-alpha.1)
+git tag -a v0.1.0-alpha.1 -m "Release v0.1.0-alpha.1: Alpha preview release"
 
-# 3. Push the tag to GitHub
-git push origin v1.0.0
+# 3. Push tag to GitHub (triggers workflow)
+git push origin v0.1.0-alpha.1
 ```
 
-That's it! GitHub Actions will immediately:
-1. Trigger the **Build Release APK** workflow.
-2. Compile the production APK.
-3. Generate the SHA-256 verification hash.
-4. Create a formal **GitHub Release** titled `BazaarSetu v1.0.0 (Build X)` with the APK and checksum attached.
+### Method B: Via GitHub CLI (Workflow Dispatch)
+
+```bash
+gh workflow run release-apk.yml -f version="0.1.0-alpha.1" -f prerelease=true
+```
+
+### Method C: Via GitHub Web Interface
+
+1. Navigate to: `https://github.com/NotTheAmmar/project-zerotype/actions/workflows/release-apk.yml`
+2. Click **Run workflow**.
+3. Version: `0.1.0-alpha.1` (or leave blank to use `pubspec.yaml`).
+4. Check **Mark as Pre-release on GitHub**.
+5. Click **Run workflow**.
 
 ---
 
-### Method B: Via GitHub Web Interface (One-Click Dispatch)
-
-If you want to trigger a build without touching the terminal:
-1. Navigate to your repository on GitHub:
-   `https://github.com/NotTheAmmar/project-zerotype/actions/workflows/release-apk.yml`
-2. In the banner, click **Run workflow**.
-3. (Optional) Enter a custom Semantic Version (e.g. `1.0.1`), or leave it blank to automatically extract the version from `pubspec.yaml`.
-4. Ensure **Publish as GitHub Release** is checked.
-5. Click the green **Run workflow** button.
-
----
-
-## 📥 4. Downloading & Installing the APK
+## 📥 5. Downloading & Installing the APK
 
 Once the workflow completes (~3 minutes):
 1. Navigate to the **Releases** tab on GitHub:

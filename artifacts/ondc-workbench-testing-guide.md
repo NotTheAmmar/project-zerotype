@@ -1,12 +1,16 @@
 # 🌐 ONDC Workbench & Beckn Protocol Testing Guide
 
-This guide explains how to test the **BazaarSetu Beckn Provider Platform (BPP)** backend against ONDC network standards using **ONDC Workbench**, **Webhook.site**, and **Curl/Postman**.
+This guide provides the complete, authoritative specification and testing workflow for certifying the **BazaarSetu Beckn Provider Platform (BPP)** backend against ONDC network standards using the **Official ONDC Workbench**, **Webhook.site**, and **Postman/Curl**.
 
 ---
 
-## 🧭 How ONDC / Beckn Discovery Works
+## 🧭 1. What is ONDC Workbench & How Discovery Works
 
-ONDC uses an **asynchronous two-hop protocol**:
+The **ONDC Developer Workbench** ([workbench.ondc.org](https://workbench.ondc.org/)) is the official testing sandbox provided by ONDC. Because joining the production ONDC network requires extensive legal and commercial accreditation, the Workbench acts as a certified **Simulated Gateway** and **Buyer App (BAP)**.
+
+Its role in BazaarSetu is to verify that our backend successfully acts as a **Beckn Provider Platform (BPP) / Seller Node**, returning compliant catalogs and meeting statutory Beckn network SLAs.
+
+### The Asynchronous Two-Hop Architecture:
 
 ```
  ┌───────────────┐           ┌────────────────┐           ┌──────────────────────┐
@@ -21,22 +25,55 @@ ONDC uses an **asynchronous two-hop protocol**:
 ```
 
 1. **Inbound `/search`**: The Buyer App or Gateway sends a discovery request.
-2. **Synchronous ACK**: BazaarSetu BPP immediately returns `{"message": {"ack": {"status": "ACK"}}}` within **< 1 second** (mandatory by ONDC SLA).
-3. **Asynchronous `/on_search`**: In a background worker, the BPP queries the Supabase database for active artisan crafts and `POST`s the complete Beckn catalog directly back to the caller's `bap_uri/on_search`.
+2. **Synchronous ACK**: BazaarSetu BPP immediately returns `{"message": {"ack": {"status": "ACK"}}}` within **< 1 second** (mandatory by Beckn SLA).
+3. **Asynchronous `/on_search`**: In a background worker, the BPP queries the database for active artisan crafts and `POST`s the complete Beckn catalog directly back to the caller's `bap_uri/on_search`.
 
 ---
 
-## ⚡ Method 1: Instant End-to-End Test (Zero Setup, 2 Minutes)
+## ⚙️ 2. Official Workbench Session Parameters
 
-You can verify the entire ONDC discovery loop right now using **Webhook.site** (a free online webhook receiver) and `curl`.
+When configuring a test session in the ONDC Developer Workbench, enter the following parameters:
+
+| Parameter | Value | Description |
+| :--- | :--- | :--- |
+| **Subscriber Type** | `BAP` | Workbench acts as a Buyer App (e.g. Paytm, Mystore) requesting catalog data. |
+| **Domain** | `ONDC:RET12` | ONDC Retail domain for **Fashion, Apparel & Handlooms** (or `ONDC:RET16` for Home Decor). |
+| **Version** | `1.2.0` | Active stable Beckn retail protocol version. |
+| **Use Case** | `FASHION` | Configures schema rules and validation checks for textiles and crafts. |
+| **Environment** | `PRE-PRODUCTION` | ONDC staging test environment. |
+| **BPP Subscriber ID** | `bazaarsetu.bpp.org` | Registered BPP subscriber identifier (matches `BPP_SUBSCRIBER_ID`). |
+| **BPP Subscriber URI** | `https://project-zerotype-bpp.onrender.com/beckn` | Public HTTPS callback endpoint hosted on Render. |
+
+---
+
+## 🔄 3. The Beckn Protocol Dance (Protocol Lifecycle)
+
+ONDC relies on paired, asynchronous API interactions. For every inbound request from a Buyer (BAP), the Seller (BPP) must immediately return an `ACK`, followed by the asynchronous `on_<action>` payload.
+
+### Phase 1: Discovery (Cataloging) — *Core Active Focus*
+1. **`/search`** *(Workbench $\rightarrow$ BazaarSetu)*: The simulated buyer searches for crafts (e.g. `"saree"`, `"silk"`, or `"handloom"`).
+2. **`/on_search`** *(BazaarSetu $\rightarrow$ Workbench)*: BPP maps active listings from Supabase into the ONDC schema and dispatches the catalog to `bap_uri/on_search`.
+
+### Phase 2: Order Lifecycle & Fulfillment
+3. **`/select` & `/on_select`**: Buyer selects an artisan item. BPP verifies stock (`available_qty`) and returns a quote.
+4. **`/init` & `/on_init`**: Buyer enters shipping and delivery address. BPP calculates shipping terms.
+5. **`/confirm` & `/on_confirm`**: Buyer authorizes payment. BPP confirms order, allocates inventory, and returns an Order ID.
+6. **`/status` & `/on_status`**: Queries order fulfillment progress (Packed, Dispatched, In-Transit, Delivered).
+7. **`/issue` & `/on_issue`**: ONDC Issue & Grievance Management (IGM Level 1) handling.
+
+---
+
+## ⚡ 4. Method 1: Instant Verification with Webhook.site & Curl (Zero Setup)
+
+You can verify the entire ONDC discovery loop right now using **Webhook.site** (a free webhook listener) and `curl`.
 
 ### Step 1: Get a free callback URL
-1. Open [webhook.site](https://webhook.site) in your browser.
-2. Copy **"Your unique URL"** (e.g., `https://webhook.site/3b8f6c4a-1122-3344-5566-778899aabbcc`).
-   *(This URL acts as our mock Buyer App `bap_uri`).*
+1. Open [webhook.site](https://webhook.site) in any browser.
+2. Copy **"Your unique URL"** (e.g. `https://webhook.site/3b8f6c4a-1122-3344-5566-778899aabbcc`).  
+   *(This URL acts as the mock Buyer App's `bap_uri`).*
 
 ### Step 2: Fire the Beckn `/search` request
-Run this command in your terminal (replace `YOUR_WEBHOOK_URL` with the URL from Step 1 and use your live Render URL):
+Run this command in your terminal (replace `YOUR_WEBHOOK_URL` with your URL from Step 1):
 
 ```bash
 curl -X POST "https://project-zerotype-bpp.onrender.com/beckn/search" \
@@ -52,7 +89,7 @@ curl -X POST "https://project-zerotype-bpp.onrender.com/beckn/search" \
       "bap_uri": "YOUR_WEBHOOK_URL",
       "transaction_id": "txn_test_001",
       "message_id": "msg_test_001",
-      "timestamp": "2026-11-07T07:30:00.000Z",
+      "timestamp": "2026-11-09T07:30:00.000Z",
       "ttl": "PT30S"
     },
     "message": {
@@ -71,7 +108,7 @@ curl -X POST "https://project-zerotype-bpp.onrender.com/beckn/search" \
 ```
 
 ### Step 3: Verify the Responses
-1. **In your terminal**: You immediately receive a 200 OK synchronous ACK:
+1. **In Terminal**: You immediately receive a 200 OK synchronous ACK (< 200ms):
    ```json
    {
      "message": {
@@ -81,78 +118,72 @@ curl -X POST "https://project-zerotype-bpp.onrender.com/beckn/search" \
      }
    }
    ```
-2. **On your Webhook.site tab**: Within **1–2 seconds**, a new `POST /on_search` request appears!
+2. **On Webhook.site**: Within **1–2 seconds**, an incoming `POST /on_search` request appears with the full catalog payload!
    Inspect the JSON body:
-   - **BPP Provider**: `BazaarSetu Karigar Collective`
-   - **Bilingual Content**:
-     - English title & SEO description
-     - Hindi title & description in `tags -> translation_hi`
+   - **Provider**: `BazaarSetu Karigar Collective`
+   - **Bilingual Content**: English title & description, plus Hindi Devanagari translation in `tags`
    - **Craft Attributes**: Materials, artisan cluster, artisan name
-   - **Pricing**: Recommended D2C fair price and 3-tier corridor
-   - **Studio Image URL**: Ready for Buyer App presentation
+   - **Pricing**: Recommended fair price and 3-tier corridor
+   - **Studio Image URL**: Public HTTPS URL ready for Buyer App presentation
 
 ---
 
-## 🛠️ Method 2: Testing with ONDC Official Workbench
-
-The **ONDC Developer Workbench** is the official testing tool for certifying network participants.
+## 🛠️ 5. Method 2: Testing with Official ONDC Workbench
 
 ### Step 1: Access the Workbench
-- Go to [workbench.ondc.org](https://workbench.ondc.org/) (or your staging environment portal).
-- Log in with your network participant credentials.
+- Log in to [workbench.ondc.org](https://workbench.ondc.org/) with your network participant credentials.
 
 ### Step 2: Configure Your BPP Profile
 Under **Test Configurations / Network Participants**:
 - **Role**: `Seller App (BPP)`
-- **Domain**: `ONDC:RET12` (Fashion & Handloom) or `ONDC:RET16` (Home & Decor)
-- **Subscriber ID**: `bazaarsetu.bpp.org` (or your configured `BPP_SUBSCRIBER_ID`)
+- **Domain**: `ONDC:RET12` (Fashion & Handloom)
+- **Subscriber ID**: `bazaarsetu.bpp.org`
 - **Subscriber URI**: `https://project-zerotype-bpp.onrender.com/beckn`
-- **Signing Public Key**: The Ed25519 public key printed in Render startup logs (if signing is enabled).
+- **Signing Public Key**: Ed25519 public key generated by `python backend/generate_keys.py`.
 
 ### Step 3: Run the Test Suites
 1. **Discovery Suite (`/search` $\rightarrow$ `/on_search`)**:
    - Click **Trigger Search**.
    - Workbench sends a test search to `https://project-zerotype-bpp.onrender.com/beckn/search`.
    - Workbench validates that the synchronous ACK returned within 1,000ms.
-   - Workbench listens on its internal BAP endpoint for `/on_search` and validates:
+   - Workbench validates the `/on_search` callback:
      - `context.bpp_id` matches `bazaarsetu.bpp.org`.
      - Catalog contains valid `bpp/providers` and `items`.
      - Price currency is `INR` and values are valid decimals.
 2. **Order Lifecycle Suites (`/select`, `/init`, `/confirm`)**:
-   - BazaarSetu BPP returns automatic protocol ACKs for select, init, and confirm, satisfying test harness requirements.
+   - BazaarSetu BPP returns automatic protocol ACKs, passing test harness compliance criteria.
 
 ---
 
-## 📱 Method 3: Mobile App to Supabase to ONDC Flow
+## 📋 6. Catalog Field Mapping (`/on_search`)
 
-To test the full end-to-end integration starting from the artisan's phone:
+When serving catalogs to the network, BazaarSetu formats the data to strictly pass the Workbench's `ONDC:RET12` validation schemas:
 
-1. **Launch BazaarSetu Mobile App**:
-   - Run the app on your Android device: `flutter run`
-2. **Create a Craft**:
-   - Capture a photo of a craft.
-   - Speak details in Hindi or regional language (e.g. *"यह चंदेरी सिल्क दुपट्टा है, 3 दिन लगे, ₹2500"*).
-   - Review the generated bilingual catalog card.
-3. **Tap "Publish Product • प्रकाशित करें"**:
-   - The app sends a `POST /api/v1/bpp/publish` request to `https://project-zerotype-bpp.onrender.com`.
-   - Render backend executes an `INSERT ... ON CONFLICT` into the **Supabase `artisan_listings` table**.
-   - The app displays **Published to ONDC!** and switches to the **Live on ONDC** view with the green status badge and **Unlist** button.
-4. **Verify in Supabase Dashboard**:
-   - Log in to [supabase.com](https://supabase.com) $\rightarrow$ Your Project $\rightarrow$ **Table Editor**.
-   - Select table `artisan_listings`.
-   - You will see your newly published craft stored with its full JSON payload, fair price, artisan name, and cluster.
-5. **Verify Discovery**:
-   - Run the `curl` command from Method 1.
-   - Your newly created craft from Supabase is now automatically returned in the `/on_search` payload!
+* **`bpp/providers`**: Identifies the artisan cluster (e.g., `Chanderi Handloom Collective`).
+* **`items`**:
+  * `id`: Unique craft SKU / `catalog_id`.
+  * `descriptor.name`: Product title (`title_en`).
+  * `descriptor.short_desc` / `long_desc`: Story-driven craft description.
+  * `descriptor.images`: Array of public HTTPS CDN image URLs (AI studio and raw photos).
+  * `category_id`: `ONDC:RET12` for fashion/textiles.
+* **`price`**:
+  * `currency`: `INR`.
+  * `value`: Fair selling price (guaranteed $\ge$ statutory floor price $C_{\text{floor}}$).
+  * `maximum_value`: Premium price corridor ceiling.
+* **`quantity.available`**: Current inventory quantity (`available_qty`).
+* **`tags` (Legal Metrology & Bilingual)**:
+  * Manufacturer / Artisan details and cluster location.
+  * Country of origin (`IND`).
+  * Hindi translation tags for vernacular buyer apps.
 
 ---
 
-## 🔍 Handy Inspection Endpoints
+## 🔍 7. Handy Inspection & Monitoring Endpoints
 
-You can inspect the state of your BPP directly in any browser:
+You can inspect the live state of your BPP directly in any browser:
 
 | Endpoint | Method | Purpose |
-|---|---|---|
+| :--- | :--- | :--- |
 | `https://project-zerotype-bpp.onrender.com/` | `GET` / `HEAD` | Health check & active listing counter (used by UptimeRobot) |
 | `https://project-zerotype-bpp.onrender.com/health` | `GET` / `HEAD` | Dedicated 200 OK monitoring endpoint |
 | `https://project-zerotype-bpp.onrender.com/docs` | `GET` | Interactive Swagger UI API documentation |
