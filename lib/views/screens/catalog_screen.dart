@@ -54,10 +54,28 @@ class _CatalogScreenState extends State<CatalogScreen> {
     });
   }
 
-  void _setQuantity(int qty, CatalogItem? item, CatalogController? catalogCtrl) {
+  Future<void> _setQuantity(int qty, CatalogItem? item, CatalogController? catalogCtrl) async {
     setState(() => _quantity = qty);
     if (item != null && catalogCtrl != null && item.availableQuantity != qty) {
-      catalogCtrl.updateCurrentItem(item.copyWith(availableQuantity: qty));
+      final updated = item.copyWith(availableQuantity: qty);
+      await catalogCtrl.updateCurrentItem(updated);
+
+      if (item.status == CatalogStatus.published && item.pricing != null) {
+        try {
+          await catalogCtrl.publishToOndc(null, qty);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Stock updated to $qty units on ONDC • स्टॉक $qty पीस अपडेट हुआ'),
+                backgroundColor: AppColors.primaryTeal,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (e) {
+          debugPrint('[CatalogScreen] Error updating published stock to ONDC BPP: $e');
+        }
+      }
     }
   }
 
@@ -273,17 +291,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
       ),
       centerTitle: true,
       actions: [
-        if (catalogCtrl != null)
+        if (catalogCtrl != null && item?.status != CatalogStatus.published)
           IconButton(
             tooltip: 'बोलकर सुधारें • AI Voice Edit',
             icon: const Icon(Icons.mic_rounded, color: AppColors.secondaryTerracotta),
             onPressed: () => _showVoiceEditSheet(context, catalogCtrl),
           ),
-        if (item != null && catalogCtrl != null)
+        if (item != null && catalogCtrl != null && item.status != CatalogStatus.published)
           IconButton(
             tooltip: 'मैन्युअल सुधारें • Manual Edit',
             icon: const Icon(Icons.edit_note_rounded, color: AppColors.primaryTeal),
             onPressed: () => _showManualEditSheet(context, item, catalogCtrl),
+          ),
+        if (item != null && catalogCtrl != null && item.status == CatalogStatus.published)
+          IconButton(
+            tooltip: 'स्टॉक बदलें • Update Stock',
+            icon: const Icon(Icons.inventory_2_outlined, color: AppColors.primaryTeal),
+            onPressed: () => _showCustomQuantityDialog(context, item, catalogCtrl),
           ),
         if (item != null && catalogCtrl != null && item.status != CatalogStatus.published)
           IconButton(
@@ -369,6 +393,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ),
           ),
           IconButton(
+            tooltip: 'स्टॉक बदलें • Update Stock',
+            icon: const Icon(Icons.inventory_2_outlined, color: Color(0xFF2E7D32), size: 20),
+            onPressed: () => _showCustomQuantityDialog(context, item, context.read<CatalogController>()),
+          ),
+          IconButton(
             tooltip: 'नेटवर्क विवरण देखें • Network Info',
             icon: const Icon(Icons.info_outline_rounded, color: Color(0xFF2E7D32), size: 20),
             onPressed: () => _showNetworkStatusDialog(context, item),
@@ -392,7 +421,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
           children: [
             const Icon(Icons.delete_outline_rounded, color: AppColors.alertRed, size: 24),
             const SizedBox(width: 8),
-            Text('Delete Craft? • शिल्प हटाएं?', style: AppTextStyles.serifTitle().copyWith(fontSize: 18)),
+            Expanded(
+              child: Text(
+                'Delete Craft? • शिल्प हटाएं?',
+                style: AppTextStyles.serifTitle().copyWith(fontSize: 18),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: Text(
@@ -442,7 +477,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
           children: [
             const Icon(Icons.unpublished_outlined, color: AppColors.secondaryTerracotta, size: 24),
             const SizedBox(width: 8),
-            Text('Unlist Craft? • अनलिस्ट करें?', style: AppTextStyles.serifTitle().copyWith(fontSize: 18)),
+            Expanded(
+              child: Text(
+                'Unlist Craft? • अनलिस्ट करें?',
+                style: AppTextStyles.serifTitle().copyWith(fontSize: 18),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: Text(
@@ -488,7 +529,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
           children: [
             const Icon(Icons.hub_rounded, color: AppColors.primaryTeal, size: 24),
             const SizedBox(width: 8),
-            Text('ONDC Network Status', style: AppTextStyles.serifTitle().copyWith(fontSize: 18)),
+            Expanded(
+              child: Text(
+                'ONDC Network Status',
+                style: AppTextStyles.serifTitle().copyWith(fontSize: 18),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
           ],
         ),
         content: SingleChildScrollView(
@@ -1939,11 +1986,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                     size: 24,
                                   ),
                                   const SizedBox(width: 8),
-                                  Text(
-                                    'Published to ONDC! • ओएनडीसी पर लाइव!',
-                                    style: AppTextStyles.label.copyWith(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
+                                  Expanded(
+                                    child: Text(
+                                      'Published to ONDC! • ओएनडीसी पर लाइव!',
+                                      style: AppTextStyles.label.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 16,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],

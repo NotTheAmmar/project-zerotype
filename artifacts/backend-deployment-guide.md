@@ -156,28 +156,42 @@ CREATE TABLE IF NOT EXISTS artisan_listings (
 | **Instance Type** | `Free` |
 
 ### Step 3: Environment Variables
-Under the **Environment Variables** tab, configure:
+Under the **Environment Variables** tab, configure the variables. You only need to provide the ones you want to override (built-in defaults handle the rest):
 
+#### 🚨 Mandatory Variables for Render:
 ```properties
-BPP_SUBSCRIBER_ID=bazaarsetu.bpp.org
+# 1. BPP Callback URI (Required so ONDC knows your live URL)
 BPP_PUBLIC_URI=https://project-zerotype-bpp.onrender.com/beckn
-BPP_UK_ID=key-1
-BPP_SIGNING_PRIVATE_KEY=<base64-ed25519-seed>
-BPP_SIGNING_PUBLIC_KEY=<base64-ed25519-public-key>
+
+# 2. Database Connection (MUST use IPv4 Pooler — direct db.[ref].supabase.co fails on Render)
 DATABASE_URL=postgresql+asyncpg://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres
+```
+
+#### 🖼️ Image Storage Variables (Supabase Storage CDN):
+```properties
+# Only required if storing craft photos in Supabase Storage CDN (recommended for ONDC)
 SUPABASE_URL=https://[YOUR-PROJECT-REF].supabase.co
 SUPABASE_KEY=[YOUR-SUPABASE-SERVICE-ROLE-KEY]
 SUPABASE_STORAGE_BUCKET=craft-images
 ```
 
-*(To generate Ed25519 keys, run `python backend/generate_keys.py`).*
+#### 🔐 ONDC Registry & Signing (Optional / Defaults provided):
+```properties
+# Built-in defaults: bazaarsetu.bpp.org / key-1
+# Leave signing keys blank for ONDC Workbench / mock testing.
+BPP_SUBSCRIBER_ID=bazaarsetu.bpp.org
+BPP_UK_ID=key-1
+BPP_SIGNING_PRIVATE_KEY=
+BPP_SIGNING_PUBLIC_KEY=
+```
 
-### Step 4: Configure Automated Deploy Hook
-1. Go to your Render service **Settings** $\rightarrow$ scroll down to **Deploy Hook**.
-2. Copy the URL (`https://api.render.com/deploy/srv-xxxx?key=yyyy`).
-3. In GitHub repo `NotTheAmmar/project-zerotype` $\rightarrow$ **Settings** $\rightarrow$ **Secrets and variables** $\rightarrow$ **Actions**.
-4. Add repository secret: `RENDER_DEPLOY_HOOK_URL` = `<your-render-deploy-hook-url>`.
-5. Now, whenever you push changes to `backend/**`, Render automatically redeploys.
+### Step 4: Configure Automated Deploy Hook & Build Trigger Scope
+1. **Build Filter Scope**: Because **Root Directory** is set to `backend`, Render will **only** trigger a redeploy when files inside `backend/` are modified. Commits affecting solely client Flutter code (`lib/`, `test/`) or markdown documents do **not** trigger redundant backend rebuilds.
+2. Go to your Render service **Settings** $\rightarrow$ scroll down to **Deploy Hook**.
+3. Copy the URL (`https://api.render.com/deploy/srv-xxxx?key=yyyy`).
+4. In GitHub repo `NotTheAmmar/project-zerotype` $\rightarrow$ **Settings** $\rightarrow$ **Secrets and variables** $\rightarrow$ **Actions**.
+5. Add repository secret: `RENDER_DEPLOY_HOOK_URL` = `<your-render-deploy-hook-url>`.
+6. Now, whenever you push changes to `backend/**`, Render automatically redeploys.
 
 ---
 
