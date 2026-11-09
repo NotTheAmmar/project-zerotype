@@ -22,7 +22,7 @@ class BazaarSetuApp extends StatelessWidget {
       title: 'BazaarSetu',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      initialRoute: langCtrl.isLoaded && !langCtrl.isLanguageSetupDone
+      initialRoute: (!langCtrl.isLoaded || !langCtrl.isLanguageSetupDone)
           ? AppRoutes.languageSelection
           : AppRoutes.explore,
       routes: {

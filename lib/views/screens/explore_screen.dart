@@ -28,6 +28,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
   bool _isPlayingStory = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<CatalogController>().loadSavedCatalogs();
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _audioService.stopAllAudio();
@@ -75,8 +85,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
             return Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1040),
-                child: CustomScrollView(
-                  slivers: [
+                child: RefreshIndicator(
+                  color: AppColors.primaryTeal,
+                  backgroundColor: Colors.white,
+                  onRefresh: () async {
+                    await context.read<CatalogController>().loadSavedCatalogs();
+                  },
+                  child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    slivers: [
                     // ── App Header ─────────────────────────────────────────
                     SliverToBoxAdapter(
                       child: _buildTopHeader(context, isTablet),
@@ -122,6 +139,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
                     const SliverToBoxAdapter(child: SizedBox(height: 28)),
                   ],
+                ),
                 ),
               ),
             );
@@ -443,28 +461,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
           const Spacer(),
-          if (itemCount > 0)
-            GestureDetector(
-              onTap: () {
-                context.read<CatalogController>().loadSavedCatalogs();
-              },
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.refresh_rounded,
-                    size: 15,
-                    color: AppColors.textSecondary,
+          GestureDetector(
+            onTap: () {
+              context.read<CatalogController>().loadSavedCatalogs();
+            },
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.refresh_rounded,
+                  size: 15,
+                  color: AppColors.primaryTeal,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Refresh • ताज़ा करें',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.primaryTeal,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Refresh',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -472,6 +490,36 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   // ── Empty State (When no user crafts listed yet) ───────────────────────────
   Widget _buildEmptyState(BuildContext context) {
+    final catalogCtrl = context.watch<CatalogController>();
+
+    if (catalogCtrl.isLoadingCatalogs) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: AppColors.primaryTeal),
+            const SizedBox(height: 16),
+            Text(
+              'Loading Crafts from Network...',
+              style: AppTextStyles.serifTitle().copyWith(fontSize: 16),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'डेटाबेस और ONDC नेटवर्क से शिल्प सिंक हो रहे हैं...',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
@@ -535,7 +583,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 Navigator.pushNamed(context, AppRoutes.capture);
               },
               icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-              label: const Text('Create First Craft Listing'),
+              label: const Text('Create First Craft Listing • नया शिल्प जोड़ें'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondaryTerracotta,
                 foregroundColor: Colors.white,
@@ -544,6 +592,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 elevation: 0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                context.read<CatalogController>().loadSavedCatalogs();
+              },
+              icon: const Icon(Icons.sync_rounded, size: 18, color: AppColors.primaryTeal),
+              label: const Text(
+                'Sync from Network • नेटवर्क से सिंक करें',
+                style: TextStyle(color: AppColors.primaryTeal, fontWeight: FontWeight.w600),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: const BorderSide(color: AppColors.primaryTeal),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
           ),

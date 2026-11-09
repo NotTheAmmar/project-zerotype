@@ -173,4 +173,65 @@ class CatalogItem {
         audioLanguage: json['audioLanguage'] as String? ?? 'Hindi',
         audioDurationSeconds: json['audioDurationSeconds'] as int? ?? 24,
       );
+
+  factory CatalogItem.fromBppListing(Map<String, dynamic> raw) {
+    final payloadMap = raw['payload'] is Map<String, dynamic>
+        ? raw['payload'] as Map<String, dynamic>
+        : null;
+    final json = payloadMap != null ? {...raw, ...payloadMap} : raw;
+
+    final catalogId = json['catalog_id'] as String? ??
+        json['id'] as String? ??
+        'craft_${DateTime.now().millisecondsSinceEpoch}';
+
+    final floor = (json['floor_price'] as num?)?.toDouble() ?? 0.0;
+    final fair = (json['fair_price'] as num?)?.toDouble() ?? 0.0;
+    final premium = (json['premium_price'] as num?)?.toDouble() ?? 0.0;
+
+    final materialsList = <String>[];
+    if (json['materials'] is List) {
+      for (final m in json['materials'] as List) {
+        if (m != null) materialsList.add(m.toString());
+      }
+    }
+
+    final rawImg = json['raw_image_url'] as String? ?? json['rawImagePath'] as String?;
+    final studioImg = json['studio_image_url'] as String? ?? json['studioImagePath'] as String?;
+
+    return CatalogItem(
+      id: catalogId,
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      titleEn: json['title_en'] as String? ?? json['titleEn'] as String?,
+      titleHi: json['title_hi'] as String? ?? json['titleHi'] as String?,
+      descriptionEn: json['description_en'] as String? ?? json['descriptionEn'] as String?,
+      descriptionHi: json['description_hi'] as String? ?? json['descriptionHi'] as String?,
+      rawImagePath: rawImg,
+      studioImagePath: studioImg,
+      availableQuantity: (json['available_qty'] as num?)?.toInt() ??
+          (json['availableQuantity'] as num?)?.toInt() ??
+          1,
+      status: CatalogStatus.published,
+      craftAttributes: CraftAttributes(
+        category: json['craft_category'] as String? ??
+            json['category'] as String? ??
+            'Handicrafts',
+        artisanName: json['artisan_name'] as String? ?? 'BazaarSetu Artisan',
+        clusterLocation: json['cluster_name'] as String? ?? 'Chanderi Handloom Cluster',
+        materials: materialsList,
+        dimensions: json['dimensions'] as String? ?? '',
+      ),
+      pricing: PricingCorridor(
+        floorPrice: floor.round(),
+        fairPrice: fair.round(),
+        premiumPrice: premium.round(),
+        rawMaterialCost: (floor * 0.4).round(),
+        laborDays: 1,
+        dailyWageRate: 500,
+        overheadPercent: 0.10,
+        skillMultiplier: 1.0,
+      ),
+    );
+  }
 }

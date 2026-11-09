@@ -20,6 +20,10 @@ void main() async {
     // .env is optional when running mock mode
   }
 
+  // Pre-load language preferences so initialRoute can deterministically route on first frame
+  final languageCtrl = LanguageController(autoLoad: false);
+  await languageCtrl.loadLanguagePreference();
+
   final imageService = ImageService();
   final audioService = AudioService();
   final storageService = StorageService();
@@ -28,9 +32,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => LanguageController(),
-        ),
+        ChangeNotifierProvider.value(value: languageCtrl),
         ChangeNotifierProvider(
           create: (_) => CaptureController(imageService: imageService),
         ),

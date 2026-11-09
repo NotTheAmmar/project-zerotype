@@ -52,7 +52,24 @@ class CatalogController extends ChangeNotifier {
     _isLoadingCatalogs = true;
     notifyListeners();
     try {
-      _savedCatalogs = await _storageService.loadCatalogs();
+      // 1. Fast local load for immediate UI rendering
+      final localCatalogs = await _storageService.loadCatalogs();
+      _savedCatalogs = List.from(localCatalogs);
+      notifyListeners();
+
+      // 2. Remote sync: fetch active listings persisted in the backend database
+      final remoteListings = await _apiService.fetchPublishedListings();
+      if (remoteListings.isNotEmpty) {
+        for (final remote in remoteListings) {
+          final idx = _savedCatalogs.indexWhere((c) => c.id == remote.id);
+          if (idx >= 0) {
+            _savedCatalogs[idx] = remote;
+          } else {
+            _savedCatalogs.insert(0, remote);
+          }
+          await _storageService.saveCatalog(remote);
+        }
+      }
     } catch (e) {
       debugPrint('[CatalogController] Error loading catalogs: $e');
     } finally {
