@@ -55,10 +55,20 @@ class PricingCorridor {
     
     // Divide by items produced (ensure no divide-by-zero)
     final qty = itemsProduced > 0 ? itemsProduced : 1;
-    final int floor = (totalFloor / qty).round();
+    int floor = (totalFloor / qty).round();
     
-    // P_fair (Market-Aware fallback until XGBoost is connected)
-    final int fair = (floor * AppConstants.fairPriceMultiplier).round();
+    // P_fair: If artisan explicitly proposed a selling price, respect it.
+    // Otherwise fallback to MoSJE statutory markup (floor * 1.50).
+    int fair;
+    if (sellerProposedPrice > 0) {
+      fair = sellerProposedPrice;
+      // Ensure statutory floor does not exceed artisan's explicit selling price
+      if (floor > sellerProposedPrice) {
+        floor = (sellerProposedPrice * 0.85).round();
+      }
+    } else {
+      fair = (floor * AppConstants.fairPriceMultiplier).round();
+    }
     
     // P_prem (1.20 * P_fair)
     final int premium = (fair * AppConstants.premiumPriceMultiplier).round();

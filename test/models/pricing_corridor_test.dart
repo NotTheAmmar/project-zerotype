@@ -72,5 +72,19 @@ void main() {
       expect(recreated.premiumPrice, equals(original.premiumPrice));
       expect(recreated.sellerProposedPrice, equals(850));
     });
+
+    test('respects seller proposed price when provided', () {
+      final corridor = PricingCorridor.compute(
+        rawMaterialCost: 100,
+        laborDays: 1,
+        dailyWageRate: 500,
+        sellerProposedPrice: 100,
+      );
+
+      expect(corridor.fairPrice, equals(100));
+      expect(corridor.floorPrice, lessThanOrEqualTo(100));
+      expect(corridor.premiumPrice, equals(120));
+      expect(corridor.sellerProposedPrice, equals(100));
+    });
   });
 }

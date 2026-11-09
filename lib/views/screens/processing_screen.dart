@@ -273,16 +273,20 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              isDone
-                                  ? 'Analysis Complete • पूर्ण हुआ'
-                                  : _getStageHeadline(catalogCtrl.stage),
-                              style: AppTextStyles.label.copyWith(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: isDone ? AppColors.primaryTeal : AppColors.textPrimary,
+                            Expanded(
+                              child: Text(
+                                isDone
+                                    ? 'Analysis Complete • पूर्ण हुआ'
+                                    : _getStageHeadline(catalogCtrl.stage),
+                                style: AppTextStyles.label.copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDone ? AppColors.primaryTeal : AppColors.textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Text(
                               isDone ? '100%' : '$_progressPercent%',
                               style: AppTextStyles.labelSmall.copyWith(

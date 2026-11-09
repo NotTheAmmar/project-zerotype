@@ -32,42 +32,52 @@ The prototype demonstrates that an unschooled or low-literacy rural craftsperson
   - Large continue button (*"आगे बढ़ें • Continue"*).
 
 ### Screen 2: Explore & Karigar Hub (`/`)
-- **Objective:** Discover community crafts, check previous listings, and inspect ONDC node details.
+- **Objective:** Discover community crafts, manage existing listings and drafts, and inspect ONDC node details.
 - **Features:**
-  - Category filter pills (`All Crafts`, `Pottery & Clay`, `Clothing & Weaves`, `Home Decor`, `Tribal Metalcraft`, `Festive Special`).
-  - Direct Karigar Fair Pledge banner.
-  - Product cards displaying handmade origin and ONDC Live/Draft badges.
-  - **Product Quick View Modal**:
-    - High-resolution craft preview.
-    - **Karigar Story Audio Snippet**: Tap *"सुनें"* to listen to the artisan's spoken story via audio TTS.
-    - Actions: *"Add to Guild Basket"* (artisan pledge) and *"View Catalog / ONDC Node"*.
+   - Direct artisan craft feed showing authentic listings with craft provenance, GI tags, and direct Karigar Fair Pledge banner.
+   - Product cards displaying handmade origin and live ONDC / Draft status badges.
+   - **Product Quick View Modal**:
+     - High-resolution craft preview.
+     - **Karigar Story Audio Snippet**: Tap to listen to the artisan's spoken story via audio TTS; halts immediately when closed.
+     - Actions: *"Add to Guild Basket"* (artisan pledge) and *"View Catalog / ONDC Node"*.
 
 ### Screen 3: Visual Capture & Category Detection (`/capture`)
 - **Objective:** Acquire clean visual angles with automated category recognition.
 - **Features:**
-  - 4:3 Camera Viewfinder with golden corner brackets and center crosshair.
-  - Heuristic Category Detection Chip (`Apparel & Weaves RET12`, `Pottery & Terracotta RET16`, `Packaged Food RET10`).
-  - Spoken guidance banner: *"दीया बीच में रखें और अच्छी रोशनी रखें"* with audio playback.
-  - 4-slot angle tracker (Front, Side, Back, Detail).
-  - Shutter button with animated glow ring, grid and flash toggles.
+   - 4:3 Camera Viewfinder with golden corner brackets and center crosshair.
+   - Heuristic Category Detection Chip (`Apparel & Weaves RET12`, `Pottery & Terracotta RET16`, `Packaged Food RET10`).
+   - Spoken guidance banner: *"दीया बीच में रखें और अच्छी रोशनी रखें"* with audio playback.
+   - 4-slot angle tracker (Front, Side, Back, Detail).
+   - Shutter button with animated glow ring, grid and hardware torch flash controls.
 
-### Screen 4: Category-Adaptive Voice Narration (`/voice`)
-- **Objective:** Capture open-ended spoken artisan context without forcing arbitrary time limits.
+### Screen 4: Guided 4-Step Voice Interview (`/voice`)
+- **Objective:** Capture open-ended spoken artisan context through structured, natural conversational prompts.
 - **Features:**
-  - Automatically plays a 5–8s localized spoken dialect question tailored to the detected category:
-    - *Pottery*: *"यह दीया किस मिट्टी से बना है और इसपर क्या नक्काशी है?"*
-    - *Apparel*: *"यह कपड़ा किस धागे से बुना गया है और इसपर क्या कढ़ाई की गई है?"*
-    - *Food*: *"यह खाद्य सामग्री कैसे तैयार की गई है और इसमें कौन से मसाले हैं?"*
-    - *Metal/Wood*: *"यह हस्तशिल्प किस धातु या लकड़ी से गढ़ा गया है?"*
-  - Open-ended recording (unlimited duration; count-up timer `MM:SS`).
-  - Live 30-bar amplitude waveform and silence warning.
+   - **4 Guided Stages**:
+     1. *Product & Craft Details*: Category, materials, and crafting technique.
+     2. *Dimensions & Weight*: Dimensions and measurements (with optional manual input fallback dialog).
+     3. *Pricing & Production Effort*: Selling price, raw material expense, and labor days.
+     4. *Story & Heritage*: Generational heritage, tradition, and craft significance.
+   - Category-adaptive audio question prompt before each stage.
+   - Open-ended recording (no arbitrary time limits) with 30-bar amplitude waveform.
 
-### Screen 5: Multimodal Processing State (`/processing`)
-- **Objective:** Keep user engaged while AI runs in the background.
+### Screen 5: Modern Karigar AI Processing (`/processing`)
+- **Objective:** Keep the artisan engaged with inspiring visual feedback and craft wisdom while AI runs.
 - **Features:**
-  - Visual status steps: *Studio Safai* (BiRefNet), *Aawaz ki Pehchan* (ASR), *Qwen Structuring* (ONDC JSON), *Sahi Daam Ganana* (Fair pricing).
+   - Central hero craft photo centerpiece with breathing animated pulse ring.
+   - Dynamic stage indicator tracking live phase (transcription, studio lighting, bilingual storytelling, statutory corridor, ONDC packaging).
+   - Smooth percentage progress bar.
+   - Rotating carousel of artisan craft wisdom and selling tips updated dynamically every 3.5s.
+   - Safe retry / fallback actions for network interruptions.
 
 ### Screen 6: Interactive Catalog Card & Tactile Controls (`/catalog`)
+- **Objective:** Enable effortless review, verification, and broadcast without typing.
+- **Features:**
+   - Bilingual presentation (English primary title and descriptions with Devanagari translation directly below).
+   - **Tactile 3-Tier Price Corridor**: Floor, Fair, and Premium cards + `[±₹50]` quick adjustment nudges + direct **Set Exact Price** numeric input.
+   - **Flexible Inventory Management**: Tactile pills (`1`, `2`, `5`, `10`, `25`, `50`) + custom quantity dialog with batch chips (`+10`, `+25`, `+50`, `+100`, `+250`, `+500`).
+   - **Dual Editing**: Edit manually or use conversational voice updates (*"कीमत ₹650 कर दो"*).
+   - **Catalog Lifecycle Management**: 1-tap live publish to ONDC, auto-save drafts, unlist active listings back to draft, and audio playback that halts immediately on navigation.
 - **Objective:** Tactile verification with zero keyboard input.
 - **Features:**
   - Raw photo vs. studio photo toggle with multi-angle thumbnails.

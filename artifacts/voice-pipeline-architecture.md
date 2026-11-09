@@ -12,20 +12,20 @@ sequenceDiagram
     participant Vision as Vision/Category Detector
     participant Audio as AudioService
     participant Bhashini as Bhashini Cloud / Local ASR
-    participant Qwen as Qwen-2.5-32B-Instruct
+    participant Qwen as Qwen / Groq Engine
     
     Vision->>Audio: Category Detected (e.g. Pottery RET16)
-    Audio->>Artisan: 1. Plays Spoken Dialect Anchor (5-8s Hindi TTS)
-    Note over Artisan,Audio: "यह दीया किस मिट्टी से बना है और इसपर क्या नक्काशी है?"
+    Audio->>Artisan: 1. Guided 4-Step Voice Interview
+    Note over Artisan,Audio: Step 1: Craft & Material<br/>Step 2: Dimensions & Weight<br/>Step 3: Price & Labor Effort<br/>Step 4: Artisan Story & Heritage
     
-    Artisan->>Audio: 2. Speaks Open-Ended Description (No 15s cap)
-    Audio-->>Artisan: 16kHz WAV Stream (Dynamic waveform visualizer)
+    Artisan->>Audio: 2. Speaks Open-Ended Description per Step
+    Audio-->>Artisan: 16kHz WAV Stream (Dynamic 30-bar waveform visualizer)
     
-    Audio->>Bhashini: 3. ASR (Speech-to-Text)
-    Bhashini-->>Audio: Indic Transcript
+    Audio->>Bhashini: 3. ASR (Speech-to-Text per segment)
+    Bhashini-->>Audio: Indic Transcripts
     
-    Audio->>Qwen: 4. Extract & Structure via Qwen-2.5-32B
-    Note over Qwen: Enforces strict ONDC Beckn schema,<br/>extracts title, desc, price, qty, materials
+    Audio->>Qwen: 4. Extract & Structure via Qwen-2.5 / 3.8
+    Note over Qwen: Enforces strict ONDC Beckn schema,<br/>bilingual English + Hindi titles & descriptions,<br/>extracts price, batch stock, materials
     Qwen-->>Audio: Structured JSON Catalog Result
     
     Audio->>Artisan: 5. Statutory Spoken Readback (TTS)
@@ -36,17 +36,18 @@ sequenceDiagram
 
 ## 2. Modality Details
 
-### A. Category-Adaptive Spoken Anchors
-Rather than opening the microphone into an empty prompt, the system queries the detected category and plays a targeted, localized question before recording:
-- **Pottery (`ONDC:RET16`)**: *"यह दीया किस मिट्टी से बना है और इसपर क्या नक्काशी है? (What clay is this diya made from, and what carvings does it have?)"*
-- **Apparel / Weaves (`ONDC:RET12`)**: *"यह कपड़ा किस धागे से बुना गया है और इसपर क्या कढ़ाई की गई है? (What yarn was used and what embroidery is featured?)"*
-- **Food / Spices (`ONDC:RET10`)**: *"यह खाद्य सामग्री कैसे तैयार की गई है और इसमें कौन से मसाले हैं? (How was this prepared and what ingredients/spices are in it?)"*
-- **Wood / Metalcraft**: *"यह हस्तशिल्प किस धातु या लकड़ी से गढ़ा गया है? (What metal or wood is this craft carved from?)"*
+### A. Guided 4-Step Voice Interview
+Rather than an unstructured single voice dump, the flow breaks down cataloging into 4 intuitive, natural steps:
+1. **Product & Craft Details**: Category, materials, and crafting technique.
+2. **Dimensions & Weight**: Length, width, height, weight (with optional manual dimensions fallback dialog for precision).
+3. **Pricing & Labor Effort**: Stated selling price, raw material expense, and labor days.
+4. **Story & Heritage**: Generational tradition, occasion, and artisanal uniqueness.
 
-### B. Open-Ended Voice Capture
+### B. Open-Ended Voice Capture with Audio Safety Lifecycle
 - **No 15-Second Limit**: The artisan may speak as long as necessary. The UI provides an open-ended count-up timer (`MM:SS`) with a live 30-bar amplitude waveform.
 - **Audio Specification**: 16 kHz Mono WAV format (`AudioEncoder.wav`).
 - **Silence & Under-run Protection**: If speech amplitude drops or duration is insufficient, the artisan is gently prompted to speak naturally.
+- **Audio Interruption Lifecycle**: Both Flutter TTS synthesis and Bhashini `AudioPlayer` playback halt immediately when navigating away, popping screens, or dismissing quick-view modals, preventing overlapping audio playback.
 
 ### C. Qwen Catalog Extraction (`api_service.dart`)
 - **Default Model**: `qwen-2.5-32b-it` (via Groq OpenAI-compatible free API or custom inference server).

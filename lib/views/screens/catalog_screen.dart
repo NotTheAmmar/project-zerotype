@@ -1060,15 +1060,19 @@ class _CatalogScreenState extends State<CatalogScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'AVAILABLE STOCK / उपलब्ध मात्रा',
-                style: AppTextStyles.caption.copyWith(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.secondaryTerracotta,
-                  letterSpacing: 0.6,
+              Expanded(
+                child: Text(
+                  'AVAILABLE STOCK / उपलब्ध मात्रा',
+                  style: AppTextStyles.caption.copyWith(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.secondaryTerracotta,
+                    letterSpacing: 0.6,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               GestureDetector(
                 onTap: () => _showCustomQuantityDialog(context, item, context.read<CatalogController>()),
                 child: Row(
@@ -1229,47 +1233,52 @@ class _CatalogScreenState extends State<CatalogScreen> {
           children: [
             const Icon(Icons.inventory_2_outlined, color: AppColors.primaryTeal),
             const SizedBox(width: 8),
-            Text(
-              'उपलब्ध स्टॉक • Set Stock',
-              style: AppTextStyles.label.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+            Expanded(
+              child: Text(
+                'उपलब्ध स्टॉक • Set Stock',
+                style: AppTextStyles.label.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'आपके पास कुल कितने पीस उपलब्ध हैं? (उदा: 50, 100, 500)',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: controller,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'स्टॉक मात्रा / Total Units',
-                hintText: 'उदा: 100',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.tag_rounded),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'आपके पास कुल कितने पीस उपलब्ध हैं? (उदा: 50, 100, 500)',
+                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
               ),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [10, 25, 50, 100, 250, 500].map((quick) {
-                return ActionChip(
-                  label: Text('+$quick'),
-                  onPressed: () {
-                    final curr = int.tryParse(controller.text) ?? 0;
-                    controller.text = '${curr + quick}';
-                  },
-                );
-              }).toList(),
-            ),
-          ],
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'स्टॉक मात्रा / Total Units',
+                  hintText: 'उदा: 100',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.tag_rounded),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [10, 25, 50, 100, 250, 500].map((quick) {
+                  return ActionChip(
+                    label: Text('+$quick'),
+                    onPressed: () {
+                      final curr = int.tryParse(controller.text) ?? 0;
+                      controller.text = '${curr + quick}';
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
