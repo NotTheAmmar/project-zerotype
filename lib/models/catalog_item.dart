@@ -15,6 +15,7 @@ class CatalogItem {
   final String? rawImagePath;
   final String? studioImagePath; // teammate's model output will go here
   final String? audioPath;
+  final List<String> galleryImages;
 
   // Bilingual descriptors
   final String? titleEn;
@@ -52,6 +53,7 @@ class CatalogItem {
     this.rawImagePath,
     this.studioImagePath,
     this.audioPath,
+    this.galleryImages = const [],
     this.titleEn,
     this.titleHi,
     this.descriptionEn,
@@ -76,6 +78,7 @@ class CatalogItem {
     String? rawImagePath,
     String? studioImagePath,
     String? audioPath,
+    List<String>? galleryImages,
     String? titleEn,
     String? titleHi,
     String? descriptionEn,
@@ -99,6 +102,7 @@ class CatalogItem {
       rawImagePath: rawImagePath ?? this.rawImagePath,
       studioImagePath: studioImagePath ?? this.studioImagePath,
       audioPath: audioPath ?? this.audioPath,
+      galleryImages: galleryImages ?? this.galleryImages,
       titleEn: titleEn ?? this.titleEn,
       titleHi: titleHi ?? this.titleHi,
       descriptionEn: descriptionEn ?? this.descriptionEn,
@@ -124,6 +128,7 @@ class CatalogItem {
         'rawImagePath': rawImagePath,
         'studioImagePath': studioImagePath,
         'audioPath': audioPath,
+        'galleryImages': galleryImages,
         'titleEn': titleEn,
         'titleHi': titleHi,
         'descriptionEn': descriptionEn,
@@ -148,6 +153,10 @@ class CatalogItem {
         rawImagePath: json['rawImagePath'] as String?,
         studioImagePath: json['studioImagePath'] as String?,
         audioPath: json['audioPath'] as String?,
+        galleryImages: (json['galleryImages'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const [],
         titleEn: json['titleEn'] as String?,
         titleHi: json['titleHi'] as String?,
         descriptionEn: json['descriptionEn'] as String?,
@@ -195,8 +204,23 @@ class CatalogItem {
       }
     }
 
+    final galleryList = <String>[];
+    final rawGallery = json['gallery_images'] ?? json['galleryImages'];
+    if (rawGallery is List) {
+      for (final g in rawGallery) {
+        if (g != null && g.toString().isNotEmpty) {
+          galleryList.add(g.toString());
+        }
+      }
+    }
+
     final rawImg = json['raw_image_url'] as String? ?? json['rawImagePath'] as String?;
-    final studioImg = json['studio_image_url'] as String? ?? json['studioImagePath'] as String?;
+    String? studioImg = json['studio_image_url'] as String? ?? json['studioImagePath'] as String?;
+    // Discard any legacy dummy saree fallback image
+    if (studioImg != null && studioImg.contains('photo-1610030469983-98e550d6193c')) {
+      studioImg = null;
+    }
+    studioImg ??= rawImg;
 
     return CatalogItem(
       id: catalogId,
@@ -209,6 +233,7 @@ class CatalogItem {
       descriptionHi: json['description_hi'] as String? ?? json['descriptionHi'] as String?,
       rawImagePath: rawImg,
       studioImagePath: studioImg,
+      galleryImages: galleryList,
       availableQuantity: (json['available_qty'] as num?)?.toInt() ??
           (json['availableQuantity'] as num?)?.toInt() ??
           1,

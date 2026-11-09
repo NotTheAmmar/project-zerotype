@@ -95,7 +95,7 @@ class ArtisanListingPayload(BaseModel):
         description="Public URL of the raw camera photo uploaded to Supabase Storage.",
     )
     studio_image_url: str = Field(
-        default="https://images.unsplash.com/photo-1610030469983-98e550d6193c",
+        default="",
         description="URL of the studio-processed / AI-enhanced product image.",
     )
     gallery_images: List[str] = Field(

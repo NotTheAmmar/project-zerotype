@@ -56,6 +56,13 @@ def build_on_search_catalog(
         else item.description_en
     )
 
+    # Collect non-dummy item images (studio, raw, and gallery)
+    item_images = [
+        img for img in [item.studio_image_url, item.raw_image_url, *item.gallery_images]
+        if img and "photo-1610030469983-98e550d6193c" not in img
+    ]
+    primary_img = item_images[0] if item_images else (item.studio_image_url or item.raw_image_url or "")
+
     return {
         "context": {
             "domain": item.category_id,          # e.g. "ONDC:RET12"
@@ -83,7 +90,7 @@ def build_on_search_catalog(
                         "list their handcrafted products on ONDC without typing a single "
                         "character. Photo + voice narration -> ONDC-ready listing."
                     ),
-                    "symbol": item.studio_image_url,
+                    "symbol": primary_img,
                 },
                 # ── Fulfillment methods ───────────────────────────────────
                 "bpp/fulfillments": [
@@ -106,7 +113,7 @@ def build_on_search_catalog(
                                 f"at the {item.cluster_name}, producing {item.craft_category} "
                                 f"using traditional methods passed down through generations."
                             ),
-                            "images": [item.studio_image_url],
+                            "images": item_images if item_images else ([primary_img] if primary_img else []),
                         },
                         # ── Pickup location (the artisan workshop) ────────
                         "locations": [
@@ -130,10 +137,10 @@ def build_on_search_catalog(
                                 "descriptor": {
                                     "name": item.title_en,
                                     "code": f"{item.category_id}-{item.catalog_id[-6:]}",
-                                    "symbol": item.studio_image_url,
+                                    "symbol": primary_img,
                                     "short_desc": short_desc,
                                     "long_desc": item.description_en,
-                                    "images": [item.studio_image_url],
+                                    "images": item_images if item_images else ([primary_img] if primary_img else []),
                                 },
                                 "price": {
                                     "currency": "INR",

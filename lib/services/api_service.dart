@@ -128,7 +128,7 @@ class MockApiService implements ApiService {
     String imageType = 'studio',
     String? catalogId,
   }) async {
-    return 'https://images.unsplash.com/photo-1610030469983-98e550d6193c';
+    return 'https://images.unsplash.com/photo-artisan-mock-$imageType';
   }
 
   @override
@@ -258,8 +258,40 @@ class LiveApiService implements ApiService {
       }
     }
 
-    // Default fallback image if neither is online
-    finalStudioImageUrl ??= 'https://images.unsplash.com/photo-1610030469983-98e550d6193c';
+    // Upload multi-angle gallery photos if any
+    final uploadedGalleryUrls = <String>[];
+    for (int i = 0; i < item.galleryImages.length; i++) {
+      final gPath = item.galleryImages[i];
+      if (gPath.startsWith('http://') || gPath.startsWith('https://')) {
+        if (!gPath.contains('photo-1610030469983-98e550d6193c')) {
+          uploadedGalleryUrls.add(gPath);
+        }
+      } else if (File(gPath).existsSync()) {
+        try {
+          final uploaded = await uploadImage(
+            gPath,
+            imageType: 'gallery_$i',
+            catalogId: item.id,
+          );
+          if (uploaded != null && uploaded.isNotEmpty) {
+            uploadedGalleryUrls.add(uploaded);
+          }
+        } catch (e) {
+          debugPrint('[LiveApiService] Gallery image $i upload skipped: $e');
+        }
+      }
+    }
+
+    // Discard any dummy saree fallback
+    if (finalStudioImageUrl != null &&
+        finalStudioImageUrl.contains('photo-1610030469983-98e550d6193c')) {
+      finalStudioImageUrl = null;
+    }
+
+    // Fallback studio image to raw image or first gallery image, NEVER a hardcoded saree
+    finalStudioImageUrl ??= finalRawImageUrl ??
+        (uploadedGalleryUrls.isNotEmpty ? uploadedGalleryUrls.first : '');
+    finalRawImageUrl ??= finalStudioImageUrl;
 
     final body = {
       'catalog_id': item.id,
@@ -279,7 +311,7 @@ class LiveApiService implements ApiService {
       'premium_price': pricing.premiumPrice.toDouble(),
       'raw_image_url': finalRawImageUrl,
       'studio_image_url': finalStudioImageUrl,
-      'gallery_images': <String>[],
+      'gallery_images': uploadedGalleryUrls,
       'available_qty': availableQuantity,
     };
 

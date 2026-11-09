@@ -89,6 +89,7 @@ class CatalogController extends ChangeNotifier {
     required String imagePath,
     required String audioPath,
     List<String>? audioPaths,
+    List<String>? galleryImagePaths,
     String? manualDimensions,
   }) async {
     _stage = ProcessingStage.imageProcessing;
@@ -121,6 +122,7 @@ class CatalogController extends ChangeNotifier {
         rawImagePath: imagePath,
         studioImagePath: result.studioImagePath,
         audioPath: audioPath,
+        galleryImages: galleryImagePaths ?? const [],
         titleEn: result.titleEn,
         titleHi: result.titleHi,
         descriptionEn: result.descriptionEn,
@@ -156,6 +158,7 @@ class CatalogController extends ChangeNotifier {
   Future<void> createFallbackDraft({
     required String imagePath,
     String? audioPath,
+    List<String>? galleryImagePaths,
     String? category,
   }) async {
     _currentItem = CatalogItem(
@@ -164,6 +167,7 @@ class CatalogController extends ChangeNotifier {
       rawImagePath: imagePath,
       studioImagePath: imagePath,
       audioPath: audioPath,
+      galleryImages: galleryImagePaths ?? const [],
       titleEn: 'Handcrafted Artisan Item',
       titleHi: 'हस्तनिर्मित शिल्प उत्पाद',
       descriptionEn:
