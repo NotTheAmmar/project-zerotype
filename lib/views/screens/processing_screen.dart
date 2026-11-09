@@ -106,11 +106,17 @@ class _ProcessingScreenState extends State<ProcessingScreen>
         'Quantity: ${voiceCtrl.manualQuantity}',
     ].join(', ');
 
+    final galleryImages = captureCtrl.capturedAngles.values.toList();
+    if (galleryImages.isEmpty && captureCtrl.capturedImagePath != null) {
+      galleryImages.add(captureCtrl.capturedImagePath!);
+    }
+
     try {
       await catalogCtrl.processCatalog(
         imagePath: captureCtrl.capturedImagePath ?? '',
         audioPath: voiceCtrl.audioPath ?? '',
         audioPaths: voiceCtrl.stepAudioPaths.values.toList(),
+        galleryImagePaths: galleryImages,
         manualDimensions: manualDims.isNotEmpty ? manualDims : null,
       );
     } catch (e) {
@@ -145,9 +151,15 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     final voiceCtrl = context.read<VoiceController>();
     final catalogCtrl = context.read<CatalogController>();
 
+    final galleryImages = captureCtrl.capturedAngles.values.toList();
+    if (galleryImages.isEmpty && captureCtrl.capturedImagePath != null) {
+      galleryImages.add(captureCtrl.capturedImagePath!);
+    }
+
     await catalogCtrl.createFallbackDraft(
       imagePath: captureCtrl.capturedImagePath ?? '',
       audioPath: voiceCtrl.audioPath,
+      galleryImagePaths: galleryImages,
       category: captureCtrl.detectedCategory,
     );
 

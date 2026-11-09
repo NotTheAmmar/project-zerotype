@@ -59,6 +59,7 @@ void main() {
         titleHi: 'मिट्टी का दीया',
         pricing: corridor,
         craftAttributes: attributes,
+        galleryImages: const ['https://example.com/img1.jpg', 'https://example.com/img2.jpg'],
         availableQuantity: 10,
         status: CatalogStatus.storedLocally,
       );
@@ -71,8 +72,35 @@ void main() {
       expect(restored.craftAttributes?.category, equals('pottery'));
       expect(restored.craftAttributes?.materials, contains('Terracotta'));
       expect(restored.pricing?.floorPrice, equals(corridor.floorPrice));
+      expect(restored.galleryImages, equals(['https://example.com/img1.jpg', 'https://example.com/img2.jpg']));
       expect(restored.availableQuantity, equals(10));
       expect(restored.status, equals(CatalogStatus.storedLocally));
+    });
+
+    test('fromBppListing parses gallery_images and purges dummy saree fallback', () {
+      final bppPayload = {
+        'catalog_id': 'bpp_item_123',
+        'title_en': 'Handloom Shawl',
+        'raw_image_url': 'https://storage.supabase.co/raw.jpg',
+        'studio_image_url': 'https://images.unsplash.com/photo-1610030469983-98e550d6193c',
+        'gallery_images': [
+          'https://storage.supabase.co/gallery_0.jpg',
+          'https://storage.supabase.co/gallery_1.jpg',
+        ],
+        'available_qty': 3,
+        'materials': ['Wool', 'Silk'],
+        'cluster_name': 'Kashmir',
+        'artisan_name': 'Ghulam',
+      };
+
+      final parsed = CatalogItem.fromBppListing(bppPayload);
+      expect(parsed.id, equals('bpp_item_123'));
+      // Dummy saree photo must be purged and replaced with raw_image_url
+      expect(parsed.studioImagePath, equals('https://storage.supabase.co/raw.jpg'));
+      expect(parsed.galleryImages, equals([
+        'https://storage.supabase.co/gallery_0.jpg',
+        'https://storage.supabase.co/gallery_1.jpg',
+      ]));
     });
   });
 }

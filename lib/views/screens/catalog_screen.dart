@@ -83,12 +83,27 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final captureCtrl = context.read<CaptureController>();
     final list = <String>[];
     if (captureCtrl.capturedAngles.isNotEmpty) {
-      list.addAll(captureCtrl.capturedAngles.values);
+      for (final p in captureCtrl.capturedAngles.values) {
+        if (p.isNotEmpty && !p.contains('photo-1610030469983-98e550d6193c') && !list.contains(p)) {
+          list.add(p);
+        }
+      }
     }
-    if (item.studioImagePath != null && !list.contains(item.studioImagePath!)) {
+    for (final g in item.galleryImages) {
+      if (g.isNotEmpty && !g.contains('photo-1610030469983-98e550d6193c') && !list.contains(g)) {
+        list.add(g);
+      }
+    }
+    if (item.studioImagePath != null &&
+        item.studioImagePath!.isNotEmpty &&
+        !item.studioImagePath!.contains('photo-1610030469983-98e550d6193c') &&
+        !list.contains(item.studioImagePath!)) {
       list.add(item.studioImagePath!);
     }
-    if (item.rawImagePath != null && !list.contains(item.rawImagePath!)) {
+    if (item.rawImagePath != null &&
+        item.rawImagePath!.isNotEmpty &&
+        !item.rawImagePath!.contains('photo-1610030469983-98e550d6193c') &&
+        !list.contains(item.rawImagePath!)) {
       list.add(item.rawImagePath!);
     }
     return list;
