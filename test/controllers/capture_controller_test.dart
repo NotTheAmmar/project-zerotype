@@ -73,16 +73,38 @@ void main() {
       expect(controller.showGrid, isTrue);
     });
 
-    test('Angle slot selection works within valid range 0-3', () {
-      controller.selectAngleSlot(2);
-      expect(controller.activeAngleIndex, equals(2));
+    test('Open-ended photo capturing allows unlimited photos and removal', () async {
+      fakeImageService.nextPhotoPath = '/tmp/photo_1.jpg';
+      await controller.capturePhoto();
+      fakeImageService.nextPhotoPath = '/tmp/photo_2.jpg';
+      await controller.capturePhoto();
+      fakeImageService.nextPhotoPath = '/tmp/photo_3.jpg';
+      await controller.capturePhoto();
+      fakeImageService.nextPhotoPath = '/tmp/photo_4.jpg';
+      await controller.capturePhoto();
+      fakeImageService.nextPhotoPath = '/tmp/photo_5.jpg';
+      await controller.capturePhoto();
 
-      controller.selectAngleSlot(3);
-      expect(controller.activeAngleIndex, equals(3));
+      expect(controller.photosCount, equals(5));
+      expect(controller.photosTakenCount, equals(5));
+      expect(controller.capturedPhotos.length, equals(5));
+      expect(controller.primaryPhoto, equals('/tmp/photo_1.jpg'));
+      expect(controller.capturedImagePath, equals('/tmp/photo_1.jpg'));
 
-      // Out of range should be ignored
-      controller.selectAngleSlot(5);
-      expect(controller.activeAngleIndex, equals(3));
+      // Remove photo at index 1
+      controller.removePhotoAt(1);
+      expect(controller.photosCount, equals(4));
+      expect(controller.capturedPhotos, equals([
+        '/tmp/photo_1.jpg',
+        '/tmp/photo_3.jpg',
+        '/tmp/photo_4.jpg',
+        '/tmp/photo_5.jpg',
+      ]));
+
+      // Clear all
+      controller.clearPhotos();
+      expect(controller.photosCount, equals(0));
+      expect(controller.canProceed, isFalse);
     });
 
     test('setDetectedCategory updates category and labels', () {

@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../config/constants.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
-import '../../controllers/capture_controller.dart';
 import '../../controllers/catalog_controller.dart';
 import '../../models/catalog_item.dart';
 import '../../models/craft_attributes.dart';
@@ -80,32 +79,30 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   List<String> _getGalleryImages(CatalogItem item) {
-    final captureCtrl = context.read<CaptureController>();
     final list = <String>[];
-    if (captureCtrl.capturedAngles.isNotEmpty) {
-      for (final p in captureCtrl.capturedAngles.values) {
-        if (p.isNotEmpty && !p.contains('photo-1610030469983-98e550d6193c') && !list.contains(p)) {
-          list.add(p);
-        }
+
+    void addUnique(String? path) {
+      if (path != null &&
+          path.isNotEmpty &&
+          !path.contains('photo-1610030469983-98e550d6193c') &&
+          !list.contains(path)) {
+        list.add(path);
       }
     }
+
+    // 1. Studio image (if present and distinct from raw image)
+    if (item.studioImagePath != null && item.studioImagePath != item.rawImagePath) {
+      addUnique(item.studioImagePath);
+    }
+
+    // 2. Primary raw image
+    addUnique(item.rawImagePath);
+
+    // 3. Additional gallery photos
     for (final g in item.galleryImages) {
-      if (g.isNotEmpty && !g.contains('photo-1610030469983-98e550d6193c') && !list.contains(g)) {
-        list.add(g);
-      }
+      addUnique(g);
     }
-    if (item.studioImagePath != null &&
-        item.studioImagePath!.isNotEmpty &&
-        !item.studioImagePath!.contains('photo-1610030469983-98e550d6193c') &&
-        !list.contains(item.studioImagePath!)) {
-      list.add(item.studioImagePath!);
-    }
-    if (item.rawImagePath != null &&
-        item.rawImagePath!.isNotEmpty &&
-        !item.rawImagePath!.contains('photo-1610030469983-98e550d6193c') &&
-        !list.contains(item.rawImagePath!)) {
-      list.add(item.rawImagePath!);
-    }
+
     return list;
   }
 

@@ -11,14 +11,12 @@ class CaptureController extends ChangeNotifier {
   CaptureController({required this._imageService});
 
   CaptureState _state = CaptureState.idle;
-  String? _capturedImagePath;
   bool _isQualityWarningBlur = false;
   bool _isQualityWarningLight = false;
   bool _isBusy = false;
 
-  // Multi-angle photo tracker (Front=0, Side=1, Back=2, Detail=3)
-  final Map<int, String> _capturedAngles = {};
-  int _activeAngleIndex = 0;
+  // Open-ended photo list (no artificial limit)
+  final List<String> _capturedPhotos = [];
 
   // Viewfinder controls
   bool _flashOn = false;
@@ -28,20 +26,26 @@ class CaptureController extends ChangeNotifier {
   String _detectedStatusLabel = 'अच्छी रोशनी में फोटो लें';
 
   CaptureState get state => _state;
-  String? get capturedImagePath => _capturedImagePath ?? (_capturedAngles.isNotEmpty ? _capturedAngles.values.first : null);
+  List<String> get capturedPhotos => List.unmodifiable(_capturedPhotos);
+  String? get primaryPhoto => _capturedPhotos.isNotEmpty ? _capturedPhotos.first : null;
+  String? get capturedImagePath => primaryPhoto;
+  int get photosCount => _capturedPhotos.length;
+  int get photosTakenCount => _capturedPhotos.length;
+  bool get canProceed => _capturedPhotos.isNotEmpty;
+
+  // Compatibility mapping for existing integrations
+  Map<int, String> get capturedAngles =>
+      {for (int i = 0; i < _capturedPhotos.length; i++) i: _capturedPhotos[i]};
+  int get activeAngleIndex => _capturedPhotos.length;
+
+  bool get flashOn => _flashOn;
+  bool get showGrid => _showGrid;
   bool get isQualityWarningBlur => _isQualityWarningBlur;
   bool get isQualityWarningLight => _isQualityWarningLight;
   bool get isBusy => _isBusy;
   bool get isCameraReady => _imageService.isInitialized;
   CameraController? get cameraController => _imageService.controller;
 
-  Map<int, String> get capturedAngles => _capturedAngles;
-  int get activeAngleIndex => _activeAngleIndex;
-  int get photosTakenCount => _capturedAngles.length;
-  bool get canProceed => _capturedAngles.isNotEmpty || _capturedImagePath != null;
-
-  bool get flashOn => _flashOn;
-  bool get showGrid => _showGrid;
   String get detectedObject => _detectedObject;
   String get detectedCategory => _detectedCategory;
   String get detectedStatusLabel => _detectedStatusLabel;
@@ -66,18 +70,34 @@ class CaptureController extends ChangeNotifier {
   }
 
   void selectAngleSlot(int index) {
-    if (index >= 0 && index < 4) {
-      _activeAngleIndex = index;
+    // Open-ended: selecting slot has no rigid boundary
+    HapticFeedback.selectionClick();
+    notifyListeners();
+  }
+
+  void retakeAngle(int index) {
+    removePhotoAt(index);
+  }
+
+  void removePhotoAt(int index) {
+    if (index >= 0 && index < _capturedPhotos.length) {
+      _capturedPhotos.removeAt(index);
+      _clearWarnings();
       HapticFeedback.selectionClick();
       notifyListeners();
     }
   }
 
-  void retakeAngle(int index) {
-    _capturedAngles.remove(index);
-    _activeAngleIndex = index;
-    _capturedImagePath = _capturedAngles.isNotEmpty ? _capturedAngles.values.first : null;
-    _state = CaptureState.idle;
+  void removePhoto(String path) {
+    if (_capturedPhotos.remove(path)) {
+      _clearWarnings();
+      HapticFeedback.selectionClick();
+      notifyListeners();
+    }
+  }
+
+  void clearPhotos() {
+    _capturedPhotos.clear();
     _clearWarnings();
     HapticFeedback.selectionClick();
     notifyListeners();
@@ -123,7 +143,7 @@ class CaptureController extends ChangeNotifier {
   }
 
   void confirmImage() {
-    if (_capturedImagePath != null) {
+    if (_capturedPhotos.isNotEmpty) {
       _state = CaptureState.confirmed;
       HapticFeedback.lightImpact();
       notifyListeners();
@@ -132,7 +152,7 @@ class CaptureController extends ChangeNotifier {
 
   void retake() {
     _state = CaptureState.idle;
-    _capturedImagePath = null;
+    _capturedPhotos.clear();
     _clearWarnings();
     notifyListeners();
   }
@@ -142,18 +162,8 @@ class CaptureController extends ChangeNotifier {
     _isQualityWarningBlur = quality.isBlurry;
     _isQualityWarningLight = quality.isLowLight;
 
-    _capturedImagePath = path;
-    _capturedAngles[_activeAngleIndex] = path;
-
-    // Advance to next uncaptured angle slot if available
-    for (int i = 0; i < 4; i++) {
-      if (!_capturedAngles.containsKey(i)) {
-        _activeAngleIndex = i;
-        break;
-      }
-    }
-
-    _state = CaptureState.idle; // keep viewfinder active so seller can capture more angles
+    _capturedPhotos.add(path);
+    _state = CaptureState.idle; // keep viewfinder active so seller can snap more photos
   }
 
   void _clearWarnings() {

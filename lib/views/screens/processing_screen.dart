@@ -106,17 +106,23 @@ class _ProcessingScreenState extends State<ProcessingScreen>
         'Quantity: ${voiceCtrl.manualQuantity}',
     ].join(', ');
 
-    final galleryImages = captureCtrl.capturedAngles.values.toList();
-    if (galleryImages.isEmpty && captureCtrl.capturedImagePath != null) {
-      galleryImages.add(captureCtrl.capturedImagePath!);
-    }
+    final capturedList = captureCtrl.capturedPhotos.isNotEmpty
+        ? captureCtrl.capturedPhotos
+        : (captureCtrl.capturedImagePath != null
+            ? [captureCtrl.capturedImagePath!]
+            : <String>[]);
+    final primaryImg = capturedList.isNotEmpty
+        ? capturedList.first
+        : (captureCtrl.capturedImagePath ?? '');
+    final additionalGallery =
+        capturedList.length > 1 ? capturedList.sublist(1) : <String>[];
 
     try {
       await catalogCtrl.processCatalog(
-        imagePath: captureCtrl.capturedImagePath ?? '',
+        imagePath: primaryImg,
         audioPath: voiceCtrl.audioPath ?? '',
         audioPaths: voiceCtrl.stepAudioPaths.values.toList(),
-        galleryImagePaths: galleryImages,
+        galleryImagePaths: additionalGallery,
         manualDimensions: manualDims.isNotEmpty ? manualDims : null,
       );
     } catch (e) {
@@ -151,15 +157,21 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     final voiceCtrl = context.read<VoiceController>();
     final catalogCtrl = context.read<CatalogController>();
 
-    final galleryImages = captureCtrl.capturedAngles.values.toList();
-    if (galleryImages.isEmpty && captureCtrl.capturedImagePath != null) {
-      galleryImages.add(captureCtrl.capturedImagePath!);
-    }
+    final capturedList = captureCtrl.capturedPhotos.isNotEmpty
+        ? captureCtrl.capturedPhotos
+        : (captureCtrl.capturedImagePath != null
+            ? [captureCtrl.capturedImagePath!]
+            : <String>[]);
+    final primaryImg = capturedList.isNotEmpty
+        ? capturedList.first
+        : (captureCtrl.capturedImagePath ?? '');
+    final additionalGallery =
+        capturedList.length > 1 ? capturedList.sublist(1) : <String>[];
 
     await catalogCtrl.createFallbackDraft(
-      imagePath: captureCtrl.capturedImagePath ?? '',
+      imagePath: primaryImg,
       audioPath: voiceCtrl.audioPath,
-      galleryImagePaths: galleryImages,
+      galleryImagePaths: additionalGallery,
       category: captureCtrl.detectedCategory,
     );
 
