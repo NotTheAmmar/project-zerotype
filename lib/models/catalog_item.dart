@@ -204,16 +204,6 @@ class CatalogItem {
       }
     }
 
-    final galleryList = <String>[];
-    final rawGallery = json['gallery_images'] ?? json['galleryImages'];
-    if (rawGallery is List) {
-      for (final g in rawGallery) {
-        if (g != null && g.toString().isNotEmpty) {
-          galleryList.add(g.toString());
-        }
-      }
-    }
-
     final rawImg = json['raw_image_url'] as String? ?? json['rawImagePath'] as String?;
     String? studioImg = json['studio_image_url'] as String? ?? json['studioImagePath'] as String?;
     // Discard any legacy dummy saree fallback image
@@ -221,6 +211,22 @@ class CatalogItem {
       studioImg = null;
     }
     studioImg ??= rawImg;
+
+    final galleryList = <String>[];
+    final rawGallery = json['gallery_images'] ?? json['galleryImages'];
+    if (rawGallery is List) {
+      for (final g in rawGallery) {
+        if (g != null && g.toString().isNotEmpty) {
+          final s = g.toString();
+          // Filter out dummy saree and primary rawImg duplicate
+          if (!s.contains('photo-1610030469983-98e550d6193c') &&
+              s != rawImg &&
+              !galleryList.contains(s)) {
+            galleryList.add(s);
+          }
+        }
+      }
+    }
 
     return CatalogItem(
       id: catalogId,

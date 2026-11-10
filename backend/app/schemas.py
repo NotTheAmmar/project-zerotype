@@ -8,7 +8,7 @@ Two model groups:
 """
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -121,6 +121,24 @@ class ArtisanListingPayload(BaseModel):
         if "fair_price" in (info.data or {}) and v < info.data["fair_price"]:
             raise ValueError("premium_price must be >= fair_price")
         return v
+
+    @model_validator(mode="after")
+    def clean_gallery_and_studio_images(self) -> "ArtisanListingPayload":
+        # Discard legacy dummy saree photo
+        if self.studio_image_url and "photo-1610030469983-98e550d6193c" in self.studio_image_url:
+            self.studio_image_url = ""
+        # Deduplicate gallery_images and exclude raw_image_url from gallery
+        clean_gallery: List[str] = []
+        for img in self.gallery_images:
+            if (
+                img
+                and "photo-1610030469983-98e550d6193c" not in img
+                and img != self.raw_image_url
+                and img not in clean_gallery
+            ):
+                clean_gallery.append(img)
+        self.gallery_images = clean_gallery
+        return self
 
 
 # ─────────────────────────────────────────────────────────────────────────────

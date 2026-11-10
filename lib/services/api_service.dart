@@ -258,12 +258,17 @@ class LiveApiService implements ApiService {
       }
     }
 
-    // Upload multi-angle gallery photos if any
+    // Upload ADDITIONAL gallery photos (excluding primary raw image)
     final uploadedGalleryUrls = <String>[];
     for (int i = 0; i < item.galleryImages.length; i++) {
       final gPath = item.galleryImages[i];
+      // Skip if this gallery image is identical to the raw image (local path or uploaded URL)
+      if (gPath == item.rawImagePath || gPath == finalRawImageUrl) {
+        continue;
+      }
       if (gPath.startsWith('http://') || gPath.startsWith('https://')) {
-        if (!gPath.contains('photo-1610030469983-98e550d6193c')) {
+        if (!gPath.contains('photo-1610030469983-98e550d6193c') &&
+            !uploadedGalleryUrls.contains(gPath)) {
           uploadedGalleryUrls.add(gPath);
         }
       } else if (File(gPath).existsSync()) {
@@ -273,7 +278,10 @@ class LiveApiService implements ApiService {
             imageType: 'gallery_$i',
             catalogId: item.id,
           );
-          if (uploaded != null && uploaded.isNotEmpty) {
+          if (uploaded != null &&
+              uploaded.isNotEmpty &&
+              uploaded != finalRawImageUrl &&
+              !uploadedGalleryUrls.contains(uploaded)) {
             uploadedGalleryUrls.add(uploaded);
           }
         } catch (e) {

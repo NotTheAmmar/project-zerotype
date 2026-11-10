@@ -19,13 +19,6 @@ class CaptureScreen extends StatefulWidget {
 class _CaptureScreenState extends State<CaptureScreen> {
   bool _cameraInitStarted = false;
 
-  final List<({String hi, String en, IconData icon})> _angleSlots = const [
-    (hi: 'सामने', en: 'Front', icon: Icons.crop_portrait_rounded),
-    (hi: 'पीछे/साइड', en: 'Back/Side', icon: Icons.crop_rotate_rounded),
-    (hi: 'बारीकी', en: 'Detail', icon: Icons.zoom_in_rounded),
-    (hi: 'हाथ में', en: 'In Hand', icon: Icons.pan_tool_outlined),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -334,8 +327,8 @@ class _CaptureScreenState extends State<CaptureScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ── Angle Selector Chips ──
-                _buildAngleSelectorChips(ctrl),
+                // ── Open-Ended Photo Tray ──
+                _buildPhotoTray(context, ctrl),
                 const SizedBox(height: 18),
 
                 // ── Shutter & Actions Row ──
@@ -348,107 +341,155 @@ class _CaptureScreenState extends State<CaptureScreen> {
     );
   }
 
-  // ── Horizontal Angle Selector Chips ────────────────────────────────────────
-  Widget _buildAngleSelectorChips(CaptureController ctrl) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(_angleSlots.length, (index) {
-        final slot = _angleSlots[index];
-        final isSelected = ctrl.activeAngleIndex == index;
-        final capturedPath = ctrl.capturedAngles[index];
-        final isCaptured = capturedPath != null;
-
-        return Expanded(
-          child: GestureDetector(
-            onTap: () => ctrl.selectAngleSlot(index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primaryTeal.withValues(alpha: 0.3)
-                    : (isCaptured
-                        ? Colors.white.withValues(alpha: 0.15)
-                        : Colors.white.withValues(alpha: 0.08)),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isSelected
-                      ? AppColors.primaryTeal
-                      : (isCaptured ? Colors.white54 : Colors.white24),
-                  width: isSelected ? 2.0 : 1.0,
-                ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      if (isCaptured && !kIsWeb && File(capturedPath).existsSync())
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.file(
-                            File(capturedPath),
-                            width: 28,
-                            height: 28,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      else
-                        Icon(
-                          slot.icon,
-                          size: 20,
-                          color: isSelected
-                              ? AppColors.primaryTeal
-                              : (isCaptured ? Colors.white : Colors.white60),
-                        ),
-                      if (isCaptured)
-                        Positioned(
-                          right: -2,
-                          top: -2,
-                          child: Container(
-                            padding: const EdgeInsets.all(2),
-                            decoration: const BoxDecoration(
-                              color: AppColors.primaryTeal,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.check_rounded,
-                              size: 10,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    slot.hi,
-                    style: AppTextStyles.labelSmall.copyWith(
-                      color: isSelected ? Colors.white : Colors.white70,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      fontSize: 10,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    slot.en,
-                    style: AppTextStyles.caption.copyWith(
-                      color: isSelected ? AppColors.primaryTeal : Colors.white54,
-                      fontSize: 9,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+  // ── Open-Ended Photo Tray ─────────────────────────────────────────────────
+  Widget _buildPhotoTray(BuildContext context, CaptureController ctrl) {
+    if (ctrl.photosCount == 0) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.add_a_photo_outlined, size: 16, color: Colors.white70),
+            const SizedBox(width: 8),
+            Text(
+              'शिल्प की तस्वीरें लें (कम से कम 1 ज़रूरी) • Take craft photos',
+              style: AppTextStyles.caption.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
               ),
             ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Counter badge
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryTeal.withValues(alpha: 0.25),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.6)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.primaryTeal),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${ctrl.photosCount} फ़ोटो जोड़ी गईं • ${ctrl.photosCount} photo${ctrl.photosCount > 1 ? 's' : ''} added',
+                      style: AppTextStyles.caption.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        );
-      }),
+        ),
+        // Horizontal scrollable thumbnail filmstrip
+        SizedBox(
+          height: 68,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            shrinkWrap: true,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            itemCount: ctrl.photosCount,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final path = ctrl.capturedPhotos[index];
+              final isMain = index == 0;
+              final isFile = !kIsWeb && File(path).existsSync();
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isMain ? AppColors.primaryTeal : Colors.white60,
+                        width: isMain ? 2.0 : 1.0,
+                      ),
+                      color: Colors.black45,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(9),
+                      child: isFile
+                          ? Image.file(
+                              File(path),
+                              fit: BoxFit.cover,
+                            )
+                          : const Icon(Icons.image, color: Colors.white70, size: 24),
+                    ),
+                  ),
+                  // Index / Main badge
+                  Positioned(
+                    bottom: 2,
+                    left: 2,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: isMain
+                            ? AppColors.primaryTeal
+                            : Colors.black.withValues(alpha: 0.75),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        isMain ? 'मुख्य #1' : '#${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Delete button
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: GestureDetector(
+                      onTap: () => ctrl.removePhotoAt(index),
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Colors.redAccent,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close_rounded,
+                          size: 12,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

@@ -56,11 +56,15 @@ def build_on_search_catalog(
         else item.description_en
     )
 
-    # Collect non-dummy item images (studio, raw, and gallery)
-    item_images = [
-        img for img in [item.studio_image_url, item.raw_image_url, *item.gallery_images]
-        if img and "photo-1610030469983-98e550d6193c" not in img
-    ]
+    # Collect non-dummy item images (studio, raw, and gallery) without duplicates
+    item_images: List[str] = []
+    for candidate in [item.studio_image_url, item.raw_image_url, *item.gallery_images]:
+        if (
+            candidate
+            and "photo-1610030469983-98e550d6193c" not in candidate
+            and candidate not in item_images
+        ):
+            item_images.append(candidate)
     primary_img = item_images[0] if item_images else (item.studio_image_url or item.raw_image_url or "")
 
     return {
