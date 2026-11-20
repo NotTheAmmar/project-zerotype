@@ -161,11 +161,16 @@ class CatalogController extends ChangeNotifier {
     List<String>? galleryImagePaths,
     String? category,
   }) async {
+    final existingStudio = _currentItem?.studioImagePath;
+    final finalStudio = (existingStudio != null && existingStudio.isNotEmpty && existingStudio != imagePath)
+        ? existingStudio
+        : imagePath;
+
     _currentItem = CatalogItem(
       id: const Uuid().v4(),
       createdAt: DateTime.now(),
       rawImagePath: imagePath,
-      studioImagePath: imagePath,
+      studioImagePath: finalStudio,
       audioPath: audioPath,
       galleryImages: galleryImagePaths ?? const [],
       titleEn: 'Handcrafted Artisan Item',

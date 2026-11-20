@@ -1,7 +1,41 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AppConstants {
   AppConstants._();
+
+  static String? _customBackendUrl;
+  static String? _customGroqApiKey;
+
+  static Future<void> loadCustomConfig() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _customBackendUrl = prefs.getString('custom_backend_url');
+      _customGroqApiKey = prefs.getString('custom_groq_api_key');
+    } catch (_) {}
+  }
+
+  static Future<void> setCustomBackendUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cleanUrl = url.trim().replaceAll(RegExp(r'/+$'), '');
+    _customBackendUrl = cleanUrl.isNotEmpty ? cleanUrl : null;
+    if (_customBackendUrl != null) {
+      await prefs.setString('custom_backend_url', _customBackendUrl!);
+    } else {
+      await prefs.remove('custom_backend_url');
+    }
+  }
+
+  static Future<void> setCustomGroqApiKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final cleanKey = key.trim();
+    _customGroqApiKey = cleanKey.isNotEmpty ? cleanKey : null;
+    if (_customGroqApiKey != null) {
+      await prefs.setString('custom_groq_api_key', _customGroqApiKey!);
+    } else {
+      await prefs.remove('custom_groq_api_key');
+    }
+  }
 
   static String? _getEnv(String key) {
     if (!dotenv.isInitialized) return null;
@@ -9,8 +43,13 @@ class AppConstants {
   }
 
   // API
-  static String get baseUrl =>
-      _getEnv('API_BASE_URL') ?? 'https://api.bazaarsetu.in/v1';
+  static String get baseUrl {
+    if (_customBackendUrl != null && _customBackendUrl!.isNotEmpty) {
+      return _customBackendUrl!;
+    }
+    return _getEnv('API_BASE_URL') ?? 'https://api.bazaarsetu.in/v1';
+  }
+
   static bool get useMockData =>
       (_getEnv('USE_MOCK_DATA') ?? 'false').toLowerCase() == 'true';
   static Duration get apiTimeout => const Duration(seconds: 120);
@@ -18,7 +57,14 @@ class AppConstants {
   // AI Extraction (Qwen / Groq)
   static String get aiExtractionProvider =>
       _getEnv('AI_EXTRACTION_PROVIDER')?.toLowerCase() ?? 'groq_qwen';
-  static String get groqApiKey => _getEnv('GROQ_API_KEY') ?? '';
+
+  static String get groqApiKey {
+    if (_customGroqApiKey != null && _customGroqApiKey!.isNotEmpty) {
+      return _customGroqApiKey!;
+    }
+    return _getEnv('GROQ_API_KEY') ?? '';
+  }
+
   static String get qwenModel =>
       _getEnv('QWEN_MODEL') ?? 'qwen/qwen3.8-27b';
   static String get qwenApiUrl =>
@@ -37,11 +83,17 @@ class AppConstants {
 
   // ── BPP Backend (ONDC Beckn Provider Platform) ────────────────────
   static String get bppBackendUrl {
+    if (_customBackendUrl != null && _customBackendUrl!.isNotEmpty) {
+      return _customBackendUrl!;
+    }
     final url = _getEnv('BPP_BACKEND_URL') ?? 'http://localhost:8000';
     return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
   }
 
   static String get backendUrl {
+    if (_customBackendUrl != null && _customBackendUrl!.isNotEmpty) {
+      return _customBackendUrl!;
+    }
     final url = _getEnv('BACKEND_URL') ?? 'http://localhost:8000';
     return url.endsWith('/') ? url.substring(0, url.length - 1) : url;
   }

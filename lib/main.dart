@@ -1,3 +1,4 @@
+import 'config/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,7 @@ void main() async {
   } catch (_) {
     // .env is optional when running mock mode
   }
+  await AppConstants.loadCustomConfig();
 
   // Pre-load language preferences so initialRoute can deterministically route on first frame
   final languageCtrl = LanguageController(autoLoad: false);
