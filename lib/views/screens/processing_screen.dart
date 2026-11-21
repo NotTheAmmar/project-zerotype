@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -31,7 +32,8 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     {
       'icon': '✨',
       'title': 'High-Impact Photos',
-      'subtitle': 'Clean studio lighting increases buyer orders on ONDC by over 3x.',
+      'subtitle':
+          'Clean studio lighting increases buyer orders on ONDC by over 3x.',
       'hi': 'अच्छी रोशनी और साफ बैकग्राउंड से ओएनडीसी पर 3 गुना अधिक ऑर्डर मिलते हैं।',
     },
     {
@@ -49,7 +51,8 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     {
       'icon': '🚀',
       'title': 'Nationwide Reach',
-      'subtitle': 'Your product will be discoverable on major buyer apps across India.',
+      'subtitle':
+          'Your product will be discoverable on major buyer apps across India.',
       'hi': 'आपका शिल्प पूरे भारत के बड़े खरीदार ऐप्स (पेटीएम, माईस्टोर) पर दिखेगा।',
     },
   ];
@@ -109,13 +112,14 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     final capturedList = captureCtrl.capturedPhotos.isNotEmpty
         ? captureCtrl.capturedPhotos
         : (captureCtrl.capturedImagePath != null
-            ? [captureCtrl.capturedImagePath!]
-            : <String>[]);
+              ? [captureCtrl.capturedImagePath!]
+              : <String>[]);
     final primaryImg = capturedList.isNotEmpty
         ? capturedList.first
         : (captureCtrl.capturedImagePath ?? '');
-    final additionalGallery =
-        capturedList.length > 1 ? capturedList.sublist(1) : <String>[];
+    final additionalGallery = capturedList.length > 1
+        ? capturedList.sublist(1)
+        : <String>[];
 
     try {
       await catalogCtrl.processCatalog(
@@ -146,10 +150,8 @@ class _ProcessingScreenState extends State<ProcessingScreen>
   void _navigateToListingPreview() {
     if (_hasNavigated) return;
     _hasNavigated = true;
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRoutes.catalog,
-      (route) => route.isFirst,
-    );
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil(AppRoutes.catalog, (route) => route.isFirst);
   }
 
   void _createManualDraftAndProceed() async {
@@ -160,13 +162,14 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     final capturedList = captureCtrl.capturedPhotos.isNotEmpty
         ? captureCtrl.capturedPhotos
         : (captureCtrl.capturedImagePath != null
-            ? [captureCtrl.capturedImagePath!]
-            : <String>[]);
+              ? [captureCtrl.capturedImagePath!]
+              : <String>[]);
     final primaryImg = capturedList.isNotEmpty
         ? capturedList.first
         : (captureCtrl.capturedImagePath ?? '');
-    final additionalGallery =
-        capturedList.length > 1 ? capturedList.sublist(1) : <String>[];
+    final additionalGallery = capturedList.length > 1
+        ? capturedList.sublist(1)
+        : <String>[];
 
     await catalogCtrl.createFallbackDraft(
       imagePath: primaryImg,
@@ -211,12 +214,17 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                 children: [
                   // ── Top AI Badge ──────────────────────────────────────────
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFBECE5),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: AppColors.secondaryTerracotta.withValues(alpha: 0.3),
+                        color: AppColors.secondaryTerracotta.withValues(
+                          alpha: 0.3,
+                        ),
                       ),
                     ),
                     child: Row(
@@ -247,28 +255,30 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                         ? 'Catalog Ready!'
                         : (isError ? 'Notice' : 'Crafting your listing...'),
                     textAlign: TextAlign.center,
-                    style: AppTextStyles.serifHeadingLarge(
-                      color: isError ? AppColors.alertRed : AppColors.textPrimary,
-                    ).copyWith(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w700,
-                      height: 1.25,
-                    ),
+                    style:
+                        AppTextStyles.serifHeadingLarge(
+                          color: isError
+                              ? AppColors.alertRed
+                              : AppColors.textPrimary,
+                        ).copyWith(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                          height: 1.25,
+                        ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     isDone
                         ? 'आपका डिजिटल कैटलॉग तैयार है!'
                         : (isError
-                            ? 'कैटलॉग निर्माण में कुछ देरी हुई'
-                            : 'डिजिटल कैटलॉग तैयार किया जा रहा है...'),
+                              ? 'कैटलॉग निर्माण में कुछ देरी हुई'
+                              : 'डिजिटल कैटलॉग तैयार किया जा रहा है...'),
                     textAlign: TextAlign.center,
                     style: AppTextStyles.serifTitle(
-                      color: isDone ? AppColors.primaryTeal : AppColors.secondaryTerracotta,
-                    ).copyWith(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                      color: isDone
+                          ? AppColors.primaryTeal
+                          : AppColors.secondaryTerracotta,
+                    ).copyWith(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 24),
 
@@ -278,7 +288,10 @@ class _ProcessingScreenState extends State<ProcessingScreen>
 
                   // ── Sleek Progress Bar with Percentage Counter ────────────
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
@@ -305,7 +318,9 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                                 style: AppTextStyles.label.copyWith(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                  color: isDone ? AppColors.primaryTeal : AppColors.textPrimary,
+                                  color: isDone
+                                      ? AppColors.primaryTeal
+                                      : AppColors.textPrimary,
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -325,19 +340,23 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                         ClipRRect(
                           borderRadius: BorderRadius.circular(6),
                           child: LinearProgressIndicator(
-                            value: isDone ? 1.0 : (_progressPercent / 100.0).clamp(0.05, 0.95),
+                            value: isDone
+                                ? 1.0
+                                : (_progressPercent / 100.0).clamp(0.05, 0.95),
                             minHeight: 8,
                             backgroundColor: AppColors.surfaceContainer,
                             valueColor: AlwaysStoppedAnimation(
-                              isDone ? AppColors.primaryTeal : AppColors.secondaryTerracotta,
+                              isDone
+                                  ? AppColors.primaryTeal
+                                  : AppColors.secondaryTerracotta,
                             ),
                           ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           isDone
-                            ? 'All product details and fair pricing are ready.'
-                            : _getStageDetail(catalogCtrl.stage),
+                              ? 'All product details and fair pricing are ready.'
+                              : _getStageDetail(catalogCtrl.stage),
                           style: AppTextStyles.caption.copyWith(
                             color: AppColors.textSecondary,
                             fontSize: 11,
@@ -359,13 +378,18 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                         color: const Color(0xFFF9F7F4),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: AppColors.secondaryTerracotta.withValues(alpha: 0.2),
+                          color: AppColors.secondaryTerracotta.withValues(
+                            alpha: 0.2,
+                          ),
                         ),
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(tip['icon']!, style: const TextStyle(fontSize: 22)),
+                          Text(
+                            tip['icon']!,
+                            style: const TextStyle(fontSize: 22),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -420,7 +444,11 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.info_outline_rounded, color: AppColors.warningAmber, size: 20),
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                color: AppColors.warningAmber,
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'AI सहायता • AI Assistance',
@@ -448,11 +476,16 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                                     setState(() => _progressPercent = 15);
                                     _startProcessing();
                                   },
-                                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                                  icon: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 16,
+                                  ),
                                   label: const Text('दोबारा प्रयास • Retry'),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: AppColors.primaryTeal,
-                                    side: const BorderSide(color: AppColors.primaryTeal),
+                                    side: const BorderSide(
+                                      color: AppColors.primaryTeal,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -460,7 +493,10 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                               Expanded(
                                 child: ElevatedButton.icon(
                                   onPressed: _createManualDraftAndProceed,
-                                  icon: const Icon(Icons.edit_note_rounded, size: 16),
+                                  icon: const Icon(
+                                    Icons.edit_note_rounded,
+                                    size: 16,
+                                  ),
                                   label: const Text('ड्राफ्ट खोलें • Draft'),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primaryTeal,
@@ -485,7 +521,9 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                           ? _navigateToListingPreview
                           : (isError ? _createManualDraftAndProceed : null),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isDone ? AppColors.primaryTeal : AppColors.primaryDark,
+                        backgroundColor: isDone
+                            ? AppColors.primaryTeal
+                            : AppColors.primaryDark,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: Colors.black12,
                         disabledForegroundColor: Colors.black38,
@@ -512,8 +550,8 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                             isDone
                                 ? 'View Listing Preview → सूची देखें'
                                 : (isError
-                                    ? 'Open Draft Listing • ड्राफ्ट खोलें'
-                                    : 'Processing craft details... प्रतीक्षा करें'),
+                                      ? 'Open Draft Listing • ड्राफ्ट खोलें'
+                                      : 'Processing craft details... प्रतीक्षा करें'),
                             style: AppTextStyles.buttonLabel.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -578,33 +616,38 @@ class _ProcessingScreenState extends State<ProcessingScreen>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: (isDone ? AppColors.primaryTeal : AppColors.secondaryTerracotta)
-                      .withValues(alpha: 0.2),
+                  color:
+                      (isDone
+                              ? AppColors.primaryTeal
+                              : AppColors.secondaryTerracotta)
+                          .withValues(alpha: 0.2),
                   blurRadius: 18,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: ClipOval(
-              child: (localImagePath != null && !kIsWeb && File(localImagePath).existsSync())
-                  ? Image.file(
-                      File(localImagePath),
+              child:
+                  (localImagePath != null &&
+                      !kIsWeb &&
+                      File(localImagePath).existsSync())
+                  ? Image.file(File(localImagePath), fit: BoxFit.cover)
+                  : (localImagePath != null &&
+                        (localImagePath.startsWith('http') ||
+                            (kIsWeb && localImagePath.startsWith('blob:'))))
+                  ? Image.network(
+                      localImagePath,
                       fit: BoxFit.cover,
+                      headers: const {'bypass-tunnel-reminder': 'true'},
+                      errorBuilder: (ctx, err, stack) => Image.network(
+                        'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
+                        fit: BoxFit.cover,
+                      ),
                     )
-                  : (localImagePath != null && (localImagePath.startsWith('http') || (kIsWeb && localImagePath.startsWith('blob:'))))
-                      ? Image.network(
-                          localImagePath,
-                          fit: BoxFit.cover,
-                          headers: const {'bypass-tunnel-reminder': 'true'},
-                          errorBuilder: (ctx, err, stack) => Image.network(
-                            'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : Image.network(
-                          'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
-                          fit: BoxFit.cover,
-                        ),
+                  : Image.network(
+                      'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
+                      fit: BoxFit.cover,
+                    ),
             ),
           ),
 
@@ -631,15 +674,21 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    isDone ? Icons.check_circle_rounded : Icons.auto_fix_high_rounded,
+                    isDone
+                        ? Icons.check_circle_rounded
+                        : Icons.auto_fix_high_rounded,
                     size: 14,
-                    color: isDone ? AppColors.primaryTeal : AppColors.secondaryTerracotta,
+                    color: isDone
+                        ? AppColors.primaryTeal
+                        : AppColors.secondaryTerracotta,
                   ),
                   const SizedBox(width: 5),
                   Text(
                     isDone ? 'Craft Ready • पूर्ण हुआ' : 'AI Craft Studio',
                     style: AppTextStyles.labelSmall.copyWith(
-                      color: isDone ? AppColors.primaryTeal : AppColors.textPrimary,
+                      color: isDone
+                          ? AppColors.primaryTeal
+                          : AppColors.textPrimary,
                       fontWeight: FontWeight.w700,
                       fontSize: 11,
                     ),

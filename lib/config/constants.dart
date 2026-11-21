@@ -65,10 +65,10 @@ class AppConstants {
     return _getEnv('GROQ_API_KEY') ?? '';
   }
 
-  static String get qwenModel =>
-      _getEnv('QWEN_MODEL') ?? 'qwen/qwen3.8-27b';
+  static String get qwenModel => _getEnv('QWEN_MODEL') ?? 'qwen/qwen3.8-27b';
   static String get qwenApiUrl =>
-      _getEnv('QWEN_API_URL') ?? 'https://api.groq.com/openai/v1/chat/completions';
+      _getEnv('QWEN_API_URL') ??
+      'https://api.groq.com/openai/v1/chat/completions';
 
   // Bhashini (Bhashini Cloud)
   static String get bhashiniApiKey => _getEnv('BHASHINI_API_KEY') ?? '';

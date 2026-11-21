@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
+
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+
 import '../../config/constants.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
@@ -54,7 +57,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
     });
   }
 
-  Future<void> _setQuantity(int qty, CatalogItem? item, CatalogController? catalogCtrl) async {
+  Future<void> _setQuantity(
+    int qty,
+    CatalogItem? item,
+    CatalogController? catalogCtrl,
+  ) async {
     setState(() => _quantity = qty);
     if (item != null && catalogCtrl != null && item.availableQuantity != qty) {
       final updated = item.copyWith(availableQuantity: qty);
@@ -66,14 +73,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Stock updated to $qty units on ONDC • स्टॉक $qty पीस अपडेट हुआ'),
+                content: Text(
+                  'Stock updated to $qty units on ONDC • स्टॉक $qty पीस अपडेट हुआ',
+                ),
                 backgroundColor: AppColors.primaryTeal,
                 duration: const Duration(seconds: 2),
               ),
             );
           }
         } catch (e) {
-          debugPrint('[CatalogScreen] Error updating published stock to ONDC BPP: $e');
+          debugPrint(
+            '[CatalogScreen] Error updating published stock to ONDC BPP: $e',
+          );
         }
       }
     }
@@ -92,7 +103,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
 
     // 1. Studio image (if present and distinct from raw image)
-    if (item.studioImagePath != null && item.studioImagePath != item.rawImagePath) {
+    if (item.studioImagePath != null &&
+        item.studioImagePath != item.rawImagePath) {
       addUnique(item.studioImagePath);
     }
 
@@ -114,7 +126,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.palette_outlined, size: 44, color: AppColors.secondaryTerracotta),
+            Icon(
+              Icons.palette_outlined,
+              size: 44,
+              color: AppColors.secondaryTerracotta,
+            ),
             SizedBox(height: 6),
             Text(
               'शिल्प छायाचित्र • Artisan Craft Photo',
@@ -151,10 +167,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   color: AppColors.textSecondary,
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  'No Craft Selected',
-                  style: AppTextStyles.serifTitle(),
-                ),
+                Text('No Craft Selected', style: AppTextStyles.serifTitle()),
                 const SizedBox(height: 8),
                 Text(
                   'Please select a craft from your listings or create a new craft listing.',
@@ -207,78 +220,79 @@ class _CatalogScreenState extends State<CatalogScreen> {
         backgroundColor: AppColors.warmCream,
         appBar: _buildAppBar(context, item, catalogCtrl),
         body: SafeArea(
-        child: Column(
-          children: [
-            // ── Scrollable Content ────────────────────────────────────────
-            Expanded(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 760),
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. Hero Image Section
-                        _buildImageSection(item),
-                        const SizedBox(height: 14),
-
-                        // ONDC Live Status Banner (if published)
-                        if (item.status == CatalogStatus.published) ...[
-                          _buildLiveOndcBanner(item),
+          child: Column(
+            children: [
+              // ── Scrollable Content ────────────────────────────────────────
+              Expanded(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 760),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. Hero Image Section
+                          _buildImageSection(item),
                           const SizedBox(height: 14),
+
+                          // ONDC Live Status Banner (if published)
+                          if (item.status == CatalogStatus.published) ...[
+                            _buildLiveOndcBanner(item),
+                            const SizedBox(height: 14),
+                          ],
+
+                          // 2. Title & Tactile Pricing Card
+                          _buildTitleAndPriceCard(
+                            item,
+                            activePrice,
+                            floorPrice,
+                            baseFairPrice,
+                            premiumPrice,
+                            mrp,
+                            discountPercent,
+                          ),
+                          const SizedBox(height: 14),
+
+                          // 3. About this craft Card
+                          _buildAboutCraftCard(item, catalogCtrl),
+                          const SizedBox(height: 14),
+
+                          // 4. Meet the Artisan Card
+                          _buildMeetArtisanCard(item),
+                          const SizedBox(height: 14),
+
+                          // 5. Product Specifications Card
+                          _buildSpecificationsCard(item),
+                          const SizedBox(height: 24),
                         ],
-
-                        // 2. Title & Tactile Pricing Card
-                        _buildTitleAndPriceCard(
-                          item,
-                          activePrice,
-                          floorPrice,
-                          baseFairPrice,
-                          premiumPrice,
-                          mrp,
-                          discountPercent,
-                        ),
-                        const SizedBox(height: 14),
-
-                        // 3. About this craft Card
-                        _buildAboutCraftCard(item, catalogCtrl),
-                        const SizedBox(height: 14),
-
-                        // 4. Meet the Artisan Card
-                        _buildMeetArtisanCard(item),
-                        const SizedBox(height: 14),
-
-                        // 5. Product Specifications Card
-                        _buildSpecificationsCard(item),
-                        const SizedBox(height: 24),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
 
-            // ── Sticky Bottom Action Bar ──────────────────────────────────
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
-                child: _buildBottomActionBar(context, catalogCtrl, item),
+              // ── Sticky Bottom Action Bar ──────────────────────────────────
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 760),
+                  child: _buildBottomActionBar(context, catalogCtrl, item),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _navigateBackToExplore(BuildContext context) {
     _catalogCtrl?.stopReadback();
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRoutes.explore,
-      (route) => false,
-    );
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil(AppRoutes.explore, (route) => false);
   }
 
   // ── AppBar ─────────────────────────────────────────────────────────────────
@@ -292,7 +306,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+        icon: const Icon(
+          Icons.arrow_back_rounded,
+          color: AppColors.textPrimary,
+        ),
         onPressed: () => _navigateBackToExplore(context),
       ),
       title: Text(
@@ -307,25 +324,44 @@ class _CatalogScreenState extends State<CatalogScreen> {
         if (catalogCtrl != null && item?.status != CatalogStatus.published)
           IconButton(
             tooltip: 'बोलकर सुधारें • AI Voice Edit',
-            icon: const Icon(Icons.mic_rounded, color: AppColors.secondaryTerracotta),
+            icon: const Icon(
+              Icons.mic_rounded,
+              color: AppColors.secondaryTerracotta,
+            ),
             onPressed: () => _showVoiceEditSheet(context, catalogCtrl),
           ),
-        if (item != null && catalogCtrl != null && item.status != CatalogStatus.published)
+        if (item != null &&
+            catalogCtrl != null &&
+            item.status != CatalogStatus.published)
           IconButton(
             tooltip: 'मैन्युअल सुधारें • Manual Edit',
-            icon: const Icon(Icons.edit_note_rounded, color: AppColors.primaryTeal),
+            icon: const Icon(
+              Icons.edit_note_rounded,
+              color: AppColors.primaryTeal,
+            ),
             onPressed: () => _showManualEditSheet(context, item, catalogCtrl),
           ),
-        if (item != null && catalogCtrl != null && item.status == CatalogStatus.published)
+        if (item != null &&
+            catalogCtrl != null &&
+            item.status == CatalogStatus.published)
           IconButton(
             tooltip: 'स्टॉक बदलें • Update Stock',
-            icon: const Icon(Icons.inventory_2_outlined, color: AppColors.primaryTeal),
-            onPressed: () => _showCustomQuantityDialog(context, item, catalogCtrl),
+            icon: const Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.primaryTeal,
+            ),
+            onPressed: () =>
+                _showCustomQuantityDialog(context, item, catalogCtrl),
           ),
-        if (item != null && catalogCtrl != null && item.status != CatalogStatus.published)
+        if (item != null &&
+            catalogCtrl != null &&
+            item.status != CatalogStatus.published)
           IconButton(
             tooltip: 'शिल्प हटाएं • Delete Draft',
-            icon: const Icon(Icons.delete_outline_rounded, color: AppColors.alertRed),
+            icon: const Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.alertRed,
+            ),
             onPressed: () => _confirmDeleteCraft(context, item, catalogCtrl),
           ),
         IconButton(
@@ -407,12 +443,24 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           IconButton(
             tooltip: 'स्टॉक बदलें • Update Stock',
-            icon: const Icon(Icons.inventory_2_outlined, color: Color(0xFF2E7D32), size: 20),
-            onPressed: () => _showCustomQuantityDialog(context, item, context.read<CatalogController>()),
+            icon: const Icon(
+              Icons.inventory_2_outlined,
+              color: Color(0xFF2E7D32),
+              size: 20,
+            ),
+            onPressed: () => _showCustomQuantityDialog(
+              context,
+              item,
+              context.read<CatalogController>(),
+            ),
           ),
           IconButton(
             tooltip: 'नेटवर्क विवरण देखें • Network Info',
-            icon: const Icon(Icons.info_outline_rounded, color: Color(0xFF2E7D32), size: 20),
+            icon: const Icon(
+              Icons.info_outline_rounded,
+              color: Color(0xFF2E7D32),
+              size: 20,
+            ),
             onPressed: () => _showNetworkStatusDialog(context, item),
           ),
         ],
@@ -432,7 +480,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.delete_outline_rounded, color: AppColors.alertRed, size: 24),
+            const Icon(
+              Icons.delete_outline_rounded,
+              color: AppColors.alertRed,
+              size: 24,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -450,7 +502,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel • रद्द करें', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Cancel • रद्द करें',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -459,7 +514,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Craft deleted successfully • शिल्प हटा दिया गया'),
+                  content: Text(
+                    'Craft deleted successfully • शिल्प हटा दिया गया',
+                  ),
                   backgroundColor: AppColors.textPrimary,
                 ),
               );
@@ -488,7 +545,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.unpublished_outlined, color: AppColors.secondaryTerracotta, size: 24),
+            const Icon(
+              Icons.unpublished_outlined,
+              color: AppColors.secondaryTerracotta,
+              size: 24,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -506,7 +567,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel • रद्द करें', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text(
+              'Cancel • रद्द करें',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -515,7 +579,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Craft unlisted from ONDC • शिल्प ड्राफ्ट में बदल दिया गया'),
+                  content: Text(
+                    'Craft unlisted from ONDC • शिल्प ड्राफ्ट में बदल दिया गया',
+                  ),
                   backgroundColor: AppColors.secondaryTerracotta,
                 ),
               );
@@ -540,7 +606,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.hub_rounded, color: AppColors.primaryTeal, size: 24),
+            const Icon(
+              Icons.hub_rounded,
+              color: AppColors.primaryTeal,
+              size: 24,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -556,17 +626,35 @@ class _CatalogScreenState extends State<CatalogScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildNetworkDetailRow('Status', item.status == CatalogStatus.published ? 'LIVE ON NETWORK' : 'DRAFT', isBadge: true),
+              _buildNetworkDetailRow(
+                'Status',
+                item.status == CatalogStatus.published
+                    ? 'LIVE ON NETWORK'
+                    : 'DRAFT',
+                isBadge: true,
+              ),
               const SizedBox(height: 8),
               _buildNetworkDetailRow('Catalog SKU', item.id),
               const SizedBox(height: 8),
-              _buildNetworkDetailRow('Artisan Name', item.craftAttributes?.artisanName ?? 'BazaarSetu Artisan'),
+              _buildNetworkDetailRow(
+                'Artisan Name',
+                item.craftAttributes?.artisanName ?? 'BazaarSetu Artisan',
+              ),
               const SizedBox(height: 8),
-              _buildNetworkDetailRow('Cluster', item.craftAttributes?.clusterLocation ?? 'Chanderi Handloom'),
+              _buildNetworkDetailRow(
+                'Cluster',
+                item.craftAttributes?.clusterLocation ?? 'Chanderi Handloom',
+              ),
               const SizedBox(height: 8),
-              _buildNetworkDetailRow('ONDC Category', '${item.craftAttributes?.category ?? "Craft"} (ONDC:RET12)'),
+              _buildNetworkDetailRow(
+                'ONDC Category',
+                '${item.craftAttributes?.category ?? "Craft"} (ONDC:RET12)',
+              ),
               const SizedBox(height: 8),
-              _buildNetworkDetailRow('Fair Price', '₹${item.pricing?.fairPrice ?? 0}'),
+              _buildNetworkDetailRow(
+                'Fair Price',
+                '₹${item.pricing?.fairPrice ?? 0}',
+              ),
               const SizedBox(height: 8),
               _buildNetworkDetailRow('BPP Node', bppUri),
             ],
@@ -595,7 +683,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
     );
   }
 
-  Widget _buildNetworkDetailRow(String label, String value, {bool isBadge = false}) {
+  Widget _buildNetworkDetailRow(
+    String label,
+    String value, {
+    bool isBadge = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -651,15 +743,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
           return Image.network(
             path,
             fit: BoxFit.cover,
-            headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
-            errorBuilder: (context, error, stackTrace) => _buildFallbackImagePlaceholder(),
+            headers: const {
+              'bypass-tunnel-reminder': 'true',
+              'ngrok-skip-browser-warning': 'true',
+            },
+            errorBuilder: (context, error, stackTrace) =>
+                _buildFallbackImagePlaceholder(),
           );
         } else if (kIsWeb || path.startsWith('blob:')) {
           return Image.network(
             path,
             fit: BoxFit.cover,
-            headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
-            errorBuilder: (context, error, stackTrace) => _buildFallbackImagePlaceholder(),
+            headers: const {
+              'bypass-tunnel-reminder': 'true',
+              'ngrok-skip-browser-warning': 'true',
+            },
+            errorBuilder: (context, error, stackTrace) =>
+                _buildFallbackImagePlaceholder(),
           );
         } else if (!kIsWeb && File(path).existsSync()) {
           return Image.file(File(path), fit: BoxFit.cover);
@@ -691,149 +791,196 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 children: [
                   buildImageWidget(activeImagePath),
 
-                // Top Left Badges: Handmade + AI-Listed
-                Positioned(
-                  top: 10,
-                  left: 10,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF674000).withValues(alpha: 0.85),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.handyman_rounded, color: Colors.white, size: 12),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Handmade',
-                              style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryTeal.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.auto_awesome, color: Colors.white, size: 12),
-                            const SizedBox(width: 4),
-                            Text(
-                              'AI-Listed',
-                              style: AppTextStyles.labelSmall.copyWith(color: Colors.white),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Top Right Heart Button
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.favorite_border_rounded,
-                      color: AppColors.secondaryTerracotta,
-                      size: 18,
-                    ),
-                  ),
-                ),
-
-                // Bottom Right Counter Chip
-                Positioned(
-                  bottom: 10,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.65),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
+                  // Top Left Badges: Handmade + AI-Listed
+                  Positioned(
+                    top: 10,
+                    left: 10,
                     child: Row(
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.photo_library_outlined, color: Colors.white, size: 12),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${images.isNotEmpty ? (_selectedThumb % images.length + 1) : 1}/${images.isNotEmpty ? images.length : 1}',
-                          style: AppTextStyles.caption.copyWith(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF674000)
+                                .withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.handyman_rounded,
+                                color: Colors.white,
+                                size: 12,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Handmade',
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryTeal.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.auto_awesome,
+                                color: Colors.white,
+                                size: 12,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'AI-Listed',
+                                style: AppTextStyles.labelSmall.copyWith(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ],
+
+                  // Top Right Heart Button
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.favorite_border_rounded,
+                        color: AppColors.secondaryTerracotta,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+
+                  // Bottom Right Counter Chip
+                  Positioned(
+                    bottom: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.photo_library_outlined,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${images.isNotEmpty ? (_selectedThumb % images.length + 1) : 1}/${images.isNotEmpty ? images.length : 1}',
+                            style: AppTextStyles.caption.copyWith(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
+          const SizedBox(height: 12),
 
           // Thumbnail Row
           Row(
             children: [
-              ...List.generate(images.isNotEmpty ? images.length.clamp(0, 4) : 1, (i) {
-                final isSelected = _selectedThumb == i;
-                final thumbPath = images.isNotEmpty ? images[i] : null;
-                final isLocalThumb = thumbPath != null && !thumbPath.startsWith('http') && !kIsWeb && File(thumbPath).existsSync();
+              ...List.generate(
+                images.isNotEmpty ? images.length.clamp(0, 4) : 1,
+                (i) {
+                  final isSelected = _selectedThumb == i;
+                  final thumbPath = images.isNotEmpty ? images[i] : null;
+                  final isLocalThumb =
+                      thumbPath != null &&
+                      !thumbPath.startsWith('http') &&
+                      !kIsWeb &&
+                      File(thumbPath).existsSync();
 
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedThumb = i),
-                  child: Container(
-                    width: 60,
-                    height: 60,
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: isSelected ? AppColors.primaryTeal : AppColors.cardBorder,
-                        width: isSelected ? 2 : 1,
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedThumb = i),
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primaryTeal
+                              : AppColors.cardBorder,
+                          width: isSelected ? 2 : 1,
+                        ),
                       ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: thumbPath != null
-                        ? (thumbPath.startsWith('http')
-                            ? Image.network(
-                                thumbPath,
-                                fit: BoxFit.cover,
-                                headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
-                                errorBuilder: (ctx, err, stack) => _buildFallbackImagePlaceholder(),
-                              )
-                            : (kIsWeb || thumbPath.startsWith('blob:')
+                      clipBehavior: Clip.antiAlias,
+                      child: thumbPath != null
+                          ? (thumbPath.startsWith('http')
                                 ? Image.network(
                                     thumbPath,
                                     fit: BoxFit.cover,
-                                    headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
-                                    errorBuilder: (ctx, err, stack) => _buildFallbackImagePlaceholder(),
+                                    headers: const {
+                                      'bypass-tunnel-reminder': 'true',
+                                      'ngrok-skip-browser-warning': 'true',
+                                    },
+                                    errorBuilder: (ctx, err, stack) =>
+                                        _buildFallbackImagePlaceholder(),
                                   )
-                                : (isLocalThumb
-                                    ? Image.file(File(thumbPath), fit: BoxFit.cover)
-                                    : _buildFallbackImagePlaceholder())))
-                        : _buildFallbackImagePlaceholder(),
-                  ),
-                );
-              }),
+                                : (kIsWeb || thumbPath.startsWith('blob:')
+                                      ? Image.network(
+                                          thumbPath,
+                                          fit: BoxFit.cover,
+                                          headers: const {
+                                            'bypass-tunnel-reminder': 'true',
+                                            'ngrok-skip-browser-warning':
+                                                'true',
+                                          },
+                                          errorBuilder: (ctx, err, stack) =>
+                                              _buildFallbackImagePlaceholder(),
+                                        )
+                                      : (isLocalThumb
+                                            ? Image.file(
+                                                File(thumbPath),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : _buildFallbackImagePlaceholder())))
+                          : _buildFallbackImagePlaceholder(),
+                    ),
+                  );
+                },
+              ),
             ],
           ),
         ],
@@ -877,7 +1024,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                onPressed: () => _showVoiceEditSheet(context, context.read<CatalogController>()),
+                onPressed: () => _showVoiceEditSheet(
+                  context,
+                  context.read<CatalogController>(),
+                ),
                 icon: const Icon(
                   Icons.edit_outlined,
                   size: 18,
@@ -908,7 +1058,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryContainer,
                   borderRadius: BorderRadius.circular(6),
@@ -1007,21 +1160,46 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     });
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: _selectedTier == 'floor' ? const Color(0xFFFBECE5) : Colors.white,
+                      color: _selectedTier == 'floor'
+                          ? const Color(0xFFFBECE5)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: _selectedTier == 'floor' ? AppColors.secondaryTerracotta : AppColors.cardBorder,
+                        color: _selectedTier == 'floor'
+                            ? AppColors.secondaryTerracotta
+                            : AppColors.cardBorder,
                         width: _selectedTier == 'floor' ? 2 : 1,
                       ),
                     ),
                     child: Column(
                       children: [
-                        Text('Floor Cost', style: AppTextStyles.caption.copyWith(fontSize: 10, fontWeight: FontWeight.w600)),
+                        Text(
+                          'Floor Cost',
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text('₹$floorPrice', style: AppTextStyles.label.copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
-                        Text('लागत', style: AppTextStyles.caption.copyWith(fontSize: 9, color: AppColors.textSecondary)),
+                        Text(
+                          '₹$floorPrice',
+                          style: AppTextStyles.label.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          'लागत',
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 9,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1039,31 +1217,58 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     });
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: _selectedTier == 'fair' ? AppColors.primaryContainer : Colors.white,
+                      color: _selectedTier == 'fair'
+                          ? AppColors.primaryContainer
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: _selectedTier == 'fair' ? AppColors.primaryTeal : AppColors.cardBorder,
+                        color: _selectedTier == 'fair'
+                            ? AppColors.primaryTeal
+                            : AppColors.cardBorder,
                         width: _selectedTier == 'fair' ? 2 : 1,
                       ),
                     ),
                     child: Column(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primaryTeal,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             'RECOMMENDED',
-                            style: AppTextStyles.caption.copyWith(fontSize: 7, color: Colors.white, fontWeight: FontWeight.w800),
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 7,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text('₹$baseFairPrice', style: AppTextStyles.label.copyWith(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primaryTeal)),
-                        Text('उचित दर', style: AppTextStyles.caption.copyWith(fontSize: 9, color: AppColors.textSecondary)),
+                        Text(
+                          '₹$baseFairPrice',
+                          style: AppTextStyles.label.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryTeal,
+                          ),
+                        ),
+                        Text(
+                          'उचित दर',
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 9,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1081,21 +1286,46 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     });
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8,
+                      horizontal: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: _selectedTier == 'premium' ? const Color(0xFFFBECE5) : Colors.white,
+                      color: _selectedTier == 'premium'
+                          ? const Color(0xFFFBECE5)
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: _selectedTier == 'premium' ? AppColors.secondaryTerracotta : AppColors.cardBorder,
+                        color: _selectedTier == 'premium'
+                            ? AppColors.secondaryTerracotta
+                            : AppColors.cardBorder,
                         width: _selectedTier == 'premium' ? 2 : 1,
                       ),
                     ),
                     child: Column(
                       children: [
-                        Text('Premium', style: AppTextStyles.caption.copyWith(fontSize: 10, fontWeight: FontWeight.w600)),
+                        Text(
+                          'Premium',
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text('₹$premiumPrice', style: AppTextStyles.label.copyWith(fontSize: 15, fontWeight: FontWeight.w700)),
-                        Text('प्रीमियम', style: AppTextStyles.caption.copyWith(fontSize: 9, color: AppColors.textSecondary)),
+                        Text(
+                          '₹$premiumPrice',
+                          style: AppTextStyles.label.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          'प्रीमियम',
+                          style: AppTextStyles.caption.copyWith(
+                            fontSize: 9,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1111,11 +1341,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
             children: [
               Text(
                 'Custom Price • अपनी कीमत',
-                style: AppTextStyles.caption.copyWith(fontSize: 11, color: AppColors.textSecondary),
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
               ),
               OutlinedButton.icon(
                 onPressed: () => _showCustomPriceDialog(context, activePrice),
-                icon: const Icon(Icons.edit_rounded, size: 14, color: AppColors.primaryTeal),
+                icon: const Icon(
+                  Icons.edit_rounded,
+                  size: 14,
+                  color: AppColors.primaryTeal,
+                ),
                 label: Text(
                   '₹$activePrice  •  बदलें',
                   style: AppTextStyles.label.copyWith(
@@ -1125,9 +1362,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   ),
                 ),
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   side: const BorderSide(color: AppColors.primaryTeal),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
@@ -1152,11 +1394,19 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ),
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: () => _showCustomQuantityDialog(context, item, context.read<CatalogController>()),
+                onTap: () => _showCustomQuantityDialog(
+                  context,
+                  item,
+                  context.read<CatalogController>(),
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.edit_outlined, size: 13, color: AppColors.primaryTeal),
+                    const Icon(
+                      Icons.edit_outlined,
+                      size: 13,
+                      color: AppColors.primaryTeal,
+                    ),
                     const SizedBox(width: 3),
                     Text(
                       'संख्या लिखें • Enter Custom',
@@ -1182,14 +1432,25 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: GestureDetector(
-                      onTap: () => _setQuantity(qty, item, context.read<CatalogController>()),
+                      onTap: () => _setQuantity(
+                        qty,
+                        item,
+                        context.read<CatalogController>(),
+                      ),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.primaryTeal : Colors.white,
+                          color: isSelected
+                              ? AppColors.primaryTeal
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
-                            color: isSelected ? AppColors.primaryTeal : AppColors.cardBorder,
+                            color: isSelected
+                                ? AppColors.primaryTeal
+                                : AppColors.cardBorder,
                           ),
                         ),
                         alignment: Alignment.center,
@@ -1198,7 +1459,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           style: AppTextStyles.label.copyWith(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: isSelected ? Colors.white : AppColors.textPrimary,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textPrimary,
                           ),
                         ),
                       ),
@@ -1208,9 +1471,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
                 // Custom Chip
                 GestureDetector(
-                  onTap: () => _showCustomQuantityDialog(context, item, context.read<CatalogController>()),
+                  onTap: () => _showCustomQuantityDialog(
+                    context,
+                    item,
+                    context.read<CatalogController>(),
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: ![1, 2, 5, 10, 25, 50].contains(_quantity)
                           ? AppColors.primaryTeal
@@ -1235,7 +1505,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          ![1, 2, 5, 10, 25, 50].contains(_quantity) ? '$_quantity' : 'Custom',
+                          ![1, 2, 5, 10, 25, 50].contains(_quantity)
+                              ? '$_quantity'
+                              : 'Custom',
                           style: AppTextStyles.label.copyWith(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -1264,13 +1536,25 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       GestureDetector(
                         onTap: () {
                           if (_quantity > 1) {
-                            _setQuantity(_quantity - 1, item, context.read<CatalogController>());
+                            _setQuantity(
+                              _quantity - 1,
+                              item,
+                              context.read<CatalogController>(),
+                            );
                           }
                         },
-                        child: const Icon(Icons.remove, size: 16, color: AppColors.textPrimary),
+                        child: const Icon(
+                          Icons.remove,
+                          size: 16,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       GestureDetector(
-                        onTap: () => _showCustomQuantityDialog(context, item, context.read<CatalogController>()),
+                        onTap: () => _showCustomQuantityDialog(
+                          context,
+                          item,
+                          context.read<CatalogController>(),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 10),
                           child: Text(
@@ -1285,8 +1569,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         ),
                       ),
                       GestureDetector(
-                        onTap: () => _setQuantity(_quantity + 1, item, context.read<CatalogController>()),
-                        child: const Icon(Icons.add, size: 16, color: AppColors.textPrimary),
+                        onTap: () => _setQuantity(
+                          _quantity + 1,
+                          item,
+                          context.read<CatalogController>(),
+                        ),
+                        child: const Icon(
+                          Icons.add,
+                          size: 16,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ],
                   ),
@@ -1300,7 +1592,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   // ── Custom Quantity Dialog (for large quantities like 100, 250, 500) ─────────
-  void _showCustomQuantityDialog(BuildContext context, CatalogItem? item, CatalogController? catalogCtrl) {
+  void _showCustomQuantityDialog(
+    BuildContext context,
+    CatalogItem? item,
+    CatalogController? catalogCtrl,
+  ) {
     final controller = TextEditingController(text: '$_quantity');
     showDialog(
       context: context,
@@ -1309,12 +1605,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.inventory_2_outlined, color: AppColors.primaryTeal),
+            const Icon(
+              Icons.inventory_2_outlined,
+              color: AppColors.primaryTeal,
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 'उपलब्ध स्टॉक • Set Stock',
-                style: AppTextStyles.label.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
+                style: AppTextStyles.label.copyWith(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -1327,7 +1629,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
             children: [
               Text(
                 'आपके पास कुल कितने पीस उपलब्ध हैं? (उदा: 50, 100, 500)',
-                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -1409,7 +1713,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryTeal,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             onPressed: () {
               final val = int.tryParse(controller.text.trim());
@@ -1426,7 +1732,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
     });
   }
 
-  void _showVoiceEditSheet(BuildContext context, CatalogController catalogCtrl) {
+  void _showVoiceEditSheet(
+    BuildContext context,
+    CatalogController catalogCtrl,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1444,10 +1753,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => _ManualEditBottomSheet(
-        item: item,
-        catalogCtrl: catalogCtrl,
-      ),
+      builder: (ctx) =>
+          _ManualEditBottomSheet(item: item, catalogCtrl: catalogCtrl),
     );
   }
 
@@ -1465,7 +1772,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.auto_awesome, color: AppColors.primaryTeal, size: 18),
+              const Icon(
+                Icons.auto_awesome,
+                color: AppColors.primaryTeal,
+                size: 18,
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -1483,7 +1794,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.mic_outlined, size: 14, color: AppColors.secondaryTerracotta),
+                    const Icon(
+                      Icons.mic_outlined,
+                      size: 14,
+                      color: AppColors.secondaryTerracotta,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'बोलकर सुधारें',
@@ -1550,7 +1865,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          catalogCtrl.isSpeaking ? Icons.stop_rounded : Icons.volume_up_rounded,
+                          catalogCtrl.isSpeaking
+                              ? Icons.stop_rounded
+                              : Icons.volume_up_rounded,
                           color: Colors.white,
                           size: 22,
                         ),
@@ -1580,7 +1897,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: catalogCtrl.isSpeaking
                             ? AppColors.tertiarySaffron.withValues(alpha: 0.2)
@@ -1606,14 +1926,19 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     28,
                     (i) => Expanded(
                       child: Container(
-                        height: (i % 4 == 0 ? 14 : (i % 2 == 0 ? 8 : 18)).toDouble(),
+                        height: (i % 4 == 0 ? 14 : (i % 2 == 0 ? 8 : 18))
+                            .toDouble(),
                         margin: const EdgeInsets.symmetric(horizontal: 1),
                         decoration: BoxDecoration(
                           color: catalogCtrl.isSpeaking
-                              ? (i % 2 == 0 ? AppColors.secondaryTerracotta : AppColors.tertiarySaffron)
+                              ? (i % 2 == 0
+                                    ? AppColors.secondaryTerracotta
+                                    : AppColors.tertiarySaffron)
                               : (i < 11
-                                  ? AppColors.secondaryTerracotta
-                                  : AppColors.secondaryTerracotta.withValues(alpha: 0.25)),
+                                    ? AppColors.secondaryTerracotta
+                                    : AppColors.secondaryTerracotta.withValues(
+                                        alpha: 0.25,
+                                      )),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
@@ -1631,7 +1956,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
   // ── 4. Meet the Artisan Card ───────────────────────────────────────────────
   Widget _buildMeetArtisanCard(CatalogItem item) {
     final artisanName = item.craftAttributes?.artisanName ?? 'Savita Patil';
-    final location = item.craftAttributes?.clusterLocation ?? 'Pune, Maharashtra';
+    final location =
+        item.craftAttributes?.clusterLocation ?? 'Pune, Maharashtra';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1658,11 +1984,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.workspace_premium_rounded, size: 12, color: AppColors.primaryTeal),
+                    const Icon(
+                      Icons.workspace_premium_rounded,
+                      size: 12,
+                      color: AppColors.primaryTeal,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       'Master Craftsman',
-                      style: AppTextStyles.labelSmall.copyWith(color: AppColors.primaryTeal),
+                      style: AppTextStyles.labelSmall.copyWith(
+                        color: AppColors.primaryTeal,
+                      ),
                     ),
                   ],
                 ),
@@ -1689,7 +2021,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   ),
                   child: Center(
                     child: Text(
-                      artisanName.isNotEmpty ? artisanName[0].toUpperCase() : 'A',
+                      artisanName.isNotEmpty
+                          ? artisanName[0].toUpperCase()
+                          : 'A',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -1716,7 +2050,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       ),
                       Row(
                         children: [
-                          const Icon(Icons.location_on_outlined, size: 12, color: AppColors.textSecondary),
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 12,
+                            color: AppColors.textSecondary,
+                          ),
                           const SizedBox(width: 2),
                           Text(
                             location,
@@ -1745,8 +2083,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
               children: [
                 Text(
                   '“ ',
-                  style: AppTextStyles.serifHeading(color: AppColors.secondaryTerracotta)
-                      .copyWith(fontSize: 24, height: 1),
+                  style: AppTextStyles.serifHeading(
+                    color: AppColors.secondaryTerracotta,
+                  ).copyWith(fontSize: 24, height: 1),
                 ),
                 Expanded(
                   child: Text(
@@ -1811,7 +2150,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
           if (guild != null && guild.isNotEmpty)
             _buildSpecRow('Craft Cluster', guild, rowIndex++ % 2 == 0),
           if (weightDimensions.isNotEmpty)
-            _buildSpecRow('Weight & Dimensions', weightDimensions, rowIndex++ % 2 == 0),
+            _buildSpecRow(
+              'Weight & Dimensions',
+              weightDimensions,
+              rowIndex++ % 2 == 0,
+            ),
         ],
       ),
     );
@@ -1831,7 +2174,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
             flex: 2,
             child: Text(
               label,
-              style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w500),
+              style: AppTextStyles.caption.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -1921,11 +2266,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 Expanded(
                   flex: 1,
                   child: OutlinedButton(
-                    onPressed: () => _confirmUnlistCraft(context, item, catalogCtrl),
+                    onPressed: () =>
+                        _confirmUnlistCraft(context, item, catalogCtrl),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       minimumSize: const Size(0, 48),
-                      side: const BorderSide(color: AppColors.secondaryTerracotta),
+                      side: const BorderSide(
+                        color: AppColors.secondaryTerracotta,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -1978,7 +2326,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           const SizedBox(width: 6),
                           Text(
                             'Network Info • ओएनडीसी स्थिति',
-                            style: AppTextStyles.buttonLabel.copyWith(fontSize: 13),
+                            style: AppTextStyles.buttonLabel.copyWith(
+                              fontSize: 13,
+                            ),
                           ),
                         ],
                       ),
@@ -1997,10 +2347,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     : () async {
                         setState(() => _isPublishing = true);
                         try {
-                          await catalogCtrl.publishToOndc(
-                            null,
-                            _quantity,
-                          );
+                          await catalogCtrl.publishToOndc(null, _quantity);
                           if (!context.mounted) return;
                           showDialog(
                             context: context,
@@ -2036,7 +2383,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx),
-                                  child: const Text('Stay on Listing • यहीं रहें'),
+                                  child: const Text(
+                                    'Stay on Listing • यहीं रहें',
+                                  ),
                                 ),
                                 ElevatedButton(
                                   onPressed: () {
@@ -2047,7 +2396,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                     backgroundColor: AppColors.primaryTeal,
                                     foregroundColor: Colors.white,
                                   ),
-                                  child: const Text('Back to Crafts • मुख्य पृष्ठ'),
+                                  child: const Text(
+                                    'Back to Crafts • मुख्य पृष्ठ',
+                                  ),
                                 ),
                               ],
                             ),
@@ -2178,7 +2529,11 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
     final instruction = _textController.text.trim();
     if (instruction.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('कृपया बोलें या निर्देश लिखें • Please speak or type instructions')),
+        const SnackBar(
+          content: Text(
+            'कृपया बोलें या निर्देश लिखें • Please speak or type instructions',
+          ),
+        ),
       );
       return;
     }
@@ -2190,7 +2545,9 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('कैटलॉग AI द्वारा अपडेट किया गया! • Listing updated by AI!'),
+            content: Text(
+              'कैटलॉग AI द्वारा अपडेट किया गया! • Listing updated by AI!',
+            ),
             backgroundColor: AppColors.primaryTeal,
           ),
         );
@@ -2259,7 +2616,10 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
                   children: [
                     Text(
                       'बोलकर सुधारें • AI Voice Edit',
-                      style: AppTextStyles.label.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       'माइक दबाकर बोलें कि आप क्या बदलना चाहते हैं',
@@ -2281,11 +2641,17 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
                 width: 76,
                 height: 76,
                 decoration: BoxDecoration(
-                  color: _isRecording ? AppColors.alertRed : AppColors.secondaryTerracotta,
+                  color: _isRecording
+                      ? AppColors.alertRed
+                      : AppColors.secondaryTerracotta,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: (_isRecording ? AppColors.alertRed : AppColors.secondaryTerracotta).withValues(alpha: 0.35),
+                      color:
+                          (_isRecording
+                                  ? AppColors.alertRed
+                                  : AppColors.secondaryTerracotta)
+                              .withValues(alpha: 0.35),
                       blurRadius: _isRecording ? 18 : 10,
                       spreadRadius: _isRecording ? 4 : 0,
                     ),
@@ -2305,11 +2671,13 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
               _isRecording
                   ? 'सुन रहे हैं... बोलें • Listening...'
                   : (_isTranscribing
-                      ? 'आवाज़ पहचानी जा रही है... • Transcribing...'
-                      : 'माइक दबाकर बोलें • Tap mic to speak'),
+                        ? 'आवाज़ पहचानी जा रही है... • Transcribing...'
+                        : 'माइक दबाकर बोलें • Tap mic to speak'),
               style: AppTextStyles.caption.copyWith(
                 fontWeight: FontWeight.w600,
-                color: _isRecording ? AppColors.alertRed : AppColors.textSecondary,
+                color: _isRecording
+                    ? AppColors.alertRed
+                    : AppColors.textSecondary,
               ),
             ),
           ),
@@ -2358,13 +2726,18 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
               backgroundColor: AppColors.primaryTeal,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isApplying
                 ? const SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
                   )
                 : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -2373,7 +2746,10 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
                       SizedBox(width: 8),
                       Text(
                         'बदलाव लागू करें • Apply Changes',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -2392,10 +2768,7 @@ class _ManualEditBottomSheet extends StatefulWidget {
   final CatalogItem item;
   final CatalogController catalogCtrl;
 
-  const _ManualEditBottomSheet({
-    required this.item,
-    required this.catalogCtrl,
-  });
+  const _ManualEditBottomSheet({required this.item, required this.catalogCtrl});
 
   @override
   State<_ManualEditBottomSheet> createState() => _ManualEditBottomSheetState();
@@ -2422,12 +2795,24 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
     final item = widget.item;
     _titleHiCtrl = TextEditingController(text: item.titleHi ?? '');
     _titleEnCtrl = TextEditingController(text: item.titleEn ?? '');
-    _categoryCtrl = TextEditingController(text: item.craftAttributes?.category ?? '');
-    _materialsCtrl = TextEditingController(text: item.craftAttributes?.materials.join(', ') ?? '');
-    _priceCtrl = TextEditingController(text: '${item.pricing?.fairPrice ?? 350}');
-    _rawCostCtrl = TextEditingController(text: '${item.pricing?.rawMaterialCost ?? 100}');
-    _laborDaysCtrl = TextEditingController(text: '${item.craftAttributes?.laborDays ?? 1}');
-    _dimensionsCtrl = TextEditingController(text: item.craftAttributes?.dimensions ?? '');
+    _categoryCtrl = TextEditingController(
+      text: item.craftAttributes?.category ?? '',
+    );
+    _materialsCtrl = TextEditingController(
+      text: item.craftAttributes?.materials.join(', ') ?? '',
+    );
+    _priceCtrl = TextEditingController(
+      text: '${item.pricing?.fairPrice ?? 350}',
+    );
+    _rawCostCtrl = TextEditingController(
+      text: '${item.pricing?.rawMaterialCost ?? 100}',
+    );
+    _laborDaysCtrl = TextEditingController(
+      text: '${item.craftAttributes?.laborDays ?? 1}',
+    );
+    _dimensionsCtrl = TextEditingController(
+      text: item.craftAttributes?.dimensions ?? '',
+    );
     _quantityCtrl = TextEditingController(text: '${item.availableQuantity}');
     _descHiCtrl = TextEditingController(text: item.descriptionHi ?? '');
     _descEnCtrl = TextEditingController(text: item.descriptionEn ?? '');
@@ -2470,12 +2855,15 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
         descriptionHi: _descHiCtrl.text.trim(),
         descriptionEn: _descEnCtrl.text.trim(),
         availableQuantity: qty,
-        craftAttributes: (widget.item.craftAttributes ?? const CraftAttributes()).copyWith(
-          category: _categoryCtrl.text.trim(),
-          materials: materials.isNotEmpty ? materials : widget.item.craftAttributes?.materials,
-          laborDays: laborDays,
-          dimensions: _dimensionsCtrl.text.trim(),
-        ),
+        craftAttributes:
+            (widget.item.craftAttributes ?? const CraftAttributes()).copyWith(
+              category: _categoryCtrl.text.trim(),
+              materials: materials.isNotEmpty
+                  ? materials
+                  : widget.item.craftAttributes?.materials,
+              laborDays: laborDays,
+              dimensions: _dimensionsCtrl.text.trim(),
+            ),
         pricing: PricingCorridor.compute(
           rawMaterialCost: rawCost,
           laborDays: laborDays,
@@ -2489,7 +2877,9 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('कैटलॉग विवरण सफलतापूर्वक अपडेट किया गया! • Details saved!'),
+            content: Text(
+              'कैटलॉग विवरण सफलतापूर्वक अपडेट किया गया! • Details saved!',
+            ),
             backgroundColor: AppColors.primaryTeal,
           ),
         );
@@ -2561,7 +2951,10 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                   children: [
                     Text(
                       'मैन्युअल सुधारें • Edit Craft Form',
-                      style: AppTextStyles.label.copyWith(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: AppTextStyles.label.copyWith(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Text(
                       'विवरण, कीमत एवं सामग्री को बदलें',
@@ -2701,13 +3094,18 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
               backgroundColor: AppColors.primaryTeal,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isSaving
                 ? const SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
                   )
                 : const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -2716,7 +3114,10 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                       SizedBox(width: 8),
                       Text(
                         'सहेजें एवं अपडेट करें • Save Changes',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),

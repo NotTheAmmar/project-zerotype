@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../services/audio_service.dart';
@@ -20,7 +21,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       'name': 'Hindi',
       'native': 'हिन्दी',
       'greeting': 'नमस्ते',
-      'voiceGreeting': 'नमस्ते, बाज़ारसेतु में आपका स्वागत है। आगे बढ़ने के लिए बटन दबाएं।',
+      'voiceGreeting':
+          'नमस्ते, बाज़ारसेतु में आपका स्वागत है। आगे बढ़ने के लिए बटन दबाएं।',
     },
     {
       'code': 'mr',
@@ -96,7 +98,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppColors.secondaryTerracotta.withValues(alpha: 0.12),
+                          color: AppColors.secondaryTerracotta.withValues(
+                            alpha: 0.12,
+                          ),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
@@ -195,12 +199,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   Expanded(
                     child: GridView.builder(
                       itemCount: _languages.length,
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 12,
-                        childAspectRatio: 1.5,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 12,
+                            childAspectRatio: 1.5,
+                          ),
                       itemBuilder: (context, index) {
                         final lang = _languages[index];
                         final isSelected = lang['code'] == _selectedLangCode;
@@ -216,7 +221,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? AppColors.primaryTeal.withValues(alpha: 0.08)
+                                  ? AppColors.primaryTeal.withValues(
+                                      alpha: 0.08,
+                                    )
                                   : Colors.white,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
@@ -228,7 +235,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                               boxShadow: isSelected
                                   ? [
                                       BoxShadow(
-                                        color: AppColors.primaryTeal.withValues(alpha: 0.15),
+                                        color: AppColors.primaryTeal.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -283,7 +292,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     height: 52,
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pushReplacementNamed(context, AppRoutes.explore);
+                        Navigator.pushReplacementNamed(
+                          context,
+                          AppRoutes.explore,
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryTeal,
@@ -298,7 +310,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         children: [
                           Text(
                             'आगे बढ़ें • Continue (${selectedLang['native']})',
-                            style: AppTextStyles.buttonLabel.copyWith(fontSize: 15),
+                            style: AppTextStyles.buttonLabel.copyWith(
+                              fontSize: 15,
+                            ),
                           ),
                           const SizedBox(width: 8),
                           const Icon(Icons.arrow_forward_rounded, size: 20),

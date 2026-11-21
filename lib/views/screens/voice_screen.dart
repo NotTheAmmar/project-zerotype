@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -82,17 +83,24 @@ class _VoiceScreenState extends State<VoiceScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          color: AppColors.textPrimary,
+                        ),
                         onPressed: () async {
                           await _tts.stop();
                           if (!voiceCtrl.isFirstStep) {
                             await voiceCtrl.previousStep();
-                            if (context.mounted) _speakCurrentStepQuestion();
+                            if (context.mounted) {
+                              _speakCurrentStepQuestion();
+                            }
                           } else {
                             if (voiceCtrl.state == VoiceState.recording) {
                               await voiceCtrl.stopRecordingIfActive();
                             }
-                            if (context.mounted) Navigator.of(context).maybePop();
+                            if (context.mounted) {
+                              Navigator.of(context).maybePop();
+                            }
                           }
                         },
                       ),
@@ -110,13 +118,18 @@ class _VoiceScreenState extends State<VoiceScreen> {
                             ),
                             Text(
                               step.titleEn,
-                              style: AppTextStyles.caption.copyWith(fontSize: 11),
+                              style: AppTextStyles.caption.copyWith(
+                                fontSize: 11,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.volume_up_outlined, color: AppColors.primaryTeal),
+                        icon: const Icon(
+                          Icons.volume_up_outlined,
+                          color: AppColors.primaryTeal,
+                        ),
                         onPressed: _replayTts,
                         tooltip: 'सवाल सुनें',
                       ),
@@ -126,7 +139,10 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
                 // ── Stepper Progress Indicator ─────────────────────────────
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
                   child: Row(
                     children: List.generate(voiceCtrl.totalSteps, (idx) {
                       final isActive = voiceCtrl.currentStep == idx;
@@ -139,22 +155,29 @@ class _VoiceScreenState extends State<VoiceScreen> {
                             if (idx < voiceCtrl.currentStep) {
                               await _tts.stop();
                               await voiceCtrl.jumpToStep(idx);
-                              if (context.mounted) _speakCurrentStepQuestion();
+                              if (context.mounted) {
+                                _speakCurrentStepQuestion();
+                              }
                               return;
                             }
                             if (!voiceCtrl.isCurrentStepSatisfied) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('कृपया पहले इस सवाल का उत्तर दें • Please answer this question first'),
+                                  content: Text(
+                                    'कृपया पहले इस सवाल का उत्तर दें • Please answer this question first',
+                                  ),
                                   duration: Duration(seconds: 2),
-                                  backgroundColor: AppColors.secondaryTerracotta,
+                                  backgroundColor:
+                                      AppColors.secondaryTerracotta,
                                 ),
                               );
                               return;
                             }
                             await _tts.stop();
                             await voiceCtrl.jumpToStep(idx);
-                            if (context.mounted) _speakCurrentStepQuestion();
+                            if (context.mounted) {
+                              _speakCurrentStepQuestion();
+                            }
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -163,7 +186,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
                             decoration: BoxDecoration(
                               color: isDone
                                   ? AppColors.primaryTeal
-                                  : (isActive ? AppColors.secondaryTerracotta : Colors.black12),
+                                  : (isActive
+                                        ? AppColors.secondaryTerracotta
+                                        : Colors.black12),
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
@@ -177,7 +202,10 @@ class _VoiceScreenState extends State<VoiceScreen> {
                 // ── Scrollable Body ─────────────────────────────────────────
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: Column(
                       children: [
                         // Craft Thumbnail & Current Step Badge
@@ -185,33 +213,52 @@ class _VoiceScreenState extends State<VoiceScreen> {
                           Center(
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(14),
-                              child: (!kIsWeb && File(captureCtrl.capturedImagePath!).existsSync())
+                              child:
+                                  (!kIsWeb &&
+                                      File(captureCtrl.capturedImagePath!)
+                                          .existsSync())
                                   ? Image.file(
                                       File(captureCtrl.capturedImagePath!),
                                       height: 90,
                                       width: 90,
                                       fit: BoxFit.cover,
                                     )
-                                  : (captureCtrl.capturedImagePath!.startsWith('http') || (kIsWeb && captureCtrl.capturedImagePath!.startsWith('blob:')))
-                                      ? Image.network(
-                                          captureCtrl.capturedImagePath!,
-                                          height: 90,
-                                          width: 90,
-                                          fit: BoxFit.cover,
-                                          headers: const {'bypass-tunnel-reminder': 'true'},
-                                          errorBuilder: (ctx, err, stack) => Container(
+                                  : (captureCtrl.capturedImagePath!.startsWith(
+                                          'http',
+                                        ) ||
+                                        (kIsWeb &&
+                                            captureCtrl.capturedImagePath!
+                                                .startsWith('blob:')))
+                                  ? Image.network(
+                                      captureCtrl.capturedImagePath!,
+                                      height: 90,
+                                      width: 90,
+                                      fit: BoxFit.cover,
+                                      headers: const {
+                                        'bypass-tunnel-reminder': 'true',
+                                      },
+                                      errorBuilder: (ctx, err, stack) =>
+                                          Container(
                                             height: 90,
                                             width: 90,
                                             color: Colors.black12,
-                                            child: const Icon(Icons.image_outlined, size: 36, color: Colors.black45),
+                                            child: const Icon(
+                                              Icons.image_outlined,
+                                              size: 36,
+                                              color: Colors.black45,
+                                            ),
                                           ),
-                                        )
-                                      : Container(
-                                          height: 90,
-                                          width: 90,
-                                          color: Colors.black12,
-                                          child: const Icon(Icons.image_outlined, size: 36, color: Colors.black45),
-                                        ),
+                                    )
+                                  : Container(
+                                      height: 90,
+                                      width: 90,
+                                      color: Colors.black12,
+                                      child: const Icon(
+                                        Icons.image_outlined,
+                                        size: 36,
+                                        color: Colors.black45,
+                                      ),
+                                    ),
                             ),
                           ),
                         const SizedBox(height: 14),
@@ -224,7 +271,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppColors.secondaryTerracotta.withValues(alpha: 0.25),
+                              color: AppColors.secondaryTerracotta.withValues(
+                                alpha: 0.25,
+                              ),
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -313,18 +362,32 @@ class _VoiceScreenState extends State<VoiceScreen> {
                         const SizedBox(height: 12),
 
                         // Recorded Confirmation Banner
-                        if (isRecorded && voiceCtrl.state != VoiceState.recording)
+                        if (isRecorded &&
+                            voiceCtrl.state != VoiceState.recording)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryTeal.withValues(alpha: 0.12),
+                              color: AppColors.primaryTeal.withValues(
+                                alpha: 0.12,
+                              ),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                color: AppColors.primaryTeal.withValues(
+                                  alpha: 0.3,
+                                ),
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.check_circle_rounded, color: AppColors.primaryTeal, size: 16),
+                                const Icon(
+                                  Icons.check_circle_rounded,
+                                  color: AppColors.primaryTeal,
+                                  size: 16,
+                                ),
                                 const SizedBox(width: 6),
                                 Text(
                                   'रिकॉर्ड हो गया • Answer Saved',
@@ -336,7 +399,11 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                 const SizedBox(width: 8),
                                 GestureDetector(
                                   onTap: voiceCtrl.clearCurrentStepAudio,
-                                  child: const Icon(Icons.refresh_rounded, size: 16, color: AppColors.textSecondary),
+                                  child: const Icon(
+                                    Icons.refresh_rounded,
+                                    size: 16,
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
                               ],
                             ),
@@ -352,7 +419,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    border: Border(top: BorderSide(color: AppColors.cardBorder, width: 1)),
+                    border: Border(
+                      top: BorderSide(color: AppColors.cardBorder, width: 1),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -362,12 +431,19 @@ class _VoiceScreenState extends State<VoiceScreen> {
                           onPressed: () async {
                             await _tts.stop();
                             await voiceCtrl.previousStep();
-                            if (context.mounted) _speakCurrentStepQuestion();
+                            if (context.mounted) {
+                              _speakCurrentStepQuestion();
+                            }
                           },
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: AppColors.cardBorder),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                           child: const Text('← पिछला • Back'),
                         ),
@@ -394,7 +470,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                       'कृपया पहले इस सवाल का उत्तर दें • Please answer this question before proceeding',
                                     ),
                                     duration: Duration(seconds: 2),
-                                    backgroundColor: AppColors.secondaryTerracotta,
+                                    backgroundColor:
+                                        AppColors.secondaryTerracotta,
                                   ),
                                 );
                               }
@@ -404,7 +481,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
                             // 3. Advance to next step or finish
                             if (!voiceCtrl.isLastStep) {
                               await voiceCtrl.nextStep();
-                              if (context.mounted) _speakCurrentStepQuestion();
+                              if (context.mounted) {
+                                _speakCurrentStepQuestion();
+                              }
                             } else {
                               // On last step, verify all steps are satisfied
                               if (!voiceCtrl.areAllStepsSatisfied) {
@@ -418,7 +497,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                           'कृपया सवाल ${missing + 1} का उत्तर पूरा करें • Please complete question ${missing + 1}',
                                         ),
                                         duration: const Duration(seconds: 2),
-                                        backgroundColor: AppColors.secondaryTerracotta,
+                                        backgroundColor:
+                                            AppColors.secondaryTerracotta,
                                       ),
                                     );
                                     _speakCurrentStepQuestion();
@@ -427,7 +507,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                 }
                               }
                               if (context.mounted) {
-                                Navigator.of(context).pushNamed(AppRoutes.processing);
+                                Navigator.of(context)
+                                    .pushNamed(AppRoutes.processing);
                               }
                             }
                           },
@@ -437,23 +518,27 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                 : AppColors.secondaryTerracotta,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             elevation: 0,
                           ),
                           icon: Icon(
                             voiceCtrl.state == VoiceState.recording
                                 ? Icons.stop_circle_outlined
-                                : (voiceCtrl.isLastStep ? Icons.auto_awesome_rounded : Icons.arrow_forward_rounded),
+                                : (voiceCtrl.isLastStep
+                                      ? Icons.auto_awesome_rounded
+                                      : Icons.arrow_forward_rounded),
                             size: 18,
                           ),
                           label: Text(
                             voiceCtrl.state == VoiceState.recording
                                 ? (voiceCtrl.isLastStep
-                                    ? 'रिकॉर्डिंग रोकें और कैटलॉग बनाएं • Finish & Create'
-                                    : 'रिकॉर्डिंग रोकें और अगला सवाल • Finish & Next →')
+                                      ? 'रिकॉर्डिंग रोकें और कैटलॉग बनाएं • Finish & Create'
+                                      : 'रिकॉर्डिंग रोकें और अगला सवाल • Finish & Next →')
                                 : (voiceCtrl.isLastStep
-                                    ? 'कैटलॉग बनाएं • Create Catalog'
-                                    : 'अगला सवाल • Next Step →'),
+                                      ? 'कैटलॉग बनाएं • Create Catalog'
+                                      : 'अगला सवाल • Next Step →'),
                             style: AppTextStyles.buttonLabel.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -488,11 +573,18 @@ class _VoiceScreenState extends State<VoiceScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.straighten_rounded, color: AppColors.primaryTeal, size: 18),
+              const Icon(
+                Icons.straighten_rounded,
+                color: AppColors.primaryTeal,
+                size: 18,
+              ),
               const SizedBox(width: 6),
               Text(
                 'माप एवं आकार (वैकल्पिक) • Manual Dimensions',
-                style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.w700),
+                style: AppTextStyles.label.copyWith(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -508,7 +600,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
-                  onChanged: (val) => voiceCtrl.setManualDimensions(length: val),
+                  onChanged: (val) =>
+                      voiceCtrl.setManualDimensions(length: val),
                 ),
               ),
               const SizedBox(width: 10),
@@ -531,7 +624,12 @@ class _VoiceScreenState extends State<VoiceScreen> {
           // Unit Selector Chips
           Row(
             children: [
-              Text('इकाई • Unit: ', style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600)),
+              Text(
+                'इकाई • Unit: ',
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(width: 6),
               Expanded(
                 child: Wrap(
@@ -539,7 +637,13 @@ class _VoiceScreenState extends State<VoiceScreen> {
                   children: units.map((u) {
                     final isSel = voiceCtrl.manualUnit == u;
                     return ChoiceChip(
-                      label: Text(u, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : AppColors.textPrimary)),
+                      label: Text(
+                        u,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isSel ? Colors.white : AppColors.textPrimary,
+                        ),
+                      ),
                       selected: isSel,
                       selectedColor: AppColors.primaryTeal,
                       backgroundColor: AppColors.surfaceContainer,
@@ -565,7 +669,8 @@ class _VoiceScreenState extends State<VoiceScreen> {
                     border: OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
-                  onChanged: (val) => voiceCtrl.setManualDimensions(weight: val),
+                  onChanged: (val) =>
+                      voiceCtrl.setManualDimensions(weight: val),
                 ),
               ),
               const SizedBox(width: 10),
@@ -576,11 +681,18 @@ class _VoiceScreenState extends State<VoiceScreen> {
                   children: ['g', 'kg'].map((wUnit) {
                     final isSel = voiceCtrl.manualWeightUnit == wUnit;
                     return ChoiceChip(
-                      label: Text(wUnit, style: TextStyle(fontSize: 11, color: isSel ? Colors.white : AppColors.textPrimary)),
+                      label: Text(
+                        wUnit,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isSel ? Colors.white : AppColors.textPrimary,
+                        ),
+                      ),
                       selected: isSel,
                       selectedColor: AppColors.primaryTeal,
                       backgroundColor: AppColors.surfaceContainer,
-                      onSelected: (_) => voiceCtrl.setManualDimensions(weightUnit: wUnit),
+                      onSelected: (_) =>
+                          voiceCtrl.setManualDimensions(weightUnit: wUnit),
                     );
                   }).toList(),
                 ),
@@ -620,7 +732,9 @@ class _RecordingTimer extends StatelessWidget {
         Text(
           isRecording
               ? 'Recording... बोल रहे हैं'
-              : (seconds > 0 ? 'Recorded • रिकॉर्ड हुआ' : 'माइक दबाकर बोलें • Tap mic to speak'),
+              : (seconds > 0
+                    ? 'Recorded • रिकॉर्ड हुआ'
+                    : 'माइक दबाकर बोलें • Tap mic to speak'),
           style: AppTextStyles.caption.copyWith(fontSize: 11),
         ),
       ],

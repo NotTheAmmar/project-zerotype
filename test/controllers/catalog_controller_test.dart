@@ -140,22 +140,31 @@ void main() {
 
       expect(controller.stage, equals(ProcessingStage.done));
       expect(controller.currentItem, isNotNull);
-      expect(controller.currentItem!.rawImagePath, equals('/tmp/artisan_craft.jpg'));
+      expect(
+        controller.currentItem!.rawImagePath,
+        equals('/tmp/artisan_craft.jpg'),
+      );
       expect(controller.currentItem!.titleHi, contains('हस्तनिर्मित'));
-      expect(controller.currentItem!.craftAttributes?.category, equals('Pottery'));
+      expect(
+        controller.currentItem!.craftAttributes?.category,
+        equals('Pottery'),
+      );
       expect(controller.currentItem!.pricing?.fairPrice, greaterThan(0));
     });
 
-    test('processCatalog pipeline executes stages and stores current item', () async {
-      await controller.processCatalog(
-        imagePath: '/tmp/image.jpg',
-        audioPath: '/tmp/audio.wav',
-      );
+    test(
+      'processCatalog pipeline executes stages and stores current item',
+      () async {
+        await controller.processCatalog(
+          imagePath: '/tmp/image.jpg',
+          audioPath: '/tmp/audio.wav',
+        );
 
-      expect(controller.stage, equals(ProcessingStage.done));
-      expect(controller.currentItem, isNotNull);
-      expect(controller.currentItem!.titleEn, equals('Handmade Silk Shawl'));
-    });
+        expect(controller.stage, equals(ProcessingStage.done));
+        expect(controller.currentItem, isNotNull);
+        expect(controller.currentItem!.titleEn, equals('Handmade Silk Shawl'));
+      },
+    );
 
     test('updateCurrentItem updates item and persists', () async {
       await controller.createFallbackDraft(imagePath: '/tmp/craft.jpg');

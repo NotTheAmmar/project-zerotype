@@ -1,7 +1,9 @@
 import 'config/constants.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+
 import 'app.dart';
 import 'controllers/capture_controller.dart';
 import 'controllers/catalog_controller.dart';
@@ -48,9 +50,7 @@ void main() async {
             storageService: storageService,
           ),
         ),
-        ChangeNotifierProvider(
-          create: (_) => PricingController(),
-        ),
+        ChangeNotifierProvider(create: (_) => PricingController()),
       ],
       child: const BazaarSetuApp(),
     ),

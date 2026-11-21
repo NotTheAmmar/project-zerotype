@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../config/theme.dart';
 
 class PriceGauge extends StatelessWidget {
@@ -78,9 +79,7 @@ class _PriceTile extends StatelessWidget {
         vertical: AppSpacing.sm + 2,
       ),
       decoration: BoxDecoration(
-        color: isHighlighted
-            ? color.withAlpha(20)
-            : AppColors.cardBackground,
+        color: isHighlighted ? color.withAlpha(20) : AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
         border: Border.all(
           color: isHighlighted ? color : AppColors.cardBorder,
@@ -102,8 +101,11 @@ class _PriceTile extends StatelessWidget {
           ),
           Text(
             '₹$price',
-            style: (isHighlighted ? AppTextStyles.priceLarge : AppTextStyles.priceSmall)
-                .copyWith(color: color),
+            style:
+                (isHighlighted
+                        ? AppTextStyles.priceLarge
+                        : AppTextStyles.priceSmall)
+                    .copyWith(color: color),
           ),
         ],
       ),

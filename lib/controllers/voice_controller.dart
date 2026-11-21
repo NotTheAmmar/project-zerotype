@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
 import '../config/constants.dart';
 import '../services/audio_service.dart';
 
@@ -81,7 +83,8 @@ class VoiceController extends ChangeNotifier {
       key: 'dimensions',
       titleHi: 'नाप और वज़न',
       titleEn: 'Dimensions & Weight',
-      questionHi: 'इसकी लंबाई-चौड़ाई और वज़न कितना है? (जैसे: 5x5 इंच, और 250 ग्राम)',
+      questionHi:
+          'इसकी लंबाई-चौड़ाई और वज़न कितना है? (जैसे: 5x5 इंच, और 250 ग्राम)',
       questionEn: 'What are the dimensions and weight? (e.g. 5x5 inches, and 250 grams)',
       hintHi: 'लंबाई, चौड़ाई और वज़न बताएं',
     ),
@@ -116,7 +119,9 @@ class VoiceController extends ChangeNotifier {
   }
 
   VoiceState get state => _state;
-  String? get audioPath => _audioPath ?? (_stepAudioPaths.isNotEmpty ? _stepAudioPaths.values.first : null);
+  String? get audioPath =>
+      _audioPath ??
+      (_stepAudioPaths.isNotEmpty ? _stepAudioPaths.values.first : null);
   int get recordingSeconds => _recordingSeconds;
   bool get isSilent => _isSilent;
   List<double> get amplitudeHistory => _amplitudeHistory;
@@ -166,7 +171,8 @@ class VoiceController extends ChangeNotifier {
       return true;
     }
     if (stepIndex == 3) {
-      final hasDims = _manualLength.trim().isNotEmpty && _manualWidth.trim().isNotEmpty;
+      final hasDims =
+          _manualLength.trim().isNotEmpty && _manualWidth.trim().isNotEmpty;
       final hasWeight = _manualWeight.trim().isNotEmpty;
       return hasDims || hasWeight;
     }
@@ -304,7 +310,9 @@ class VoiceController extends ChangeNotifier {
 
   void clearCurrentStepAudio() {
     _stepAudioPaths.remove(_currentStep);
-    _audioPath = _stepAudioPaths.isNotEmpty ? _stepAudioPaths.values.first : null;
+    _audioPath = _stepAudioPaths.isNotEmpty
+        ? _stepAudioPaths.values.first
+        : null;
     _state = VoiceState.idle;
     _recordingSeconds = 0;
     notifyListeners();

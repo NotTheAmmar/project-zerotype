@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../../config/theme.dart';
 
 class MicButton extends StatefulWidget {
   final bool isRecording;
   final VoidCallback onTap;
 
-  const MicButton({
-    super.key,
-    required this.isRecording,
-    required this.onTap,
-  });
+  const MicButton({super.key, required this.isRecording, required this.onTap});
 
   @override
   State<MicButton> createState() => _MicButtonState();
@@ -57,7 +54,9 @@ class _MicButtonState extends State<MicButton>
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.isRecording ? AppColors.alertRed : AppColors.actionGreen;
+    final color = widget.isRecording
+        ? AppColors.alertRed
+        : AppColors.actionGreen;
 
     return GestureDetector(
       onTap: _handleTap,

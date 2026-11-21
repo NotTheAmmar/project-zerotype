@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../../config/theme.dart';
 
 class ShutterButton extends StatefulWidget {
@@ -30,9 +31,10 @@ class _ShutterButtonState extends State<ShutterButton>
       lowerBound: 0.0,
       upperBound: 0.1,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.88).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.88,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
   }
 
   @override
@@ -55,10 +57,8 @@ class _ShutterButtonState extends State<ShutterButton>
       onTap: _handleTap,
       child: AnimatedBuilder(
         animation: _scaleAnimation,
-        builder: (context, child) => Transform.scale(
-          scale: _scaleAnimation.value,
-          child: child,
-        ),
+        builder: (context, child) =>
+            Transform.scale(scale: _scaleAnimation.value, child: child),
         child: SizedBox(
           width: AppSpacing.touchTargetPrimary,
           height: AppSpacing.touchTargetPrimary,

@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:record/record.dart';
+
 import '../config/constants.dart';
 
 class AudioService {
@@ -48,7 +50,8 @@ class AudioService {
     String? path;
     if (!kIsWeb) {
       final tempDir = await getTemporaryDirectory();
-      path = '${tempDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+      path =
+          '${tempDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
     }
 
     await _recorder.start(
@@ -67,8 +70,8 @@ class AudioService {
     _amplitudeSub = _recorder
         .onAmplitudeChanged(const Duration(milliseconds: 80))
         .listen((amp) {
-      if (!controller.isClosed) controller.add(amp.current);
-    });
+          if (!controller.isClosed) controller.add(amp.current);
+        });
 
     return controller.stream;
   }
@@ -85,7 +88,11 @@ class AudioService {
   // ── Playback ─────────────────────────────────────────────────────────────
 
   Future<void> playFile(String path) async {
-    final source = (kIsWeb || path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:'))
+    final source =
+        (kIsWeb ||
+            path.startsWith('http') ||
+            path.startsWith('blob:') ||
+            path.startsWith('data:'))
         ? UrlSource(path)
         : DeviceFileSource(path);
     await _player.play(source);

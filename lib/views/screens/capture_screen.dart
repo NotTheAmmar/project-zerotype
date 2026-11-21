@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -66,8 +67,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final camera = ctrl.cameraController;
-        if (ctrl.isCameraReady && camera != null && camera.value.isInitialized) {
-          var scale = constraints.biggest.aspectRatio * camera.value.aspectRatio;
+        if (ctrl.isCameraReady &&
+            camera != null &&
+            camera.value.isInitialized) {
+          var scale =
+              constraints.biggest.aspectRatio * camera.value.aspectRatio;
           if (scale < 1) scale = 1 / scale;
 
           return SizedBox.expand(
@@ -157,10 +161,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.75),
-              Colors.transparent,
-            ],
+            colors: [Colors.black.withValues(alpha: 0.75), Colors.transparent],
           ),
         ),
         child: SafeArea(
@@ -179,7 +180,10 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
                 // Photos Count Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
@@ -188,7 +192,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.photo_library_outlined, size: 14, color: Colors.white),
+                      const Icon(
+                        Icons.photo_library_outlined,
+                        size: 14,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         '${ctrl.photosTakenCount}/4 Photos',
@@ -204,7 +212,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
                 // Grid Toggle
                 _buildCircleIconButton(
-                  icon: ctrl.showGrid ? Icons.grid_on_rounded : Icons.grid_off_rounded,
+                  icon: ctrl.showGrid
+                      ? Icons.grid_on_rounded
+                      : Icons.grid_off_rounded,
                   tooltip: 'Grid',
                   isActive: ctrl.showGrid,
                   onTap: ctrl.toggleGrid,
@@ -213,7 +223,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
                 // Flash Toggle
                 _buildCircleIconButton(
-                  icon: ctrl.flashOn ? Icons.flash_on_rounded : Icons.flash_off_rounded,
+                  icon: ctrl.flashOn
+                      ? Icons.flash_on_rounded
+                      : Icons.flash_off_rounded,
                   tooltip: 'Flash',
                   isActive: ctrl.flashOn,
                   onTap: ctrl.toggleFlash,
@@ -283,7 +295,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.wb_incandescent_outlined, color: Colors.black87, size: 16),
+              const Icon(
+                Icons.wb_incandescent_outlined,
+                color: Colors.black87,
+                size: 16,
+              ),
               const SizedBox(width: 8),
               Text(
                 ctrl.isQualityWarningBlur
@@ -354,7 +370,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.add_a_photo_outlined, size: 16, color: Colors.white70),
+            const Icon(
+              Icons.add_a_photo_outlined,
+              size: 16,
+              color: Colors.white70,
+            ),
             const SizedBox(width: 8),
             Text(
               'शिल्प की तस्वीरें लें (कम से कम 1 ज़रूरी) • Take craft photos',
@@ -379,16 +399,25 @@ class _CaptureScreenState extends State<CaptureScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primaryTeal.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.6)),
+                  border: Border.all(
+                    color: AppColors.primaryTeal.withValues(alpha: 0.6),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.check_circle_rounded, size: 14, color: AppColors.primaryTeal),
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 14,
+                      color: AppColors.primaryTeal,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       '${ctrl.photosCount} फ़ोटो जोड़ी गईं • ${ctrl.photosCount} photo${ctrl.photosCount > 1 ? 's' : ''} added',
@@ -435,18 +464,24 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(9),
                       child: isFile
-                          ? Image.file(
-                              File(path),
+                          ? Image.file(File(path), fit: BoxFit.cover)
+                          : (path.startsWith('http') ||
+                                (kIsWeb && path.startsWith('blob:')))
+                          ? Image.network(
+                              path,
                               fit: BoxFit.cover,
+                              headers: const {'bypass-tunnel-reminder': 'true'},
+                              errorBuilder: (ctx, err, stack) => const Icon(
+                                Icons.image,
+                                color: Colors.white70,
+                                size: 24,
+                              ),
                             )
-                          : (path.startsWith('http') || (kIsWeb && path.startsWith('blob:')))
-                              ? Image.network(
-                                  path,
-                                  fit: BoxFit.cover,
-                                  headers: const {'bypass-tunnel-reminder': 'true'},
-                                  errorBuilder: (ctx, err, stack) => const Icon(Icons.image, color: Colors.white70, size: 24),
-                                )
-                              : const Icon(Icons.image, color: Colors.white70, size: 24),
+                          : const Icon(
+                              Icons.image,
+                              color: Colors.white70,
+                              size: 24,
+                            ),
                     ),
                   ),
                   // Index / Main badge
@@ -454,7 +489,10 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     bottom: 2,
                     left: 2,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: isMain
                             ? AppColors.primaryTeal
@@ -512,13 +550,20 @@ class _CaptureScreenState extends State<CaptureScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                icon: const Icon(Icons.photo_library_rounded, color: Colors.white, size: 28),
+                icon: const Icon(
+                  Icons.photo_library_rounded,
+                  color: Colors.white,
+                  size: 28,
+                ),
                 onPressed: ctrl.isBusy ? null : ctrl.pickFromGallery,
                 tooltip: 'गैलरी से चुनें',
               ),
               Text(
                 'गैलरी • Pick',
-                style: AppTextStyles.caption.copyWith(color: Colors.white70, fontSize: 10),
+                style: AppTextStyles.caption.copyWith(
+                  color: Colors.white70,
+                  fontSize: 10,
+                ),
               ),
             ],
           ),

@@ -1,6 +1,9 @@
 import '../widgets/demo_settings_dialog.dart';
+
 import 'package:flutter/foundation.dart';
+
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -59,9 +62,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
         final titleEn = (item.titleEn ?? '').toLowerCase();
         final titleHi = (item.titleHi ?? '').toLowerCase();
         final cat = (item.craftAttributes?.category ?? '').toLowerCase();
-        final cluster = (item.craftAttributes?.clusterLocation ?? '').toLowerCase();
-        final materials = (item.craftAttributes?.materials ?? []).map((m) => m.toLowerCase()).join(' ');
-        final matches = titleEn.contains(q) ||
+        final cluster = (item.craftAttributes?.clusterLocation ?? '')
+            .toLowerCase();
+        final materials = (item.craftAttributes?.materials ?? [])
+            .map((m) => m.toLowerCase())
+            .join(' ');
+        final matches =
+            titleEn.contains(q) ||
             titleHi.contains(q) ||
             cat.contains(q) ||
             cluster.contains(q) ||
@@ -81,8 +88,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             final int crossAxisCount = screenWidth > 900
                 ? 4
                 : screenWidth > 600
-                    ? 3
-                    : 2;
+                ? 3
+                : 2;
 
             return Center(
               child: ConstrainedBox(
@@ -96,52 +103,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
-                    // ── App Header ─────────────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: _buildTopHeader(context, isTablet),
-                    ),
-
-                    // ── Search & Mic Bar ──────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: _buildSearchBar(context),
-                    ),
-
-                    const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
-                    // ── Section Header ────────────────────────────────────
-                    SliverToBoxAdapter(
-                      child: _buildSectionHeader(filteredCatalogs.length),
-                    ),
-
-                    // ── Product Grid or Empty State ───────────────────────
-                    if (filteredCatalogs.isEmpty)
+                      // ── App Header ─────────────────────────────────────────
                       SliverToBoxAdapter(
-                        child: _buildEmptyState(context),
-                      )
-                    else
-                      SliverPadding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: crossAxisCount,
-                            childAspectRatio: screenWidth < 360 ? 0.62 : 0.68,
-                            crossAxisSpacing: 14,
-                            mainAxisSpacing: 16,
-                          ),
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              final item = filteredCatalogs[index];
-                              return _buildProductCard(context, item);
-                            },
-                            childCount: filteredCatalogs.length,
-                          ),
-                        ),
+                        child: _buildTopHeader(context, isTablet),
                       ),
 
-                    const SliverToBoxAdapter(child: SizedBox(height: 28)),
-                  ],
-                ),
+                      // ── Search & Mic Bar ──────────────────────────────────
+                      SliverToBoxAdapter(child: _buildSearchBar(context)),
+
+                      const SliverToBoxAdapter(child: SizedBox(height: 8)),
+
+                      // ── Section Header ────────────────────────────────────
+                      SliverToBoxAdapter(
+                        child: _buildSectionHeader(filteredCatalogs.length),
+                      ),
+
+                      // ── Product Grid or Empty State ───────────────────────
+                      if (filteredCatalogs.isEmpty)
+                        SliverToBoxAdapter(child: _buildEmptyState(context))
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverGrid(
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: crossAxisCount,
+                                  childAspectRatio: screenWidth < 360
+                                      ? 0.62
+                                      : 0.68,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 16,
+                                ),
+                            delegate: SliverChildBuilderDelegate((
+                              context,
+                              index,
+                            ) {
+                              final item = filteredCatalogs[index];
+                              return _buildProductCard(context, item);
+                            }, childCount: filteredCatalogs.length),
+                          ),
+                        ),
+
+                      const SliverToBoxAdapter(child: SizedBox(height: 28)),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -209,12 +214,18 @@ class _ExploreScreenState extends State<ExploreScreen> {
               decoration: BoxDecoration(
                 color: AppColors.primaryTeal.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.primaryTeal.withValues(alpha: 0.3),
+                ),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.sensors_rounded, size: 14, color: AppColors.primaryTeal),
+                  Icon(
+                    Icons.sensors_rounded,
+                    size: 14,
+                    color: AppColors.primaryTeal,
+                  ),
                   SizedBox(width: 4),
                   Text(
                     'GPU Live',
@@ -236,7 +247,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
               onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) => const LanguageSelectionScreen(isInitialSetup: false),
+                    builder: (_) =>
+                        const LanguageSelectionScreen(isInitialSetup: false),
                   ),
                 );
               },
@@ -251,7 +263,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.translate_rounded, size: 14, color: AppColors.secondaryTerracotta),
+                    const Icon(
+                      Icons.translate_rounded,
+                      size: 14,
+                      color: AppColors.secondaryTerracotta,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       langCtrl.currentLanguage.nativeName,
@@ -333,7 +349,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             if (_searchQuery.isNotEmpty)
               IconButton(
-                icon: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textSecondary),
+                icon: const Icon(
+                  Icons.clear_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
                 onPressed: () {
                   _searchController.clear();
                   setState(() {
@@ -360,8 +380,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _isVoiceSearching ? Icons.graphic_eq_rounded : Icons.mic_rounded,
-                        color: _isVoiceSearching ? AppColors.alertRed : AppColors.primaryTeal,
+                        _isVoiceSearching
+                            ? Icons.graphic_eq_rounded
+                            : Icons.mic_rounded,
+                        color: _isVoiceSearching
+                            ? AppColors.alertRed
+                            : AppColors.primaryTeal,
                         size: 18,
                       ),
                     ],
@@ -383,7 +407,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (!hasPerm) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Microphone permission required for voice search')),
+            const SnackBar(
+              content: Text('Microphone permission required for voice search'),
+            ),
           );
         }
         setState(() => _isVoiceSearching = false);
@@ -412,7 +438,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   color: AppColors.primaryTeal.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.mic_rounded, size: 32, color: AppColors.primaryTeal),
+                child: const Icon(
+                  Icons.mic_rounded,
+                  size: 32,
+                  color: AppColors.primaryTeal,
+                ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -422,7 +452,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
               const SizedBox(height: 6),
               Text(
                 'उदा: "सिल्क साड़ी", "टेराकोटा दीया", "लकड़ी के खिलौने"',
-                style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                style: AppTextStyles.caption.copyWith(
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
@@ -433,7 +465,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   backgroundColor: AppColors.primaryTeal,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 44),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
@@ -461,8 +495,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
       }
     }
   }
-
-
 
   // ── Section Header ─────────────────────────────────────────────────────────
   Widget _buildSectionHeader(int itemCount) {
@@ -545,7 +577,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
             const SizedBox(height: 4),
             Text(
               'डेटाबेस और ONDC नेटवर्क से शिल्प सिंक हो रहे हैं...',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),
@@ -615,7 +649,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 Navigator.pushNamed(context, AppRoutes.capture);
               },
               icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-              label: const Text('Create First Craft Listing • नया शिल्प जोड़ें'),
+              label: const Text(
+                'Create First Craft Listing • नया शिल्प जोड़ें',
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondaryTerracotta,
                 foregroundColor: Colors.white,
@@ -634,10 +670,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
               onPressed: () {
                 context.read<CatalogController>().loadSavedCatalogs();
               },
-              icon: const Icon(Icons.sync_rounded, size: 18, color: AppColors.primaryTeal),
+              icon: const Icon(
+                Icons.sync_rounded,
+                size: 18,
+                color: AppColors.primaryTeal,
+              ),
               label: const Text(
                 'Sync from Network • नेटवर्क से सिंक करें',
-                style: TextStyle(color: AppColors.primaryTeal, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: AppColors.primaryTeal,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -891,7 +934,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             Row(
                               children: [
                                 Text(
-                                  fairPrice > 0 ? '₹$fairPrice' : 'Price Pending',
+                                  fairPrice > 0
+                                      ? '₹$fairPrice'
+                                      : 'Price Pending',
                                   style: AppTextStyles.label.copyWith(
                                     color: AppColors.primaryTeal,
                                     fontSize: 16,
@@ -954,7 +999,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             const Spacer(),
                             GestureDetector(
                               onTap: () async {
-                                final textToSpeak = item.descriptionHi?.trim().isNotEmpty == true
+                                final textToSpeak =
+                                    item.descriptionHi?.trim().isNotEmpty ==
+                                        true
                                     ? item.descriptionHi!
                                     : (item.descriptionEn ?? '');
                                 if (_isPlayingStory) {
@@ -990,7 +1037,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
-                                      _isPlayingStory ? 'Stop' : 'Listen • सुनें',
+                                      _isPlayingStory
+                                          ? 'Stop'
+                                          : 'Listen • सुनें',
                                       style: AppTextStyles.labelSmall.copyWith(
                                         color: Colors.white,
                                         fontSize: 11,
@@ -1004,7 +1053,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         ),
                         const SizedBox(height: 8),
                         BilingualText(
-                          english: item.descriptionEn ?? 'Handcrafted artisan product.',
+                          english:
+                              item.descriptionEn ??
+                              'Handcrafted artisan product.',
                           local: item.descriptionHi,
                           englishStyle: AppTextStyles.body.copyWith(
                             fontSize: 13,
@@ -1031,15 +1082,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.pop(modalCtx);
-                        final catalogController =
-                            context.read<CatalogController>();
+                        final catalogController = context
+                            .read<CatalogController>();
                         catalogController.setItem(item);
                         Navigator.pushNamed(context, AppRoutes.catalog);
                       },
-                      icon: const Icon(
-                        Icons.edit_note_rounded,
-                        size: 20,
-                      ),
+                      icon: const Icon(Icons.edit_note_rounded, size: 20),
                       label: const Text('View & Edit Listing • कैटलॉग देखें'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryTeal,
@@ -1078,11 +1126,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
     }
 
-    if (imagePath.startsWith('http') || kIsWeb || imagePath.startsWith('blob:')) {
+    if (imagePath.startsWith('http') ||
+        kIsWeb ||
+        imagePath.startsWith('blob:')) {
       return Image.network(
         imagePath,
         fit: BoxFit.cover,
-        headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
+        headers: const {
+          'bypass-tunnel-reminder': 'true',
+          'ngrok-skip-browser-warning': 'true',
+        },
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Container(
@@ -1091,7 +1144,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
               child: SizedBox(
                 width: 24,
                 height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryTeal),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primaryTeal,
+                ),
               ),
             ),
           );

@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
+
 import '../config/constants.dart';
 import '../models/catalog_item.dart';
 import '../models/craft_attributes.dart';
@@ -12,7 +13,14 @@ import '../services/bhashini_service.dart';
 import '../services/storage_service.dart';
 import 'pricing_controller.dart';
 
-enum ProcessingStage { notStarted, imageProcessing, voiceProcessing, pricing, done, error }
+enum ProcessingStage {
+  notStarted,
+  imageProcessing,
+  voiceProcessing,
+  pricing,
+  done,
+  error,
+}
 
 class CatalogController extends ChangeNotifier {
   final ApiService _apiService;
@@ -162,7 +170,10 @@ class CatalogController extends ChangeNotifier {
     String? category,
   }) async {
     final existingStudio = _currentItem?.studioImagePath;
-    final finalStudio = (existingStudio != null && existingStudio.isNotEmpty && existingStudio != imagePath)
+    final finalStudio =
+        (existingStudio != null &&
+            existingStudio.isNotEmpty &&
+            existingStudio != imagePath)
         ? existingStudio
         : imagePath;
 
@@ -175,8 +186,7 @@ class CatalogController extends ChangeNotifier {
       galleryImages: galleryImagePaths ?? const [],
       titleEn: 'Handcrafted Artisan Item',
       titleHi: 'हस्तनिर्मित शिल्प उत्पाद',
-      descriptionEn:
-          'Authentic handmade craft directly from generational artisan creators.',
+      descriptionEn: 'Authentic handmade craft directly from generational artisan creators.',
       descriptionHi:
           'कुशल कारीगर द्वारा पारंपरिक विधि से हस्तनिर्मित उत्कृष्ट उत्पाद।',
       craftAttributes: CraftAttributes(
@@ -247,7 +257,9 @@ class CatalogController extends ChangeNotifier {
     final descEn = _currentItem!.descriptionEn?.trim() ?? '';
     final textToSpeak = descHi.isNotEmpty
         ? descHi
-        : (descEn.isNotEmpty ? descEn : (_currentItem!.titleHi ?? _currentItem!.titleEn ?? ''));
+        : (descEn.isNotEmpty
+              ? descEn
+              : (_currentItem!.titleHi ?? _currentItem!.titleEn ?? ''));
 
     if (textToSpeak.isNotEmpty) {
       if (AppConstants.bhashiniApiKey.isNotEmpty && descHi.isNotEmpty) {
@@ -336,12 +348,14 @@ class CatalogController extends ChangeNotifier {
       url,
       headers: const {'ngrok-skip-browser-warning': 'true'},
     );
-    provider.resolve(ImageConfiguration.empty).addListener(
-      ImageStreamListener(
-        (info, _) {}, // success — image is now in cache
-        onError: (e, _) {}, // ignore cache-warm errors silently
-      ),
-    );
+    provider
+        .resolve(ImageConfiguration.empty)
+        .addListener(
+          ImageStreamListener(
+            (info, _) {}, // success — image is now in cache
+            onError: (e, _) {}, // ignore cache-warm errors silently
+          ),
+        );
   }
 
   void reset() {

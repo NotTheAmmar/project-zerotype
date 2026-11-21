@@ -1,5 +1,7 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
 import '../../config/theme.dart';
 
 class WaveformVisualizer extends StatelessWidget {
@@ -17,10 +19,7 @@ class WaveformVisualizer extends StatelessWidget {
     return SizedBox(
       height: 56,
       child: CustomPaint(
-        painter: _WaveformPainter(
-          amplitudes: amplitudes,
-          isActive: isActive,
-        ),
+        painter: _WaveformPainter(amplitudes: amplitudes, isActive: isActive),
         size: const Size(double.infinity, 56),
       ),
     );
