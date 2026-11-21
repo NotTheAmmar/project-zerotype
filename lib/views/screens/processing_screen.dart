@@ -591,10 +591,20 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                       File(localImagePath),
                       fit: BoxFit.cover,
                     )
-                  : Image.network(
-                      'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
-                      fit: BoxFit.cover,
-                    ),
+                  : (localImagePath != null && (localImagePath.startsWith('http') || (kIsWeb && localImagePath.startsWith('blob:'))))
+                      ? Image.network(
+                          localImagePath,
+                          fit: BoxFit.cover,
+                          headers: const {'bypass-tunnel-reminder': 'true'},
+                          errorBuilder: (ctx, err, stack) => Image.network(
+                            'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : Image.network(
+                          'https://images.unsplash.com/photo-1603555501671-8f96b3fce8e4?auto=format&fit=crop&w=800&q=80',
+                          fit: BoxFit.cover,
+                        ),
             ),
           ),
 

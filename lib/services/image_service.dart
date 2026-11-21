@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
 import '../config/constants.dart';
 import 'api_service.dart';
@@ -98,6 +97,10 @@ class ImageService {
 
   /// Quick quality check: blur + low-light detection (runs in a background isolate)
   Future<ImageQualityResult> checkQuality(String imagePath) async {
+    if (kIsWeb) {
+      // Avoid dart:io File read in isolates on web (which throws Unsupported operation: _Namespace)
+      return const ImageQualityResult(isBlurry: false, isLowLight: false);
+    }
     try {
       return await compute(_checkQualityIsolate, imagePath);
     } catch (_) {

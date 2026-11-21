@@ -1,3 +1,4 @@
+import 'package:cross_file/cross_file.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -351,9 +352,9 @@ class BhashiniService {
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   Future<Uint8List> _readAudio(String audioPath) async {
-    if (kIsWeb) {
-      final res = await _client.get(Uri.parse(audioPath));
-      return res.bodyBytes;
+    if (kIsWeb || audioPath.startsWith('blob:') || audioPath.startsWith('http')) {
+      final xFile = XFile(audioPath);
+      return await xFile.readAsBytes();
     }
     return File(audioPath).readAsBytes();
   }
@@ -361,10 +362,13 @@ class BhashiniService {
   /// Decodes a base64 WAV string and writes it to a temp file.
   /// Returns the file path.
   Future<String> _saveBase64Audio(String base64Audio) async {
+    if (kIsWeb) {
+      return 'data:audio/wav;base64,$base64Audio';
+    }
     final bytes = base64Decode(base64Audio);
-    final dir = kIsWeb ? null : await getTemporaryDirectory();
+    final dir = await getTemporaryDirectory();
     final ts = DateTime.now().millisecondsSinceEpoch;
-    final path = '${dir?.path ?? ''}/bhashini_tts_$ts.wav';
+    final path = '${dir.path}/bhashini_tts_$ts.wav';
     await File(path).writeAsBytes(bytes);
     return path;
   }

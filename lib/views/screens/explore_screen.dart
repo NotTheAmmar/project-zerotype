@@ -1078,20 +1078,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
     }
 
-    if (imagePath.startsWith('http')) {
+    if (imagePath.startsWith('http') || kIsWeb || imagePath.startsWith('blob:')) {
       return Image.network(
         imagePath,
         fit: BoxFit.cover,
         headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
-        errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
-      );
-    }
-
-    if (kIsWeb || imagePath.startsWith('blob:')) {
-      return Image.network(
-        imagePath,
-        fit: BoxFit.cover,
-        headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: AppColors.surfaceContainer,
+            child: const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryTeal),
+              ),
+            ),
+          );
+        },
         errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
       );
     }

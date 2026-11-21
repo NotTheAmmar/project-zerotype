@@ -780,16 +780,20 @@ Artisan update instruction:
       final uri = Uri.parse('https://api.groq.com/openai/v1/audio/transcriptions');
       final request = http.MultipartRequest('POST', uri);
       request.headers['Authorization'] = 'Bearer $apiKey';
+      request.headers['User-Agent'] = 'BazaarSetu/1.0';
       request.fields['model'] = 'whisper-large-v3-turbo';
       request.fields['response_format'] = 'json';
 
       Uint8List bytes;
-      String filename = 'audio_\${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final now = DateTime.now().millisecondsSinceEpoch;
+      String filename = kIsWeb ? 'audio_$now.webm' : 'audio_$now.wav';
 
       if (kIsWeb || audioPath.startsWith('blob:') || audioPath.startsWith('http')) {
         final xFile = XFile(audioPath);
         bytes = await xFile.readAsBytes();
-        if (xFile.name.isNotEmpty) filename = xFile.name;
+        if (xFile.name.isNotEmpty && xFile.name.contains('.')) {
+          filename = xFile.name;
+        }
       } else {
         final file = File(audioPath);
         if (!file.existsSync()) return '';
@@ -809,7 +813,7 @@ Artisan update instruction:
         final text = data['text'] as String? ?? '';
         return text.trim();
       } else {
-        debugPrint('[GroqWhisper] HTTP \${response.statusCode}: \${response.body}');
+        debugPrint('[GroqWhisper] HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       debugPrint('[GroqWhisper] Transcription error: $e');
