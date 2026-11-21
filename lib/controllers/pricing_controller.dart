@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import '../config/constants.dart';
 import '../models/pricing_corridor.dart';
 
@@ -24,11 +25,11 @@ class PricingController extends ChangeNotifier {
     this._dailyWageRate = AppConstants.defaultDailyWageRate,
     this._skillMultiplier = 1.0,
     int initialQuantity = 1,
-  })  : _rawMaterialCost = initialRawMaterialCost,
-        _laborDays = initialLaborDays,
-        _itemsProduced = initialItemsProduced,
-        _sellerProposedPrice = initialSellerProposedPrice,
-        _availableQuantity = initialQuantity {
+  }) : _rawMaterialCost = initialRawMaterialCost,
+       _laborDays = initialLaborDays,
+       _itemsProduced = initialItemsProduced,
+       _sellerProposedPrice = initialSellerProposedPrice,
+       _availableQuantity = initialQuantity {
     _recalculate();
   }
 
@@ -136,7 +137,7 @@ class PricingController extends ChangeNotifier {
   // ── Seed from AI extraction ───────────────────────────────────────────────
 
   void seedFromExtracted({
-    required int rawMaterialCost, 
+    required int rawMaterialCost,
     required int laborDays,
     required int itemsProduced,
     required int sellerProposedPrice,
@@ -162,7 +163,8 @@ class PricingController extends ChangeNotifier {
       skillMultiplier: _skillMultiplier,
     );
     // If the floor rose above the manual override, clear the override
-    if (_manualFinalPrice != null && _manualFinalPrice! < _corridor.floorPrice) {
+    if (_manualFinalPrice != null &&
+        _manualFinalPrice! < _corridor.floorPrice) {
       _manualFinalPrice = null;
     }
   }

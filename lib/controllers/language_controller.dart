@@ -36,11 +36,10 @@ class LanguageController extends ChangeNotifier {
   bool get isLanguageSetupDone => _isLanguageSetupDone;
   bool get isLoaded => _isLoaded;
 
-  LanguageOption get currentLanguage =>
-      supportedLanguages.firstWhere(
-        (l) => l.code == _currentLanguageCode,
-        orElse: () => supportedLanguages.first,
-      );
+  LanguageOption get currentLanguage => supportedLanguages.firstWhere(
+    (l) => l.code == _currentLanguageCode,
+    orElse: () => supportedLanguages.first,
+  );
 
   LanguageController({bool autoLoad = true}) {
     if (autoLoad) {

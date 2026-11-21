@@ -1,10 +1,13 @@
 import 'package:cross_file/cross_file.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+
 import '../config/constants.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,9 +71,7 @@ class BhashiniService {
       ],
       inputData: {
         'audio': [
-          {
-            'audioContent': base64Audio,
-          },
+          {'audioContent': base64Audio},
         ],
       },
     );
@@ -152,7 +153,8 @@ class BhashiniService {
     );
 
     final base64Audio =
-        result['pipelineResponse']?[0]?['audio']?[0]?['audioContent'] as String?;
+        result['pipelineResponse']?[0]?['audio']?[0]?['audioContent']
+            as String?;
     if (base64Audio == null || base64Audio.isEmpty) {
       throw const BhashiniException('TTS returned empty audio');
     }
@@ -256,8 +258,8 @@ class BhashiniService {
     final body = jsonDecode(response.body) as Map<String, dynamic>;
 
     // Extract inference URL (can differ per task) — fall back to default
-    final callbackUrl = body['pipelineInferenceAPIEndPoint']
-        ?['callbackUrl'] as String?;
+    final callbackUrl =
+        body['pipelineInferenceAPIEndPoint']?['callbackUrl'] as String?;
     _inferenceUrl = (callbackUrl != null && callbackUrl.isNotEmpty)
         ? callbackUrl
         : '${AppConstants.bhashiniApiUrl}/services/inference/pipeline';
@@ -278,8 +280,9 @@ class BhashiniService {
     }
 
     // Also try to read the infer endpoint per-task (Bhashini v2 style)
-    final apiKey = body['pipelineInferenceAPIEndPoint']
-        ?['inferenceApiKey']?['value'] as String?;
+    final apiKey =
+        body['pipelineInferenceAPIEndPoint']?['inferenceApiKey']?['value']
+            as String?;
     if (apiKey != null && apiKey.isNotEmpty) {
       // Store separately so compute() can use it
       _inferenceApiKey = apiKey;
@@ -298,14 +301,14 @@ class BhashiniService {
     required List<Map<String, dynamic>> pipelineTasks,
     required Map<String, dynamic> inputData,
   }) async {
-    final url = _inferenceUrl ??
+    final url =
+        _inferenceUrl ??
         '${AppConstants.bhashiniApiUrl}/services/inference/pipeline';
 
     // Prefer the key from the config response; fall back to the API key from .env
-    final authValue =
-        _inferenceApiKey?.isNotEmpty == true
-            ? _inferenceApiKey!
-            : AppConstants.bhashiniApiKey;
+    final authValue = _inferenceApiKey?.isNotEmpty == true
+        ? _inferenceApiKey!
+        : AppConstants.bhashiniApiKey;
 
     final requestBody = {
       'pipelineTasks': pipelineTasks,
@@ -335,7 +338,9 @@ class BhashiniService {
       debugPrint('Status Code: ${response.statusCode}');
       // Only print first 500 chars to avoid huge base64 spam
       final bodyStr = response.body;
-      debugPrint('Body: ${bodyStr.length > 500 ? "${bodyStr.substring(0, 500)}..." : bodyStr}');
+      debugPrint(
+        'Body: ${bodyStr.length > 500 ? "${bodyStr.substring(0, 500)}..." : bodyStr}',
+      );
       debugPrint('===========================');
     }
 
@@ -345,14 +350,15 @@ class BhashiniService {
       );
     }
 
-
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   Future<Uint8List> _readAudio(String audioPath) async {
-    if (kIsWeb || audioPath.startsWith('blob:') || audioPath.startsWith('http')) {
+    if (kIsWeb ||
+        audioPath.startsWith('blob:') ||
+        audioPath.startsWith('http')) {
       final xFile = XFile(audioPath);
       return await xFile.readAsBytes();
     }

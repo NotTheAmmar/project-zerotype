@@ -1,8 +1,10 @@
 import 'dart:io';
+
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
+
 import '../config/constants.dart';
 import 'api_service.dart';
 
@@ -10,10 +12,7 @@ class ImageQualityResult {
   final bool isBlurry;
   final bool isLowLight;
 
-  const ImageQualityResult({
-    required this.isBlurry,
-    required this.isLowLight,
-  });
+  const ImageQualityResult({required this.isBlurry, required this.isLowLight});
 
   bool get isAcceptable => !isBlurry && !isLowLight;
 }
@@ -122,7 +121,6 @@ class ImageService {
     }
     return null;
   }
-
 }
 
 // ── Top-level function required by compute() — isolates cannot use closures ──

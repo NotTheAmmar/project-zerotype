@@ -90,31 +90,32 @@ class CraftAttributes {
   }
 
   Map<String, dynamic> toJson() => {
-        'category': category,
-        'materials': materials,
-        'laborDays': laborDays,
-        'clusterLocation': clusterLocation,
-        'artisanName': artisanName,
-        'dimensions': dimensions,
-        'weight': weight,
-        'categoryId': categoryId,
-        'fulfillmentId': fulfillmentId,
-        'locationId': locationId,
-        'quantity': quantity,
-        'timeToShip': timeToShip,
-        'returnable': returnable,
-        'cancellable': cancellable,
-        'availableOnCod': availableOnCod,
-        'returnWindow': returnWindow,
-        'countryOfOrigin': countryOfOrigin,
-        'netQuantity': netQuantity,
-        'genericName': genericName,
-      };
+    'category': category,
+    'materials': materials,
+    'laborDays': laborDays,
+    'clusterLocation': clusterLocation,
+    'artisanName': artisanName,
+    'dimensions': dimensions,
+    'weight': weight,
+    'categoryId': categoryId,
+    'fulfillmentId': fulfillmentId,
+    'locationId': locationId,
+    'quantity': quantity,
+    'timeToShip': timeToShip,
+    'returnable': returnable,
+    'cancellable': cancellable,
+    'availableOnCod': availableOnCod,
+    'returnWindow': returnWindow,
+    'countryOfOrigin': countryOfOrigin,
+    'netQuantity': netQuantity,
+    'genericName': genericName,
+  };
 
   factory CraftAttributes.fromJson(Map<String, dynamic> json) =>
       CraftAttributes(
         category: json['category'] as String?,
-        materials: (json['materials'] as List<dynamic>?)
+        materials:
+            (json['materials'] as List<dynamic>?)
                 ?.map((e) => e as String)
                 .toList() ??
             [],

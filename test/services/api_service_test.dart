@@ -5,23 +5,26 @@ import 'package:project_zerotype/services/api_service.dart';
 
 void main() {
   group('ApiService Tests', () {
-    test('MockApiService processCatalog runs stages and returns populated result', () async {
-      final service = MockApiService();
-      final stagesCompleted = <int>[];
+    test(
+      'MockApiService processCatalog runs stages and returns populated result',
+      () async {
+        final service = MockApiService();
+        final stagesCompleted = <int>[];
 
-      final result = await service.processCatalog(
-        imagePath: '/tmp/test_image.jpg',
-        audioPath: '/tmp/test_audio.wav',
-        onStageComplete: (stage) => stagesCompleted.add(stage),
-      );
+        final result = await service.processCatalog(
+          imagePath: '/tmp/test_image.jpg',
+          audioPath: '/tmp/test_audio.wav',
+          onStageComplete: (stage) => stagesCompleted.add(stage),
+        );
 
-      expect(stagesCompleted, containsAllInOrder([0, 1, 2]));
-      expect(result.titleEn, isNotEmpty);
-      expect(result.titleHi, isNotEmpty);
-      expect(result.descriptionEn, isNotEmpty);
-      expect(result.pricing, isNotNull);
-      expect(result.craftAttributes, isNotNull);
-    });
+        expect(stagesCompleted, containsAllInOrder([0, 1, 2]));
+        expect(result.titleEn, isNotEmpty);
+        expect(result.titleHi, isNotEmpty);
+        expect(result.descriptionEn, isNotEmpty);
+        expect(result.pricing, isNotNull);
+        expect(result.craftAttributes, isNotNull);
+      },
+    );
 
     test('MockApiService publishToOndc returns PUBLISHED response', () async {
       final service = MockApiService();
@@ -61,17 +64,15 @@ void main() {
         'work_type': 'Hand-thrown on potter wheel',
         'net_quantity': '4 pieces',
         'cluster_location': 'Khurja Pottery Cluster, UP',
-        'pricing_inputs': {
-          'raw_material_cost': 120,
-          'labor_days': 2,
-        },
+        'pricing_inputs': {'raw_material_cost': 120, 'labor_days': 2},
         'spoken_price': 400,
         'spoken_quantity': 4,
         'dimensions': '5 x 5 inches',
         'weight': '250g',
         'title_en': 'Traditional Terracotta Clay Diya Set',
         'title_hi': 'पारंपरिक मिट्टी का दीया सेट',
-        'description_en': 'Artisanal clay lamps made from fine natural terracotta.',
+        'description_en':
+            'Artisanal clay lamps made from fine natural terracotta.',
         'description_hi': 'शुद्ध प्राकृतिक मिट्टी से निर्मित पारंपरिक दीये।',
       };
 
@@ -102,9 +103,7 @@ void main() {
     });
 
     test('LiveApiService.resultFromQwenExtraction applies statutory fallbacks when keys are missing', () {
-      final minimalJson = <String, dynamic>{
-        'commodity_name': 'Shawl',
-      };
+      final minimalJson = <String, dynamic>{'commodity_name': 'Shawl'};
 
       final result = LiveApiService.resultFromQwenExtraction(
         minimalJson,
@@ -114,7 +113,10 @@ void main() {
       expect(result.titleEn, equals('Handmade Shawl'));
       expect(result.titleHi, equals('हस्तनिर्मित उत्पाद'));
       expect(result.descriptionHi, equals('हाथ से बुनी पश्मीना शॉल'));
-      expect(result.craftAttributes?.materials, contains('Natural Clay & Earth'));
+      expect(
+        result.craftAttributes?.materials,
+        contains('Natural Clay & Earth'),
+      );
       expect(result.craftAttributes?.countryOfOrigin, equals('IND'));
       expect(result.pricing, isNotNull);
     });

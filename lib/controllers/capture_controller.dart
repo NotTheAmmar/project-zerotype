@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+
 import '../services/image_service.dart';
 
 enum CaptureState { idle, previewing, confirmed }
@@ -22,20 +23,23 @@ class CaptureController extends ChangeNotifier {
   bool _flashOn = false;
   bool _showGrid = true;
   String _detectedObject = '';
-  String _detectedCategory = 'fallback'; // 'pottery' | 'apparel' | 'wood_metal' | 'food' | 'fallback'
+  String _detectedCategory =
+      'fallback'; // 'pottery' | 'apparel' | 'wood_metal' | 'food' | 'fallback'
   String _detectedStatusLabel = 'अच्छी रोशनी में फोटो लें';
 
   CaptureState get state => _state;
   List<String> get capturedPhotos => List.unmodifiable(_capturedPhotos);
-  String? get primaryPhoto => _capturedPhotos.isNotEmpty ? _capturedPhotos.first : null;
+  String? get primaryPhoto =>
+      _capturedPhotos.isNotEmpty ? _capturedPhotos.first : null;
   String? get capturedImagePath => primaryPhoto;
   int get photosCount => _capturedPhotos.length;
   int get photosTakenCount => _capturedPhotos.length;
   bool get canProceed => _capturedPhotos.isNotEmpty;
 
   // Compatibility mapping for existing integrations
-  Map<int, String> get capturedAngles =>
-      {for (int i = 0; i < _capturedPhotos.length; i++) i: _capturedPhotos[i]};
+  Map<int, String> get capturedAngles => {
+    for (int i = 0; i < _capturedPhotos.length; i++) i: _capturedPhotos[i],
+  };
   int get activeAngleIndex => _capturedPhotos.length;
 
   bool get flashOn => _flashOn;
@@ -49,7 +53,8 @@ class CaptureController extends ChangeNotifier {
   String get detectedObject => _detectedObject;
   String get detectedCategory => _detectedCategory;
   String get detectedStatusLabel => _detectedStatusLabel;
-  bool get hasDetectedObject => _detectedObject.isNotEmpty && _detectedCategory != 'fallback';
+  bool get hasDetectedObject =>
+      _detectedObject.isNotEmpty && _detectedCategory != 'fallback';
 
   Future<void> initCamera() async {
     await _imageService.initCamera();
@@ -103,7 +108,11 @@ class CaptureController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setDetectedCategory(String category, {String? objectName, String? statusLabel}) {
+  void setDetectedCategory(
+    String category, {
+    String? objectName,
+    String? statusLabel,
+  }) {
     _detectedCategory = category;
     if (objectName != null) _detectedObject = objectName;
     if (statusLabel != null) _detectedStatusLabel = statusLabel;
@@ -163,7 +172,8 @@ class CaptureController extends ChangeNotifier {
     _isQualityWarningLight = quality.isLowLight;
 
     _capturedPhotos.add(path);
-    _state = CaptureState.idle; // keep viewfinder active so seller can snap more photos
+    _state = CaptureState
+        .idle; // keep viewfinder active so seller can snap more photos
   }
 
   void _clearWarnings() {

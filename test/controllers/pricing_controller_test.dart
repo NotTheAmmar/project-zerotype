@@ -24,8 +24,14 @@ void main() {
 
       // Floor: baseCost * 1.10 = (200 + 3 * 475 * 1.2) * 1.10 = (200 + 1710) * 1.10 = 1910 * 1.10 = 2101
       expect(controller.corridor.floorPrice, equals(2101));
-      expect(controller.corridor.fairPrice, greaterThan(controller.corridor.floorPrice));
-      expect(controller.corridor.premiumPrice, greaterThan(controller.corridor.fairPrice));
+      expect(
+        controller.corridor.fairPrice,
+        greaterThan(controller.corridor.floorPrice),
+      );
+      expect(
+        controller.corridor.premiumPrice,
+        greaterThan(controller.corridor.fairPrice),
+      );
     });
 
     test('Modifying raw material cost recalculates corridor', () {

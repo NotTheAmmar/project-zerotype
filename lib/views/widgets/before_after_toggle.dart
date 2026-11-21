@@ -1,6 +1,8 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+
 import '../../config/theme.dart';
 
 class BeforeAfterToggle extends StatelessWidget {
@@ -76,11 +78,17 @@ class BeforeAfterToggle extends StatelessWidget {
         child: const Center(child: Icon(Icons.image_outlined, size: 48)),
       );
     }
-    Widget buildLoading(BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+    Widget buildLoading(
+      BuildContext context,
+      Widget child,
+      ImageChunkEvent? loadingProgress,
+    ) {
       if (loadingProgress == null) return child;
       final expected = loadingProgress.expectedTotalBytes;
       final loaded = loadingProgress.cumulativeBytesLoaded;
-      final progress = expected != null && expected > 0 ? loaded / expected : null;
+      final progress = expected != null && expected > 0
+          ? loaded / expected
+          : null;
       return Container(
         color: const Color(0xFFF9F8F6),
         child: Center(
@@ -94,8 +102,13 @@ class BeforeAfterToggle extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                studio ? 'AI स्टूडियो फोटो लोड हो रहा है...' : 'कच्चा फोटो लोड हो रहा है...',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                studio
+                    ? 'AI स्टूडियो फोटो लोड हो रहा है...'
+                    : 'कच्चा फोटो लोड हो रहा है...',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -116,11 +129,20 @@ class BeforeAfterToggle extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.broken_image_outlined, size: 36, color: AppColors.textSecondary),
+                const Icon(
+                  Icons.broken_image_outlined,
+                  size: 36,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(height: 6),
                 Text(
-                  studio ? 'स्टूडियो फोटो लोड नहीं हुआ' : 'कच्चा फोटो लोड नहीं हुआ',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                  studio
+                      ? 'स्टूडियो फोटो लोड नहीं हुआ'
+                      : 'कच्चा फोटो लोड नहीं हुआ',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -129,11 +151,7 @@ class BeforeAfterToggle extends StatelessWidget {
       );
     }
 
-    return Image.file(
-      File(path),
-      key: ValueKey(path),
-      fit: BoxFit.cover,
-    );
+    return Image.file(File(path), key: ValueKey(path), fit: BoxFit.cover);
   }
 }
 

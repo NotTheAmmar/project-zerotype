@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -61,14 +62,17 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
     });
 
     try {
-      final res = await http.get(
-        Uri.parse('$url/health'),
-        headers: {'bypass-tunnel-reminder': 'true'},
-      ).timeout(const Duration(seconds: 6));
+      final res = await http
+          .get(
+            Uri.parse('$url/health'),
+            headers: {'bypass-tunnel-reminder': 'true'},
+          )
+          .timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
-        final gpus = (data['devices'] as List<dynamic>?)?.join(', ') ?? 'GPU Ready';
+        final gpus =
+            (data['devices'] as List<dynamic>?)?.join(', ') ?? 'GPU Ready';
         setState(() {
           _testSuccess = true;
           _testMessage = 'Connected! $gpus';
@@ -154,7 +158,11 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                     color: AppColors.primaryTeal.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.tune_rounded, color: AppColors.primaryTeal, size: 22),
+                  child: const Icon(
+                    Icons.tune_rounded,
+                    color: AppColors.primaryTeal,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -163,11 +171,15 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                     children: [
                       Text(
                         'Demo Server & AI Settings',
-                        style: AppTextStyles.serifTitle().copyWith(fontSize: 18),
+                        style: AppTextStyles.serifTitle().copyWith(
+                          fontSize: 18,
+                        ),
                       ),
                       Text(
                         'Live Kaggle Tunnel & Voice API Keys',
-                        style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -183,7 +195,10 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
             // Backend URL Field
             Text(
               'Kaggle Dual-T4 Tunnel URL (BPP Backend)',
-              style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTextStyles.label.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
@@ -191,8 +206,13 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
               decoration: InputDecoration(
                 hintText: 'https://xxxx.trycloudflare.com',
                 prefixIcon: const Icon(Icons.cloud_outlined, size: 20),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
               ),
               keyboardType: TextInputType.url,
             ),
@@ -201,7 +221,10 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
             // Groq API Key Field
             Text(
               'Groq API Key (Whisper Voice & Qwen Extraction)',
-              style: AppTextStyles.label.copyWith(fontSize: 13, fontWeight: FontWeight.w600),
+              style: AppTextStyles.label.copyWith(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 6),
             TextField(
@@ -209,8 +232,13 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
               decoration: InputDecoration(
                 hintText: 'gsk_... (optional for live STT)',
                 prefixIcon: const Icon(Icons.mic_none_rounded, size: 20),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -219,7 +247,10 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
             if (_testMessage != null)
               Container(
                 margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: (_testSuccess == true)
                       ? Colors.green.shade50
@@ -234,8 +265,12 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                 child: Row(
                   children: [
                     Icon(
-                      (_testSuccess == true) ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-                      color: (_testSuccess == true) ? Colors.green.shade700 : Colors.red.shade700,
+                      (_testSuccess == true)
+                          ? Icons.check_circle_rounded
+                          : Icons.error_outline_rounded,
+                      color: (_testSuccess == true)
+                          ? Colors.green.shade700
+                          : Colors.red.shade700,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -245,7 +280,9 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: (_testSuccess == true) ? Colors.green.shade900 : Colors.red.shade900,
+                          color: (_testSuccess == true)
+                              ? Colors.green.shade900
+                              : Colors.red.shade900,
                         ),
                       ),
                     ),
@@ -269,7 +306,9 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                     label: Text(_isTesting ? 'Testing...' : 'Test Ping'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -284,7 +323,9 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                       backgroundColor: AppColors.primaryTeal,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                 ),
@@ -294,7 +335,10 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
             Center(
               child: TextButton(
                 onPressed: _resetToDefaults,
-                child: const Text('Reset to .env Defaults', style: TextStyle(fontSize: 12)),
+                child: const Text(
+                  'Reset to .env Defaults',
+                  style: TextStyle(fontSize: 12),
+                ),
               ),
             ),
           ],

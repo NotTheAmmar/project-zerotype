@@ -1,10 +1,12 @@
 import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project_zerotype/controllers/voice_controller.dart';
 import 'package:project_zerotype/services/audio_service.dart';
 
 class FakeAudioService extends AudioService {
-  final StreamController<double> _controller = StreamController<double>.broadcast();
+  final StreamController<double> _controller =
+      StreamController<double>.broadcast();
   bool startCalled = false;
   bool stopCalled = false;
 
@@ -55,57 +57,60 @@ void main() {
       expect(controller.isSilent, isFalse);
     });
 
-    test('Category anchors return appropriate prompts for Hindi and English', () {
-      // Apparel
-      expect(
-        VoiceController.getAnchorPrompt('apparel', lang: 'hi'),
-        contains('कपड़ा'),
-      );
-      expect(
-        VoiceController.getAnchorPrompt('apparel', lang: 'en'),
-        contains('fabric'),
-      );
+    test(
+      'Category anchors return appropriate prompts for Hindi and English',
+      () {
+        // Apparel
+        expect(
+          VoiceController.getAnchorPrompt('apparel', lang: 'hi'),
+          contains('कपड़ा'),
+        );
+        expect(
+          VoiceController.getAnchorPrompt('apparel', lang: 'en'),
+          contains('fabric'),
+        );
 
-      // Pottery
-      expect(
-        VoiceController.getAnchorPrompt('pottery', lang: 'hi'),
-        contains('मिट्टी'),
-      );
-      expect(
-        VoiceController.getAnchorPrompt('pottery', lang: 'en'),
-        contains('clay or ceramic'),
-      );
+        // Pottery
+        expect(
+          VoiceController.getAnchorPrompt('pottery', lang: 'hi'),
+          contains('मिट्टी'),
+        );
+        expect(
+          VoiceController.getAnchorPrompt('pottery', lang: 'en'),
+          contains('clay or ceramic'),
+        );
 
-      // Wood & Metal
-      expect(
-        VoiceController.getAnchorPrompt('wood_metal', lang: 'hi'),
-        contains('लकड़ी या धातु'),
-      );
-      expect(
-        VoiceController.getAnchorPrompt('wood_metal', lang: 'en'),
-        contains('wood or metal'),
-      );
+        // Wood & Metal
+        expect(
+          VoiceController.getAnchorPrompt('wood_metal', lang: 'hi'),
+          contains('लकड़ी या धातु'),
+        );
+        expect(
+          VoiceController.getAnchorPrompt('wood_metal', lang: 'en'),
+          contains('wood or metal'),
+        );
 
-      // Food
-      expect(
-        VoiceController.getAnchorPrompt('food', lang: 'hi'),
-        contains('पैकेट'),
-      );
-      expect(
-        VoiceController.getAnchorPrompt('food', lang: 'en'),
-        contains('packet'),
-      );
+        // Food
+        expect(
+          VoiceController.getAnchorPrompt('food', lang: 'hi'),
+          contains('पैकेट'),
+        );
+        expect(
+          VoiceController.getAnchorPrompt('food', lang: 'en'),
+          contains('packet'),
+        );
 
-      // Unknown category falls back gracefully
-      expect(
-        VoiceController.getAnchorPrompt('unknown_xyz', lang: 'hi'),
-        contains('माइक दबाकर 2 बातें बताएं'),
-      );
-      expect(
-        VoiceController.getAnchorPrompt('unknown_xyz', lang: 'en'),
-        contains('Speak into mic 2 things'),
-      );
-    });
+        // Unknown category falls back gracefully
+        expect(
+          VoiceController.getAnchorPrompt('unknown_xyz', lang: 'hi'),
+          contains('माइक दबाकर 2 बातें बताएं'),
+        );
+        expect(
+          VoiceController.getAnchorPrompt('unknown_xyz', lang: 'en'),
+          contains('Speak into mic 2 things'),
+        );
+      },
+    );
 
     test('toggleRecording starts and stops recording accurately', () async {
       expect(controller.state, equals(VoiceState.idle));

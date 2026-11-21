@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../config/theme.dart';
 import '../../controllers/language_controller.dart';
 
@@ -30,7 +31,8 @@ class BilingualText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final langCtrl = context.watch<LanguageController>();
-    final showLocal = local != null &&
+    final showLocal =
+        local != null &&
         local!.trim().isNotEmpty &&
         local!.trim() != english.trim() &&
         langCtrl.currentLanguageCode != 'en';
@@ -49,7 +51,8 @@ class BilingualText extends StatelessWidget {
           SizedBox(height: spacing),
           Text(
             local!,
-            style: localStyle ??
+            style:
+                localStyle ??
                 AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
                   fontSize: 12,

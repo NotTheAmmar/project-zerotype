@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../config/theme.dart';
 
 enum StepStatus { waiting, active, done }
@@ -33,8 +34,8 @@ class ProgressStepper extends StatelessWidget {
         final status = i < currentStage
             ? StepStatus.done
             : i == currentStage
-                ? StepStatus.active
-                : StepStatus.waiting;
+            ? StepStatus.active
+            : StepStatus.waiting;
         return _StepTile(step: _steps[i], status: status, index: i);
       }),
     );
@@ -45,7 +46,11 @@ class _StepData {
   final IconData icon;
   final String labelHi;
   final String labelEn;
-  const _StepData({required this.icon, required this.labelHi, required this.labelEn});
+  const _StepData({
+    required this.icon,
+    required this.labelHi,
+    required this.labelEn,
+  });
 }
 
 class _StepTile extends StatefulWidget {
@@ -53,7 +58,11 @@ class _StepTile extends StatefulWidget {
   final StepStatus status;
   final int index;
 
-  const _StepTile({required this.step, required this.status, required this.index});
+  const _StepTile({
+    required this.step,
+    required this.status,
+    required this.index,
+  });
 
   @override
   State<_StepTile> createState() => _StepTileState();
@@ -100,8 +109,8 @@ class _StepTileState extends State<_StepTile>
     final iconColor = isDone
         ? AppColors.actionGreen
         : isActive
-            ? AppColors.warningAmber
-            : AppColors.textHint;
+        ? AppColors.warningAmber
+        : AppColors.textHint;
 
     return AnimatedBuilder(
       animation: _shimmer,
@@ -120,9 +129,10 @@ class _StepTileState extends State<_StepTile>
                   color: isDone
                       ? AppColors.actionGreenLight
                       : isActive
-                          ? AppColors.warningAmberLight.withValues(
-                              alpha: 0.5 + 0.5 * _shimmer.value)
-                          : AppColors.divider,
+                      ? AppColors.warningAmberLight.withValues(
+                          alpha: 0.5 + 0.5 * _shimmer.value,
+                        )
+                      : AppColors.divider,
                 ),
                 child: Icon(
                   isDone ? Icons.check_rounded : widget.step.icon,
@@ -139,20 +149,22 @@ class _StepTileState extends State<_StepTile>
                     Text(
                       widget.step.labelHi,
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: isWaiting ? AppColors.textHint : AppColors.textPrimary,
+                        color: isWaiting
+                            ? AppColors.textHint
+                            : AppColors.textPrimary,
                       ),
                     ),
-                    Text(
-                      widget.step.labelEn,
-                      style: AppTextStyles.caption,
-                    ),
+                    Text(widget.step.labelEn, style: AppTextStyles.caption),
                   ],
                 ),
               ),
               // Right indicator
               if (isDone)
-                const Icon(Icons.check_circle_rounded,
-                    color: AppColors.actionGreen, size: 20)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.actionGreen,
+                  size: 20,
+                )
               else if (isActive)
                 SizedBox(
                   width: 20,
@@ -163,8 +175,11 @@ class _StepTileState extends State<_StepTile>
                   ),
                 )
               else
-                Icon(Icons.radio_button_unchecked_rounded,
-                    color: AppColors.textHint, size: 20),
+                Icon(
+                  Icons.radio_button_unchecked_rounded,
+                  color: AppColors.textHint,
+                  size: 20,
+                ),
             ],
           ),
         );

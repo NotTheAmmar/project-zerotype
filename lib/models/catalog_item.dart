@@ -1,11 +1,7 @@
 import 'craft_attributes.dart';
 import 'pricing_corridor.dart';
 
-enum CatalogStatus {
-  draft,
-  storedLocally,
-  published,
-}
+enum CatalogStatus { draft, storedLocally, published }
 
 class CatalogItem {
   final String id;
@@ -123,65 +119,67 @@ class CatalogItem {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'createdAt': createdAt.toIso8601String(),
-        'rawImagePath': rawImagePath,
-        'studioImagePath': studioImagePath,
-        'audioPath': audioPath,
-        'galleryImages': galleryImages,
-        'titleEn': titleEn,
-        'titleHi': titleHi,
-        'descriptionEn': descriptionEn,
-        'descriptionHi': descriptionHi,
-        'craftAttributes': craftAttributes?.toJson(),
-        'pricing': pricing?.toJson(),
-        'availableQuantity': availableQuantity,
-        'audioReadbackPath': audioReadbackPath,
-        'status': status.name,
-        'rating': rating,
-        'reviewCount': reviewCount,
-        'mrp': mrp,
-        'guildName': guildName,
-        'craftTechnique': craftTechnique,
-        'audioLanguage': audioLanguage,
-        'audioDurationSeconds': audioDurationSeconds,
-      };
+    'id': id,
+    'createdAt': createdAt.toIso8601String(),
+    'rawImagePath': rawImagePath,
+    'studioImagePath': studioImagePath,
+    'audioPath': audioPath,
+    'galleryImages': galleryImages,
+    'titleEn': titleEn,
+    'titleHi': titleHi,
+    'descriptionEn': descriptionEn,
+    'descriptionHi': descriptionHi,
+    'craftAttributes': craftAttributes?.toJson(),
+    'pricing': pricing?.toJson(),
+    'availableQuantity': availableQuantity,
+    'audioReadbackPath': audioReadbackPath,
+    'status': status.name,
+    'rating': rating,
+    'reviewCount': reviewCount,
+    'mrp': mrp,
+    'guildName': guildName,
+    'craftTechnique': craftTechnique,
+    'audioLanguage': audioLanguage,
+    'audioDurationSeconds': audioDurationSeconds,
+  };
 
   factory CatalogItem.fromJson(Map<String, dynamic> json) => CatalogItem(
-        id: json['id'] as String,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        rawImagePath: json['rawImagePath'] as String?,
-        studioImagePath: json['studioImagePath'] as String?,
-        audioPath: json['audioPath'] as String?,
-        galleryImages: (json['galleryImages'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            const [],
-        titleEn: json['titleEn'] as String?,
-        titleHi: json['titleHi'] as String?,
-        descriptionEn: json['descriptionEn'] as String?,
-        descriptionHi: json['descriptionHi'] as String?,
-        craftAttributes: json['craftAttributes'] != null
-            ? CraftAttributes.fromJson(
-                json['craftAttributes'] as Map<String, dynamic>)
-            : null,
-        pricing: json['pricing'] != null
-            ? PricingCorridor.fromJson(json['pricing'] as Map<String, dynamic>)
-            : null,
-        availableQuantity: json['availableQuantity'] as int? ?? 1,
-        audioReadbackPath: json['audioReadbackPath'] as String?,
-        status: CatalogStatus.values.firstWhere(
-          (e) => e.name == json['status'],
-          orElse: () => CatalogStatus.draft,
-        ),
-        rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
-        reviewCount: json['reviewCount'] as int? ?? 128,
-        mrp: json['mrp'] as int?,
-        guildName: json['guildName'] as String?,
-        craftTechnique: json['craftTechnique'] as String?,
-        audioLanguage: json['audioLanguage'] as String? ?? 'Hindi',
-        audioDurationSeconds: json['audioDurationSeconds'] as int? ?? 24,
-      );
+    id: json['id'] as String,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    rawImagePath: json['rawImagePath'] as String?,
+    studioImagePath: json['studioImagePath'] as String?,
+    audioPath: json['audioPath'] as String?,
+    galleryImages:
+        (json['galleryImages'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        const [],
+    titleEn: json['titleEn'] as String?,
+    titleHi: json['titleHi'] as String?,
+    descriptionEn: json['descriptionEn'] as String?,
+    descriptionHi: json['descriptionHi'] as String?,
+    craftAttributes: json['craftAttributes'] != null
+        ? CraftAttributes.fromJson(
+            json['craftAttributes'] as Map<String, dynamic>,
+          )
+        : null,
+    pricing: json['pricing'] != null
+        ? PricingCorridor.fromJson(json['pricing'] as Map<String, dynamic>)
+        : null,
+    availableQuantity: json['availableQuantity'] as int? ?? 1,
+    audioReadbackPath: json['audioReadbackPath'] as String?,
+    status: CatalogStatus.values.firstWhere(
+      (e) => e.name == json['status'],
+      orElse: () => CatalogStatus.draft,
+    ),
+    rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
+    reviewCount: json['reviewCount'] as int? ?? 128,
+    mrp: json['mrp'] as int?,
+    guildName: json['guildName'] as String?,
+    craftTechnique: json['craftTechnique'] as String?,
+    audioLanguage: json['audioLanguage'] as String? ?? 'Hindi',
+    audioDurationSeconds: json['audioDurationSeconds'] as int? ?? 24,
+  );
 
   factory CatalogItem.fromBppListing(Map<String, dynamic> raw) {
     final payloadMap = raw['payload'] is Map<String, dynamic>
@@ -189,7 +187,8 @@ class CatalogItem {
         : null;
     final json = payloadMap != null ? {...raw, ...payloadMap} : raw;
 
-    final catalogId = json['catalog_id'] as String? ??
+    final catalogId =
+        json['catalog_id'] as String? ??
         json['id'] as String? ??
         'craft_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -204,10 +203,14 @@ class CatalogItem {
       }
     }
 
-    final rawImg = json['raw_image_url'] as String? ?? json['rawImagePath'] as String?;
-    String? studioImg = json['studio_image_url'] as String? ?? json['studioImagePath'] as String?;
+    final rawImg =
+        json['raw_image_url'] as String? ?? json['rawImagePath'] as String?;
+    String? studioImg =
+        json['studio_image_url'] as String? ??
+        json['studioImagePath'] as String?;
     // Discard any legacy dummy saree fallback image
-    if (studioImg != null && studioImg.contains('photo-1610030469983-98e550d6193c')) {
+    if (studioImg != null &&
+        studioImg.contains('photo-1610030469983-98e550d6193c')) {
       studioImg = null;
     }
     studioImg ??= rawImg;
@@ -235,21 +238,26 @@ class CatalogItem {
           : DateTime.now(),
       titleEn: json['title_en'] as String? ?? json['titleEn'] as String?,
       titleHi: json['title_hi'] as String? ?? json['titleHi'] as String?,
-      descriptionEn: json['description_en'] as String? ?? json['descriptionEn'] as String?,
-      descriptionHi: json['description_hi'] as String? ?? json['descriptionHi'] as String?,
+      descriptionEn:
+          json['description_en'] as String? ?? json['descriptionEn'] as String?,
+      descriptionHi:
+          json['description_hi'] as String? ?? json['descriptionHi'] as String?,
       rawImagePath: rawImg,
       studioImagePath: studioImg,
       galleryImages: galleryList,
-      availableQuantity: (json['available_qty'] as num?)?.toInt() ??
+      availableQuantity:
+          (json['available_qty'] as num?)?.toInt() ??
           (json['availableQuantity'] as num?)?.toInt() ??
           1,
       status: CatalogStatus.published,
       craftAttributes: CraftAttributes(
-        category: json['craft_category'] as String? ??
+        category:
+            json['craft_category'] as String? ??
             json['category'] as String? ??
             'Handicrafts',
         artisanName: json['artisan_name'] as String? ?? 'BazaarSetu Artisan',
-        clusterLocation: json['cluster_name'] as String? ?? 'Chanderi Handloom Cluster',
+        clusterLocation:
+            json['cluster_name'] as String? ?? 'Chanderi Handloom Cluster',
         materials: materialsList,
         dimensions: json['dimensions'] as String? ?? '',
       ),

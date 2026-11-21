@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../../config/theme.dart';
 
 /// A stepper row with +/- buttons. Tapping the value label opens a keyboard
@@ -42,8 +43,7 @@ class StepperInput extends StatelessWidget {
             hintText: '0',
             border: const OutlineInputBorder(),
           ),
-          onSubmitted: (v) =>
-              Navigator.of(ctx).pop(int.tryParse(v) ?? 0),
+          onSubmitted: (v) => Navigator.of(ctx).pop(int.tryParse(v) ?? 0),
         ),
         actions: [
           TextButton(
@@ -88,10 +88,7 @@ class StepperInput extends StatelessWidget {
                   Text(label, style: AppTextStyles.caption),
                   Row(
                     children: [
-                      Text(
-                        '$value $unit',
-                        style: AppTextStyles.subhead,
-                      ),
+                      Text('$value $unit', style: AppTextStyles.subhead),
                       if (onDirectEdit != null) ...[
                         const SizedBox(width: 6),
                         Icon(
@@ -107,16 +104,10 @@ class StepperInput extends StatelessWidget {
             ),
           ),
           // Decrement
-          _StepBtn(
-            icon: Icons.remove_rounded,
-            onPressed: onDecrement,
-          ),
+          _StepBtn(icon: Icons.remove_rounded, onPressed: onDecrement),
           const SizedBox(width: AppSpacing.sm),
           // Increment
-          _StepBtn(
-            icon: Icons.add_rounded,
-            onPressed: onIncrement,
-          ),
+          _StepBtn(icon: Icons.add_rounded, onPressed: onIncrement),
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/language_controller.dart';
@@ -10,7 +11,8 @@ class LanguageSelectionScreen extends StatefulWidget {
   const LanguageSelectionScreen({super.key, this.isInitialSetup = true});
 
   @override
-  State<LanguageSelectionScreen> createState() => _LanguageSelectionScreenState();
+  State<LanguageSelectionScreen> createState() =>
+      _LanguageSelectionScreenState();
 }
 
 class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
@@ -47,11 +49,16 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
         leading: widget.isInitialSetup
             ? null
             : IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: AppColors.textPrimary,
+                ),
                 onPressed: () => Navigator.of(context).pop(),
               ),
         title: Text(
-          widget.isInitialSetup ? 'BazaarSetu • बाज़ार सेतु' : 'भाषा चुनें • Language',
+          widget.isInitialSetup
+              ? 'BazaarSetu • बाज़ार सेतु'
+              : 'भाषा चुनें • Language',
           style: AppTextStyles.label.copyWith(
             fontWeight: FontWeight.w700,
             fontSize: 16,
@@ -64,7 +71,10 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 child: Column(
                   children: [
                     // Brand Icon
@@ -72,7 +82,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                       width: 64,
                       height: 64,
                       decoration: BoxDecoration(
-                        color: AppColors.secondaryTerracotta.withValues(alpha: 0.12),
+                        color: AppColors.secondaryTerracotta.withValues(
+                          alpha: 0.12,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
@@ -106,19 +118,24 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                     // Language Grid
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final crossAxisCount = constraints.maxWidth > 500 ? 3 : 2;
+                        final crossAxisCount = constraints.maxWidth > 500
+                            ? 3
+                            : 2;
                         return GridView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: crossAxisCount,
-                            childAspectRatio: 1.6,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
-                          itemCount: LanguageController.supportedLanguages.length,
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                childAspectRatio: 1.6,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
+                          itemCount:
+                              LanguageController.supportedLanguages.length,
                           itemBuilder: (context, index) {
-                            final lang = LanguageController.supportedLanguages[index];
+                            final lang =
+                                LanguageController.supportedLanguages[index];
                             final isSelected = lang.code == _selectedCode;
 
                             return InkWell(
@@ -130,9 +147,14 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                               borderRadius: BorderRadius.circular(14),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 180),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: isSelected ? const Color(0xFFFBECE5) : Colors.white,
+                                  color: isSelected
+                                      ? const Color(0xFFFBECE5)
+                                      : Colors.white,
                                   borderRadius: BorderRadius.circular(14),
                                   border: Border.all(
                                     color: isSelected
@@ -143,7 +165,8 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                                   boxShadow: [
                                     if (isSelected)
                                       BoxShadow(
-                                        color: AppColors.secondaryTerracotta.withValues(alpha: 0.15),
+                                        color: AppColors.secondaryTerracotta
+                                            .withValues(alpha: 0.15),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -154,8 +177,10 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                                     Align(
                                       alignment: Alignment.centerLeft,
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Text(
                                             lang.nativeName,
@@ -163,17 +188,20 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                                               fontSize: 17,
                                               fontWeight: FontWeight.w700,
                                               color: isSelected
-                                                  ? AppColors.secondaryTerracotta
+                                                  ? AppColors
+                                                        .secondaryTerracotta
                                                   : AppColors.textPrimary,
                                             ),
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
                                             lang.englishName,
-                                            style: AppTextStyles.caption.copyWith(
-                                              fontSize: 12,
-                                              color: AppColors.textSecondary,
-                                            ),
+                                            style: AppTextStyles.caption
+                                                .copyWith(
+                                                  fontSize: 12,
+                                                  color:
+                                                      AppColors.textSecondary,
+                                                ),
                                           ),
                                         ],
                                       ),
@@ -214,21 +242,29 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryTeal,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: _onConfirm,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        widget.isInitialSetup ? 'आगे बढ़ें • Continue' : 'लागू करें • Apply',
+                        widget.isInitialSetup
+                            ? 'आगे बढ़ें • Continue'
+                            : 'लागू करें • Apply',
                         style: AppTextStyles.buttonLabel.copyWith(
                           color: Colors.white,
                           fontSize: 15,
                         ),
                       ),
                       const SizedBox(width: 8),
-                      const Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 18,
+                        color: Colors.white,
+                      ),
                     ],
                   ),
                 ),

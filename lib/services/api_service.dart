@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:cross_file/cross_file.dart';
 
 import 'package:http/http.dart' as http;
@@ -152,10 +153,8 @@ class MockApiService implements ApiService {
     return CatalogProcessResult(
       titleEn: 'Handmade Terracotta Craft',
       titleHi: 'हाथ से बना मिट्टी का दीया',
-      descriptionEn:
-          'Beautiful handmade craft crafted using traditional techniques passed down through generations. Perfect for home decor and festive celebrations.',
-      descriptionHi:
-          'कारीगर द्वारा हाथ से तैयार किया गया सुंदर पारंपरिक दीया। प्राकृतिक मिट्टी से बना और धूप में सुखाया गया।',
+      descriptionEn: 'Beautiful handmade craft crafted using traditional techniques passed down through generations. Perfect for home decor and festive celebrations.',
+      descriptionHi: 'कारीगर द्वारा हाथ से तैयार किया गया सुंदर पारंपरिक दीया। प्राकृतिक मिट्टी से बना और धूप में सुखाया गया।',
       craftAttributes: CraftAttributes(
         category: 'Terracotta Pottery',
         materials: const ['Natural Terracotta Clay', 'Earthen Pigments'],
@@ -226,11 +225,19 @@ class LiveApiService implements ApiService {
     final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/publish');
 
     // 1. Upload raw and studio images to Supabase CDN if stored as local files
-    String? finalRawImageUrl = item.rawImagePath?.startsWith('http') == true ? item.rawImagePath : null;
-    String? finalStudioImageUrl = item.studioImagePath?.startsWith('http') == true ? item.studioImagePath : null;
+    String? finalRawImageUrl = item.rawImagePath?.startsWith('http') == true
+        ? item.rawImagePath
+        : null;
+    String? finalStudioImageUrl =
+        item.studioImagePath?.startsWith('http') == true
+        ? item.studioImagePath
+        : null;
 
     bool isLocalPath(String? p) =>
-        p != null && p.isNotEmpty && !p.startsWith('http://') && !p.startsWith('https://');
+        p != null &&
+        p.isNotEmpty &&
+        !p.startsWith('http://') &&
+        !p.startsWith('https://');
 
     if (isLocalPath(item.rawImagePath)) {
       try {
@@ -297,7 +304,8 @@ class LiveApiService implements ApiService {
     }
 
     // Fallback studio image to raw image or first gallery image, NEVER a hardcoded saree
-    finalStudioImageUrl ??= finalRawImageUrl ??
+    finalStudioImageUrl ??=
+        finalRawImageUrl ??
         (uploadedGalleryUrls.isNotEmpty ? uploadedGalleryUrls.first : '');
     finalRawImageUrl ??= finalStudioImageUrl;
 
@@ -355,7 +363,9 @@ class LiveApiService implements ApiService {
       Uint8List bytes;
       String filename = 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      if (kIsWeb || filePath.startsWith('blob:') || filePath.startsWith('http')) {
+      if (kIsWeb ||
+          filePath.startsWith('blob:') ||
+          filePath.startsWith('http')) {
         final xFile = XFile(filePath);
         bytes = await xFile.readAsBytes();
         if (xFile.name.isNotEmpty) filename = xFile.name;
@@ -368,7 +378,9 @@ class LiveApiService implements ApiService {
         }
       }
 
-      final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/upload-image');
+      final uri = Uri.parse(
+        '${AppConstants.bppBackendUrl}/api/v1/bpp/upload-image',
+      );
       final request = http.MultipartRequest('POST', uri);
       request.headers['bypass-tunnel-reminder'] = 'true';
       if (catalogId != null) {
@@ -379,14 +391,18 @@ class LiveApiService implements ApiService {
         http.MultipartFile.fromBytes('file', bytes, filename: filename),
       );
 
-      final streamedResponse = await request.send().timeout(AppConstants.apiTimeout);
+      final streamedResponse = await request.send().timeout(
+        AppConstants.apiTimeout,
+      );
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return data['url'] as String?;
       } else {
-        debugPrint('[LiveApiService] uploadImage HTTP ${response.statusCode}: ${response.body}');
+        debugPrint(
+          '[LiveApiService] uploadImage HTTP ${response.statusCode}: ${response.body}',
+        );
       }
     } catch (e) {
       debugPrint('[LiveApiService] uploadImage failed: $e');
@@ -429,24 +445,36 @@ class LiveApiService implements ApiService {
   @override
   Future<List<CatalogItem>> fetchPublishedListings() async {
     try {
-      final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/listings');
+      final uri = Uri.parse(
+        '${AppConstants.bppBackendUrl}/api/v1/bpp/listings',
+      );
       debugPrint('[LiveApiService] Fetching published listings from: $uri');
       final response = await http
-          .get(uri, headers: {
-            'Accept': 'application/json',
-            'bypass-tunnel-reminder': 'true',
-          })
+          .get(
+            uri,
+            headers: {
+              'Accept': 'application/json',
+              'bypass-tunnel-reminder': 'true',
+            },
+          )
           .timeout(AppConstants.apiTimeout);
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final rawListings = data['listings'] as List<dynamic>? ?? [];
-        debugPrint('[LiveApiService] Loaded ${rawListings.length} listing(s) from BPP backend');
+        debugPrint(
+          '[LiveApiService] Loaded ${rawListings.length} listing(s) from BPP backend',
+        );
         return rawListings
-            .map((item) => CatalogItem.fromBppListing(item as Map<String, dynamic>))
+            .map(
+              (item) =>
+                  CatalogItem.fromBppListing(item as Map<String, dynamic>),
+            )
             .toList();
       } else {
-        debugPrint('[LiveApiService] fetchPublishedListings failed (${response.statusCode}): ${response.body}');
+        debugPrint(
+          '[LiveApiService] fetchPublishedListings failed (${response.statusCode}): ${response.body}',
+        );
       }
     } catch (e) {
       debugPrint('[LiveApiService] fetchPublishedListings error: $e');
@@ -479,21 +507,25 @@ class LiveApiService implements ApiService {
       if (!f.existsSync()) return '';
     }
     String transcript = '';
-    if (AppConstants.groqApiKey.isNotEmpty &&
-        (AppConstants.voicePipeline == 'groq' || AppConstants.voicePipeline == 'auto')) {
-      try {
-        transcript = await _transcribeWithGroqWhisper(audioPath);
-        if (transcript.isNotEmpty) return transcript;
-      } catch (e) {
-        debugPrint('[transcribeAudio] Whisper failed: $e');
-      }
-    }
-    if (AppConstants.bhashiniApiKey.isNotEmpty) {
+    // Primary: Bhashini Indic STT (Amar's native Indic voice pipeline)
+    if (AppConstants.bhashiniApiKey.isNotEmpty ||
+        AppConstants.voicePipeline == 'bhashini') {
       try {
         transcript = await _bhashiniService.transcribe(audioPath);
         if (transcript.isNotEmpty) return transcript;
       } catch (e) {
         debugPrint('[transcribeAudio] Bhashini failed: $e');
+      }
+    }
+    // Secondary: Groq Whisper if explicitly configured
+    if (AppConstants.groqApiKey.isNotEmpty &&
+        (AppConstants.voicePipeline == 'groq' ||
+            AppConstants.voicePipeline == 'auto')) {
+      try {
+        transcript = await _transcribeWithGroqWhisper(audioPath);
+        if (transcript.isNotEmpty) return transcript;
+      } catch (e) {
+        debugPrint('[transcribeAudio] Whisper failed: $e');
       }
     }
     return transcript;
@@ -574,16 +606,17 @@ Always output pure valid JSON with these keys:
   "net_quantity": "string",
   "description_en": "string",
   "description_hi": "string"
-}'''
+}''',
         },
         {
           'role': 'user',
-          'content': '''Current listing:
+          'content':
+              '''Current listing:
 ${jsonEncode(currentDict)}
 
 Artisan update instruction:
-"$instruction"'''
-        }
+"$instruction"''',
+        },
       ],
       'temperature': 0.2,
       'response_format': {'type': 'json_object'},
@@ -601,7 +634,9 @@ Artisan update instruction:
     }
 
     if (response.statusCode != 200) {
-      throw Exception('Qwen update failed (${response.statusCode}): ${response.body}');
+      throw Exception(
+        'Qwen update failed (${response.statusCode}): ${response.body}',
+      );
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -622,12 +657,22 @@ Artisan update instruction:
     final j = jsonDecode(cleanJson) as Map<String, dynamic>;
 
     final updatedMaterials = (j['materials'] is List)
-        ? (j['materials'] as List).map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList()
+        ? (j['materials'] as List)
+              .map((e) => e.toString().trim())
+              .where((e) => e.isNotEmpty)
+              .toList()
         : currentItem.craftAttributes?.materials ?? <String>[];
 
-    final updatedLaborDays = _parseInt(j['labor_days']) ?? currentItem.craftAttributes?.laborDays ?? 1;
-    final updatedRawCost = _parseInt(j['raw_material_cost']) ?? currentItem.pricing?.rawMaterialCost ?? 100;
-    final updatedSellingPrice = _parseInt(j['selling_price']) ?? currentItem.pricing?.fairPrice ?? 350;
+    final updatedLaborDays =
+        _parseInt(j['labor_days']) ??
+        currentItem.craftAttributes?.laborDays ??
+        1;
+    final updatedRawCost =
+        _parseInt(j['raw_material_cost']) ??
+        currentItem.pricing?.rawMaterialCost ??
+        100;
+    final updatedSellingPrice =
+        _parseInt(j['selling_price']) ?? currentItem.pricing?.fairPrice ?? 350;
 
     final updatedPricing = PricingCorridor.compute(
       rawMaterialCost: updatedRawCost,
@@ -638,21 +683,36 @@ Artisan update instruction:
     return currentItem.copyWith(
       titleEn: j['title_en']?.toString() ?? currentItem.titleEn,
       titleHi: j['title_hi']?.toString() ?? currentItem.titleHi,
-      descriptionEn: j['description_en']?.toString() ?? currentItem.descriptionEn,
-      descriptionHi: j['description_hi']?.toString() ?? currentItem.descriptionHi,
-      craftAttributes: (currentItem.craftAttributes ?? const CraftAttributes()).copyWith(
-        category: j['category']?.toString() ?? currentItem.craftAttributes?.category,
-        materials: updatedMaterials.isNotEmpty ? updatedMaterials : currentItem.craftAttributes?.materials,
-        laborDays: updatedLaborDays,
-        dimensions: j['dimensions']?.toString() ?? currentItem.craftAttributes?.dimensions,
-        weight: j['weight']?.toString() ?? currentItem.craftAttributes?.weight,
-        netQuantity: j['net_quantity']?.toString() ?? currentItem.craftAttributes?.netQuantity,
-      ),
+      descriptionEn:
+          j['description_en']?.toString() ?? currentItem.descriptionEn,
+      descriptionHi:
+          j['description_hi']?.toString() ?? currentItem.descriptionHi,
+      craftAttributes: (currentItem.craftAttributes ?? const CraftAttributes())
+          .copyWith(
+            category:
+                j['category']?.toString() ??
+                currentItem.craftAttributes?.category,
+            materials: updatedMaterials.isNotEmpty
+                ? updatedMaterials
+                : currentItem.craftAttributes?.materials,
+            laborDays: updatedLaborDays,
+            dimensions:
+                j['dimensions']?.toString() ??
+                currentItem.craftAttributes?.dimensions,
+            weight:
+                j['weight']?.toString() ?? currentItem.craftAttributes?.weight,
+            netQuantity:
+                j['net_quantity']?.toString() ??
+                currentItem.craftAttributes?.netQuantity,
+          ),
       pricing: updatedPricing,
     );
   }
 
-  CatalogItem _applyHeuristicUpdate(CatalogItem currentItem, String instruction) {
+  CatalogItem _applyHeuristicUpdate(
+    CatalogItem currentItem,
+    String instruction,
+  ) {
     final lower = instruction.toLowerCase();
     int? newPrice;
     final numMatch = RegExp(r'\d+').firstMatch(instruction);
@@ -693,9 +753,13 @@ Artisan update instruction:
     String? liveStudioUrl;
     if (imagePath.isNotEmpty) {
       try {
-        debugPrint('[LiveApiService] Invoking Kaggle BiRefNet for image: $imagePath');
+        debugPrint(
+          '[LiveApiService] Invoking Kaggle BiRefNet for image: $imagePath',
+        );
         liveStudioUrl = await uploadImage(imagePath, imageType: 'studio');
-        debugPrint('[LiveApiService] Kaggle BiRefNet studio URL returned: $liveStudioUrl');
+        debugPrint(
+          '[LiveApiService] Kaggle BiRefNet studio URL returned: $liveStudioUrl',
+        );
       } catch (e) {
         debugPrint('[LiveApiService] BiRefNet processing error: $e');
       }
@@ -723,7 +787,9 @@ Artisan update instruction:
     }
 
     if (manualDimensions != null && manualDimensions.isNotEmpty) {
-      segments.add('उत्पाद माप एवं मात्रा / Dimensions & Quantity: $manualDimensions');
+      segments.add(
+        'उत्पाद माप एवं मात्रा / Dimensions & Quantity: $manualDimensions',
+      );
     }
 
     String transcript = segments.join('. ').trim();
@@ -741,7 +807,12 @@ Artisan update instruction:
       try {
         final extracted = await _extractWithQwen(transcript);
         onStageComplete?.call(2);
-        return resultFromQwenExtraction(extracted, descHiFallback: transcript, studioImagePath: liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null));
+        return resultFromQwenExtraction(
+          extracted,
+          descHiFallback: transcript,
+          studioImagePath:
+              liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null),
+        );
       } catch (e) {
         debugPrint('[AI] Qwen extraction error: $e');
       }
@@ -753,7 +824,9 @@ Artisan update instruction:
       titleEn: 'Handcrafted Artisan Item',
       titleHi: 'हस्तनिर्मित शिल्प उत्पाद',
       descriptionEn: 'Authentic handcrafted product made with traditional techniques and generational artisan skill.',
-      descriptionHi: transcript.isNotEmpty ? transcript : 'कुशल कारीगर द्वारा पारंपरिक विधि से हस्तनिर्मित उत्कृष्ट उत्पाद।',
+      descriptionHi: transcript.isNotEmpty
+          ? transcript
+          : 'कुशल कारीगर द्वारा पारंपरिक विधि से हस्तनिर्मित उत्कृष्ट उत्पाद।',
       craftAttributes: const CraftAttributes(
         category: 'Handmade Craft',
         materials: ['Natural Artisan Materials'],
@@ -767,7 +840,8 @@ Artisan update instruction:
         laborDays: 1,
         sellerProposedPrice: 350,
       ),
-      studioImagePath: liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null),
+      studioImagePath:
+          liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null),
       spokenQuantity: 1,
     );
   }
@@ -777,7 +851,9 @@ Artisan update instruction:
     if (apiKey.isEmpty) return '';
 
     try {
-      final uri = Uri.parse('https://api.groq.com/openai/v1/audio/transcriptions');
+      final uri = Uri.parse(
+        'https://api.groq.com/openai/v1/audio/transcriptions',
+      );
       final request = http.MultipartRequest('POST', uri);
       request.headers['Authorization'] = 'Bearer $apiKey';
       request.headers['User-Agent'] = 'BazaarSetu/1.0';
@@ -788,7 +864,9 @@ Artisan update instruction:
       final now = DateTime.now().millisecondsSinceEpoch;
       String filename = kIsWeb ? 'audio_$now.webm' : 'audio_$now.wav';
 
-      if (kIsWeb || audioPath.startsWith('blob:') || audioPath.startsWith('http')) {
+      if (kIsWeb ||
+          audioPath.startsWith('blob:') ||
+          audioPath.startsWith('http')) {
         final xFile = XFile(audioPath);
         bytes = await xFile.readAsBytes();
         if (xFile.name.isNotEmpty && xFile.name.contains('.')) {
@@ -803,9 +881,13 @@ Artisan update instruction:
         }
       }
 
-      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+      request.files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      );
 
-      final streamedResponse = await request.send().timeout(AppConstants.apiTimeout);
+      final streamedResponse = await request.send().timeout(
+        AppConstants.apiTimeout,
+      );
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
@@ -813,7 +895,9 @@ Artisan update instruction:
         final text = data['text'] as String? ?? '';
         return text.trim();
       } else {
-        debugPrint('[GroqWhisper] HTTP ${response.statusCode}: ${response.body}');
+        debugPrint(
+          '[GroqWhisper] HTTP ${response.statusCode}: ${response.body}',
+        );
       }
     } catch (e) {
       debugPrint('[GroqWhisper] Transcription error: $e');
@@ -844,16 +928,11 @@ Artisan update instruction:
     final payload = {
       'model': model,
       'messages': [
-        {
-          'role': 'system',
-          'content': _qwenSystemInstruction,
-        },
+        {'role': 'system', 'content': _qwenSystemInstruction},
         {
           'role': 'user',
-          'content': transcript.isNotEmpty
-              ? transcript
-              : 'Handmade artisan craft with natural raw materials and traditional technique.',
-        }
+          'content': transcript.isNotEmpty ? transcript : 'Handmade artisan craft with natural raw materials and traditional technique.',
+        },
       ],
       'temperature': 0.2,
       'response_format': {'type': 'json_object'},
@@ -865,7 +944,9 @@ Artisan update instruction:
 
     // If requested model was not found (404), fallback to active Groq model
     if (response.statusCode == 404 && model != 'qwen/qwen3.8-27b') {
-      debugPrint('[Qwen] Model $model not found, retrying with qwen/qwen3.8-27b');
+      debugPrint(
+        '[Qwen] Model $model not found, retrying with qwen/qwen3.8-27b',
+      );
       payload['model'] = 'qwen/qwen3.8-27b';
       response = await http
           .post(uri, headers: headers, body: jsonEncode(payload))
@@ -873,7 +954,9 @@ Artisan update instruction:
     }
 
     if (response.statusCode != 200) {
-      throw Exception('Qwen extraction failed (${response.statusCode}): ${response.body}');
+      throw Exception(
+        'Qwen extraction failed (${response.statusCode}): ${response.body}',
+      );
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -904,9 +987,12 @@ Artisan update instruction:
     final material = j['material']?.toString();
     final workType = j['work_type']?.toString();
     final netQty = j['net_quantity']?.toString() ?? '1 unit';
-    final location = j['cluster_location']?.toString() ?? 'Pune Rural Cluster, Maharashtra';
+    final location =
+        j['cluster_location']?.toString() ?? 'Pune Rural Cluster, Maharashtra';
 
-    final pricingInputs = j['pricing_inputs'] is Map ? (j['pricing_inputs'] as Map) : {};
+    final pricingInputs = j['pricing_inputs'] is Map
+        ? (j['pricing_inputs'] as Map)
+        : {};
     final laborDays = _parseInt(pricingInputs['labor_days']) ?? 1;
     final rawCost = _parseInt(pricingInputs['raw_material_cost']) ?? 100;
 
@@ -922,17 +1008,26 @@ Artisan update instruction:
       sellerProposedPrice: spokenPrice ?? 0,
     );
 
-    final titleEn = j['title_en']?.toString() ??
-        (craftType != null && commodity != null ? '$craftType $commodity' : 'Handmade $commodity');
+    final titleEn =
+        j['title_en']?.toString() ??
+        (craftType != null && commodity != null
+            ? '$craftType $commodity'
+            : 'Handmade $commodity');
     final titleHi = j['title_hi']?.toString() ?? 'हस्तनिर्मित उत्पाद';
-    final descEn = j['description_en']?.toString() ??
+    final descEn =
+        j['description_en']?.toString() ??
         'Authentic handcrafted product made with traditional techniques.${workType != null ? " Technique: $workType." : ""} Pure $material, delicately crafted by generational artisans.';
-    final descHi = j['description_hi']?.toString() ??
-        (descHiFallback.isNotEmpty ? descHiFallback : 'पारंपरिक कारीगरी द्वारा निर्मित सुंदर हस्तशिल्प उत्पाद।');
+    final descHi =
+        j['description_hi']?.toString() ??
+        (descHiFallback.isNotEmpty
+            ? descHiFallback
+            : 'पारंपरिक कारीगरी द्वारा निर्मित सुंदर हस्तशिल्प उत्पाद।');
 
     final materialsList = <String>[];
     if (material != null && material.isNotEmpty) {
-      materialsList.addAll(material.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty));
+      materialsList.addAll(
+        material.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty),
+      );
     }
     if (materialsList.isEmpty) {
       materialsList.add('Natural Clay & Earth');
@@ -1014,5 +1109,3 @@ Rules:
 2. If the seller does not state a price or quantity, return null for spoken_price and spoken_quantity.
 3. Return ONLY the JSON object.
 ''';
-
-

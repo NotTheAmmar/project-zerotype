@@ -43,20 +43,20 @@ class PricingCorridor {
   }) {
     // Base Labor = T_days * W_statutory * K_skill
     final double baseLabor = laborDays * dailyWageRate * skillMultiplier;
-    
+
     // Base Cost = M_raw + Base Labor
     final double baseCost = rawMaterialCost + baseLabor;
-    
+
     // Overhead (O_overhead) = 10%
     final double overhead = baseCost * overheadPercent;
-    
+
     // Total floor before qty division
     final double totalFloor = baseCost + overhead;
-    
+
     // Divide by items produced (ensure no divide-by-zero)
     final qty = itemsProduced > 0 ? itemsProduced : 1;
     int floor = (totalFloor / qty).round();
-    
+
     // P_fair: If artisan explicitly proposed a selling price, respect it.
     // Otherwise fallback to MoSJE statutory markup (floor * 1.50).
     int fair;
@@ -69,7 +69,7 @@ class PricingCorridor {
     } else {
       fair = (floor * AppConstants.fairPriceMultiplier).round();
     }
-    
+
     // P_prem (1.20 * P_fair)
     final int premium = (fair * AppConstants.premiumPriceMultiplier).round();
 
@@ -114,17 +114,17 @@ class PricingCorridor {
   }
 
   Map<String, dynamic> toJson() => {
-        'rawMaterialCost': rawMaterialCost,
-        'laborDays': laborDays,
-        'itemsProduced': itemsProduced,
-        'sellerProposedPrice': sellerProposedPrice,
-        'dailyWageRate': dailyWageRate,
-        'skillMultiplier': skillMultiplier,
-        'overheadPercent': overheadPercent,
-        'floorPrice': floorPrice,
-        'fairPrice': fairPrice,
-        'premiumPrice': premiumPrice,
-      };
+    'rawMaterialCost': rawMaterialCost,
+    'laborDays': laborDays,
+    'itemsProduced': itemsProduced,
+    'sellerProposedPrice': sellerProposedPrice,
+    'dailyWageRate': dailyWageRate,
+    'skillMultiplier': skillMultiplier,
+    'overheadPercent': overheadPercent,
+    'floorPrice': floorPrice,
+    'fairPrice': fairPrice,
+    'premiumPrice': premiumPrice,
+  };
 
   factory PricingCorridor.fromJson(Map<String, dynamic> json) =>
       PricingCorridor(

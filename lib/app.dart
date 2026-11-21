@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'config/routes.dart';
 import 'config/theme.dart';
 import 'controllers/language_controller.dart';
@@ -27,7 +28,8 @@ class BazaarSetuApp extends StatelessWidget {
           : AppRoutes.explore,
       routes: {
         AppRoutes.welcome: (_) => const WelcomeScreen(),
-        AppRoutes.languageSelection: (_) => const LanguageSelectionScreen(isInitialSetup: true),
+        AppRoutes.languageSelection: (_) =>
+            const LanguageSelectionScreen(isInitialSetup: true),
         AppRoutes.explore: (_) => const ExploreScreen(),
         AppRoutes.capture: (_) => const CaptureScreen(),
         AppRoutes.voice: (_) => const VoiceScreen(),
