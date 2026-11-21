@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:image/image.dart' as img;
 import '../config/constants.dart';
+import 'api_service.dart';
 
 class ImageQualityResult {
   final bool isBlurry;
@@ -97,6 +97,10 @@ class ImageService {
 
   /// Quick quality check: blur + low-light detection (runs in a background isolate)
   Future<ImageQualityResult> checkQuality(String imagePath) async {
+    if (kIsWeb) {
+      // Avoid dart:io File read in isolates on web (which throws Unsupported operation: _Namespace)
+      return const ImageQualityResult(isBlurry: false, isLowLight: false);
+    }
     try {
       return await compute(_checkQualityIsolate, imagePath);
     } catch (_) {
@@ -104,34 +108,19 @@ class ImageService {
     }
   }
 
-  /// Simple studio simulation: composite image onto a white canvas with shadow.
   /// ── Integration point for teammate's BiRefNet model ──
-  /// Replace this method body with the model's output path.
+  /// Sends image to Kaggle Dual-T4 BiRefNet-HR pipeline and returns studio URL.
   Future<String?> createStudioImage(String rawImagePath) async {
     try {
-      final bytes = await File(rawImagePath).readAsBytes();
-      final source = img.decodeImage(bytes);
-      if (source == null) return null;
-
-      // Create a square white canvas (1:1 aspect ratio)
-      final size = source.width > source.height ? source.width : source.height;
-      final canvas = img.Image(width: size, height: size);
-      img.fill(canvas, color: img.ColorRgb8(255, 255, 255));
-
-      // Center the product image on the canvas
-      final offsetX = (size - source.width) ~/ 2;
-      final offsetY = (size - source.height) ~/ 2;
-      img.compositeImage(canvas, source, dstX: offsetX, dstY: offsetY);
-
-      // Save composite to temp file
-      final tempDir = await getTemporaryDirectory();
-      final studioPath =
-          '${tempDir.path}/studio_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      await File(studioPath).writeAsBytes(img.encodeJpg(canvas, quality: 90));
-      return studioPath;
-    } catch (_) {
-      return null;
+      final api = ApiService();
+      final url = await api.uploadImage(rawImagePath, imageType: 'studio');
+      if (url != null && url.isNotEmpty) {
+        return url;
+      }
+    } catch (e) {
+      debugPrint('[ImageService] BiRefNet studio upload failed: $e');
     }
+    return null;
   }
 
 }

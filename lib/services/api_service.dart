@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:cross_file/cross_file.dart';
 
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
@@ -228,9 +229,10 @@ class LiveApiService implements ApiService {
     String? finalRawImageUrl = item.rawImagePath?.startsWith('http') == true ? item.rawImagePath : null;
     String? finalStudioImageUrl = item.studioImagePath?.startsWith('http') == true ? item.studioImagePath : null;
 
-    if (item.rawImagePath != null &&
-        !item.rawImagePath!.startsWith('http') &&
-        File(item.rawImagePath!).existsSync()) {
+    bool isLocalPath(String? p) =>
+        p != null && p.isNotEmpty && !p.startsWith('http://') && !p.startsWith('https://');
+
+    if (isLocalPath(item.rawImagePath)) {
       try {
         final uploadedRaw = await uploadImage(
           item.rawImagePath!,
@@ -243,9 +245,7 @@ class LiveApiService implements ApiService {
       }
     }
 
-    if (item.studioImagePath != null &&
-        !item.studioImagePath!.startsWith('http') &&
-        File(item.studioImagePath!).existsSync()) {
+    if (isLocalPath(item.studioImagePath)) {
       try {
         final uploadedStudio = await uploadImage(
           item.studioImagePath!,
@@ -271,7 +271,7 @@ class LiveApiService implements ApiService {
             !uploadedGalleryUrls.contains(gPath)) {
           uploadedGalleryUrls.add(gPath);
         }
-      } else if (File(gPath).existsSync()) {
+      } else if (isLocalPath(gPath)) {
         try {
           final uploaded = await uploadImage(
             gPath,
@@ -350,8 +350,23 @@ class LiveApiService implements ApiService {
     String? catalogId,
   }) async {
     try {
-      final file = File(filePath);
-      if (!file.existsSync()) return null;
+      if (filePath.isEmpty) return null;
+
+      Uint8List bytes;
+      String filename = 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      if (kIsWeb || filePath.startsWith('blob:') || filePath.startsWith('http')) {
+        final xFile = XFile(filePath);
+        bytes = await xFile.readAsBytes();
+        if (xFile.name.isNotEmpty) filename = xFile.name;
+      } else {
+        final file = File(filePath);
+        if (!file.existsSync()) return null;
+        bytes = await file.readAsBytes();
+        if (file.uri.pathSegments.isNotEmpty) {
+          filename = file.uri.pathSegments.last;
+        }
+      }
 
       final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/upload-image');
       final request = http.MultipartRequest('POST', uri);
@@ -360,7 +375,9 @@ class LiveApiService implements ApiService {
         request.fields['catalog_id'] = catalogId;
       }
       request.fields['image_type'] = imageType;
-      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      request.files.add(
+        http.MultipartFile.fromBytes('file', bytes, filename: filename),
+      );
 
       final streamedResponse = await request.send().timeout(AppConstants.apiTimeout);
       final response = await http.Response.fromStream(streamedResponse);
@@ -368,6 +385,8 @@ class LiveApiService implements ApiService {
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         return data['url'] as String?;
+      } else {
+        debugPrint('[LiveApiService] uploadImage HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
       debugPrint('[LiveApiService] uploadImage failed: $e');
@@ -454,10 +473,14 @@ class LiveApiService implements ApiService {
 
   @override
   Future<String> transcribeAudio(String audioPath) async {
-    if (audioPath.isEmpty || !File(audioPath).existsSync()) return '';
+    if (audioPath.isEmpty) return '';
+    if (!kIsWeb) {
+      final f = File(audioPath);
+      if (!f.existsSync()) return '';
+    }
     String transcript = '';
-    if (AppConstants.voicePipeline == 'groq' ||
-        (AppConstants.voicePipeline == 'auto' && AppConstants.groqApiKey.isNotEmpty)) {
+    if (AppConstants.groqApiKey.isNotEmpty &&
+        (AppConstants.voicePipeline == 'groq' || AppConstants.voicePipeline == 'auto')) {
       try {
         transcript = await _transcribeWithGroqWhisper(audioPath);
         if (transcript.isNotEmpty) return transcript;
@@ -665,8 +688,18 @@ Artisan update instruction:
     String? manualDimensions,
     StageCallback? onStageComplete,
   }) async {
-    // Stage 0: image processing
+    // Stage 0: image processing with BiRefNet-HR on Kaggle Dual-T4
     onStageComplete?.call(0);
+    String? liveStudioUrl;
+    if (imagePath.isNotEmpty) {
+      try {
+        debugPrint('[LiveApiService] Invoking Kaggle BiRefNet for image: $imagePath');
+        liveStudioUrl = await uploadImage(imagePath, imageType: 'studio');
+        debugPrint('[LiveApiService] Kaggle BiRefNet studio URL returned: $liveStudioUrl');
+      } catch (e) {
+        debugPrint('[LiveApiService] BiRefNet processing error: $e');
+      }
+    }
 
     final List<String> segments = [];
 
@@ -677,10 +710,14 @@ Artisan update instruction:
 
     for (int i = 0; i < audiosToTranscribe.length; i++) {
       final p = audiosToTranscribe[i];
-      if (p.isNotEmpty && File(p).existsSync()) {
-        final text = await transcribeAudio(p);
-        if (text.isNotEmpty) {
-          segments.add('Step ${i + 1}: $text');
+      if (p.isNotEmpty) {
+        try {
+          final text = await transcribeAudio(p);
+          if (text.isNotEmpty) {
+            segments.add('Step ${i + 1}: $text');
+          }
+        } catch (e) {
+          debugPrint('[LiveApiService] Step $i transcription error: $e');
         }
       }
     }
@@ -704,7 +741,7 @@ Artisan update instruction:
       try {
         final extracted = await _extractWithQwen(transcript);
         onStageComplete?.call(2);
-        return resultFromQwenExtraction(extracted, descHiFallback: transcript);
+        return resultFromQwenExtraction(extracted, descHiFallback: transcript, studioImagePath: liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null));
       } catch (e) {
         debugPrint('[AI] Qwen extraction error: $e');
       }
@@ -730,34 +767,58 @@ Artisan update instruction:
         laborDays: 1,
         sellerProposedPrice: 350,
       ),
-      studioImagePath: imagePath,
+      studioImagePath: liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null),
       spokenQuantity: 1,
     );
   }
 
   Future<String> _transcribeWithGroqWhisper(String audioPath) async {
     final apiKey = AppConstants.groqApiKey;
-    if (apiKey.isEmpty) throw Exception('GROQ_API_KEY is not configured');
+    if (apiKey.isEmpty) return '';
 
-    final uri = Uri.parse('https://api.groq.com/openai/v1/audio/transcriptions');
-    final request = http.MultipartRequest('POST', uri);
-    request.headers['Authorization'] = 'Bearer $apiKey';
-    request.fields['model'] = 'whisper-large-v3-turbo';
-    request.fields['response_format'] = 'json';
+    try {
+      final uri = Uri.parse('https://api.groq.com/openai/v1/audio/transcriptions');
+      final request = http.MultipartRequest('POST', uri);
+      request.headers['Authorization'] = 'Bearer $apiKey';
+      request.headers['User-Agent'] = 'BazaarSetu/1.0';
+      request.fields['model'] = 'whisper-large-v3-turbo';
+      request.fields['response_format'] = 'json';
 
-    final file = await http.MultipartFile.fromPath('file', audioPath);
-    request.files.add(file);
+      Uint8List bytes;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      String filename = kIsWeb ? 'audio_$now.webm' : 'audio_$now.wav';
 
-    final streamedResponse = await request.send().timeout(AppConstants.apiTimeout);
-    final response = await http.Response.fromStream(streamedResponse);
+      if (kIsWeb || audioPath.startsWith('blob:') || audioPath.startsWith('http')) {
+        final xFile = XFile(audioPath);
+        bytes = await xFile.readAsBytes();
+        if (xFile.name.isNotEmpty && xFile.name.contains('.')) {
+          filename = xFile.name;
+        }
+      } else {
+        final file = File(audioPath);
+        if (!file.existsSync()) return '';
+        bytes = await file.readAsBytes();
+        if (file.uri.pathSegments.isNotEmpty) {
+          filename = file.uri.pathSegments.last;
+        }
+      }
 
-    if (response.statusCode != 200) {
-      throw Exception('Groq Whisper failed (${response.statusCode}): ${response.body}');
+      request.files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
+
+      final streamedResponse = await request.send().timeout(AppConstants.apiTimeout);
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final text = data['text'] as String? ?? '';
+        return text.trim();
+      } else {
+        debugPrint('[GroqWhisper] HTTP ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('[GroqWhisper] Transcription error: $e');
     }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final text = data['text'] as String? ?? '';
-    return text.trim();
+    return '';
   }
 
   Future<Map<String, dynamic>> _extractWithQwen(String transcript) async {
@@ -836,6 +897,7 @@ Artisan update instruction:
   static CatalogProcessResult resultFromQwenExtraction(
     Map<String, dynamic> j, {
     required String descHiFallback,
+    String? studioImagePath,
   }) {
     final commodity = j['commodity_name']?.toString();
     final craftType = j['craft_type']?.toString();
@@ -901,6 +963,7 @@ Artisan update instruction:
       pricing: pricing,
       spokenPrice: spokenPrice,
       spokenQuantity: spokenQty,
+      studioImagePath: studioImagePath,
     );
   }
 

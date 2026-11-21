@@ -85,7 +85,9 @@ class AudioService {
   // ── Playback ─────────────────────────────────────────────────────────────
 
   Future<void> playFile(String path) async {
-    final source = kIsWeb ? UrlSource(path) : DeviceFileSource(path);
+    final source = (kIsWeb || path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:'))
+        ? UrlSource(path)
+        : DeviceFileSource(path);
     await _player.play(source);
   }
 
@@ -96,6 +98,10 @@ class AudioService {
   /// Plays a base64-encoded WAV/audio returned by Bhashini TTS.
   /// Decodes and writes to a temp file, then plays it.
   Future<void> playBase64Audio(String base64Audio) async {
+    if (kIsWeb) {
+      await playFile('data:audio/wav;base64,$base64Audio');
+      return;
+    }
     final bytes = base64Decode(base64Audio);
     final dir = await getTemporaryDirectory();
     final path =

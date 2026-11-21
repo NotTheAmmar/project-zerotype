@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -646,14 +647,22 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
     Widget buildImageWidget(String? path) {
       if (path != null && path.isNotEmpty) {
-        if (!path.startsWith('http') && File(path).existsSync()) {
-          return Image.file(File(path), fit: BoxFit.cover);
-        } else if (path.startsWith('http')) {
+        if (path.startsWith('http')) {
           return Image.network(
             path,
             fit: BoxFit.cover,
+            headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
             errorBuilder: (context, error, stackTrace) => _buildFallbackImagePlaceholder(),
           );
+        } else if (kIsWeb || path.startsWith('blob:')) {
+          return Image.network(
+            path,
+            fit: BoxFit.cover,
+            headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
+            errorBuilder: (context, error, stackTrace) => _buildFallbackImagePlaceholder(),
+          );
+        } else if (!kIsWeb && File(path).existsSync()) {
+          return Image.file(File(path), fit: BoxFit.cover);
         }
       }
       return _buildFallbackImagePlaceholder();
@@ -787,7 +796,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ...List.generate(images.isNotEmpty ? images.length.clamp(0, 4) : 1, (i) {
                 final isSelected = _selectedThumb == i;
                 final thumbPath = images.isNotEmpty ? images[i] : null;
-                final isLocalThumb = thumbPath != null && !thumbPath.startsWith('http') && File(thumbPath).existsSync();
+                final isLocalThumb = thumbPath != null && !thumbPath.startsWith('http') && !kIsWeb && File(thumbPath).existsSync();
 
                 return GestureDetector(
                   onTap: () => setState(() => _selectedThumb = i),
@@ -804,13 +813,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: thumbPath != null
-                        ? (isLocalThumb
-                            ? Image.file(File(thumbPath), fit: BoxFit.cover)
-                            : Image.network(
+                        ? (thumbPath.startsWith('http')
+                            ? Image.network(
                                 thumbPath,
                                 fit: BoxFit.cover,
+                                headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
                                 errorBuilder: (ctx, err, stack) => _buildFallbackImagePlaceholder(),
-                              ))
+                              )
+                            : (kIsWeb || thumbPath.startsWith('blob:')
+                                ? Image.network(
+                                    thumbPath,
+                                    fit: BoxFit.cover,
+                                    headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
+                                    errorBuilder: (ctx, err, stack) => _buildFallbackImagePlaceholder(),
+                                  )
+                                : (isLocalThumb
+                                    ? Image.file(File(thumbPath), fit: BoxFit.cover)
+                                    : _buildFallbackImagePlaceholder())))
                         : _buildFallbackImagePlaceholder(),
                   ),
                 );

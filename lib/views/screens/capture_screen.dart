@@ -439,7 +439,14 @@ class _CaptureScreenState extends State<CaptureScreen> {
                               File(path),
                               fit: BoxFit.cover,
                             )
-                          : const Icon(Icons.image, color: Colors.white70, size: 24),
+                          : (path.startsWith('http') || (kIsWeb && path.startsWith('blob:')))
+                              ? Image.network(
+                                  path,
+                                  fit: BoxFit.cover,
+                                  headers: const {'bypass-tunnel-reminder': 'true'},
+                                  errorBuilder: (ctx, err, stack) => const Icon(Icons.image, color: Colors.white70, size: 24),
+                                )
+                              : const Icon(Icons.image, color: Colors.white70, size: 24),
                     ),
                   ),
                   // Index / Main badge

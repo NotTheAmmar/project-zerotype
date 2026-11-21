@@ -1,3 +1,5 @@
+import '../widgets/demo_settings_dialog.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -194,6 +196,36 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 6),
+
+          // Demo Server Status & Settings Pill
+          InkWell(
+            onTap: () => showDemoSettingsDialog(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.primaryTeal.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: AppColors.primaryTeal.withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.sensors_rounded, size: 14, color: AppColors.primaryTeal),
+                  SizedBox(width: 4),
+                  Text(
+                    'GPU Live',
+                    style: TextStyle(
+                      color: AppColors.primaryTeal,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 8),
@@ -1046,21 +1078,37 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
     }
 
-    if (imagePath.startsWith('http')) {
+    if (imagePath.startsWith('http') || kIsWeb || imagePath.startsWith('blob:')) {
       return Image.network(
         imagePath,
         fit: BoxFit.cover,
+        headers: const {'bypass-tunnel-reminder': 'true', 'ngrok-skip-browser-warning': 'true'},
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: AppColors.surfaceContainer,
+            child: const Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primaryTeal),
+              ),
+            ),
+          );
+        },
         errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
       );
     }
 
-    final file = File(imagePath);
-    if (file.existsSync()) {
-      return Image.file(
-        file,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
-      );
+    if (!kIsWeb) {
+      final file = File(imagePath);
+      if (file.existsSync()) {
+        return Image.file(
+          file,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
+        );
+      }
     }
 
     return _buildFallbackImage();

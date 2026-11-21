@@ -76,21 +76,56 @@ class BeforeAfterToggle extends StatelessWidget {
         child: const Center(child: Icon(Icons.image_outlined, size: 48)),
       );
     }
-    if (path.startsWith('http')) {
-      return Image.network(
-        path,
-        key: ValueKey(path),
-        fit: BoxFit.cover,
-        headers: _tunnelHeaders,
+    Widget buildLoading(BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+      if (loadingProgress == null) return child;
+      final expected = loadingProgress.expectedTotalBytes;
+      final loaded = loadingProgress.cumulativeBytesLoaded;
+      final progress = expected != null && expected > 0 ? loaded / expected : null;
+      return Container(
+        color: const Color(0xFFF9F8F6),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                value: progress,
+                color: AppColors.primaryTeal,
+                strokeWidth: 2.5,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                studio ? 'AI स्टूडियो फोटो लोड हो रहा है...' : 'कच्चा फोटो लोड हो रहा है...',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    if (kIsWeb) {
+    if (path.startsWith('http') || kIsWeb) {
       return Image.network(
         path,
         key: ValueKey(path),
         fit: BoxFit.cover,
         headers: _tunnelHeaders,
+        loadingBuilder: buildLoading,
+        errorBuilder: (ctx, err, stack) => Container(
+          color: AppColors.cardBorder,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.broken_image_outlined, size: 36, color: AppColors.textSecondary),
+                const SizedBox(height: 6),
+                Text(
+                  studio ? 'स्टूडियो फोटो लोड नहीं हुआ' : 'कच्चा फोटो लोड नहीं हुआ',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 

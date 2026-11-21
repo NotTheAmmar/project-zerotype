@@ -192,12 +192,26 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                       width: 90,
                                       fit: BoxFit.cover,
                                     )
-                                  : Container(
-                                      height: 90,
-                                      width: 90,
-                                      color: Colors.black12,
-                                      child: const Icon(Icons.image_outlined, size: 36, color: Colors.black45),
-                                    ),
+                                  : (captureCtrl.capturedImagePath!.startsWith('http') || (kIsWeb && captureCtrl.capturedImagePath!.startsWith('blob:')))
+                                      ? Image.network(
+                                          captureCtrl.capturedImagePath!,
+                                          height: 90,
+                                          width: 90,
+                                          fit: BoxFit.cover,
+                                          headers: const {'bypass-tunnel-reminder': 'true'},
+                                          errorBuilder: (ctx, err, stack) => Container(
+                                            height: 90,
+                                            width: 90,
+                                            color: Colors.black12,
+                                            child: const Icon(Icons.image_outlined, size: 36, color: Colors.black45),
+                                          ),
+                                        )
+                                      : Container(
+                                          height: 90,
+                                          width: 90,
+                                          color: Colors.black12,
+                                          child: const Icon(Icons.image_outlined, size: 36, color: Colors.black45),
+                                        ),
                             ),
                           ),
                         const SizedBox(height: 14),
