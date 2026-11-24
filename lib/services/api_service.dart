@@ -14,6 +14,22 @@ import '../models/catalog_item.dart';
 import 'bhashini_service.dart';
 
 /// Response from the catalog processing pipeline.
+class ImageUploadResult {
+  final String? url;
+  final String? rawImageUrl;
+  final String? studioImageUrl;
+  final String? thumbnailUrl;
+  final String? catalogId;
+
+  const ImageUploadResult({
+    this.url,
+    this.rawImageUrl,
+    this.studioImageUrl,
+    this.thumbnailUrl,
+    this.catalogId,
+  });
+}
+
 class CatalogProcessResult {
   final String? titleEn;
   final String? titleHi;
@@ -22,6 +38,7 @@ class CatalogProcessResult {
   final CraftAttributes? craftAttributes;
   final PricingCorridor? pricing;
   final String? studioImagePath;
+  final String? rawImagePath;
   final String? audioReadbackPath;
   final int? spokenPrice;
   final int? spokenQuantity;
@@ -34,6 +51,7 @@ class CatalogProcessResult {
     this.craftAttributes,
     this.pricing,
     this.studioImagePath,
+    this.rawImagePath,
     this.audioReadbackPath,
     this.spokenPrice,
     this.spokenQuantity,
@@ -80,6 +98,12 @@ abstract class ApiService {
     String? catalogId,
   });
 
+  Future<ImageUploadResult?> uploadImageWithDetails(
+    String filePath, {
+    String imageType = 'studio',
+    String? catalogId,
+  });
+
   factory ApiService() {
     if (AppConstants.useMockData) {
       return MockApiService();
@@ -103,6 +127,8 @@ class MockApiService implements ApiService {
     return {
       'status': 'PUBLISHED',
       'catalog_id': item.id,
+      'raw_image_url': item.rawImagePath,
+      'studio_image_url': item.studioImagePath,
       'message': 'Mock successful publish',
     };
   }
@@ -131,6 +157,21 @@ class MockApiService implements ApiService {
     String? catalogId,
   }) async {
     return 'https://images.unsplash.com/photo-artisan-mock-$imageType';
+  }
+
+  @override
+  Future<ImageUploadResult?> uploadImageWithDetails(
+    String filePath, {
+    String imageType = 'studio',
+    String? catalogId,
+  }) async {
+    return ImageUploadResult(
+      url: 'https://images.unsplash.com/photo-artisan-mock-$imageType',
+      rawImageUrl: 'https://images.unsplash.com/photo-artisan-mock-raw',
+      studioImageUrl: 'https://images.unsplash.com/photo-artisan-mock-studio',
+      thumbnailUrl: 'https://images.unsplash.com/photo-artisan-mock-thumb',
+      catalogId: catalogId,
+    );
   }
 
   @override
@@ -177,6 +218,7 @@ class MockApiService implements ApiService {
         premiumPrice: 400,
       ),
       studioImagePath: imagePath.isNotEmpty ? imagePath : null,
+      rawImagePath: imagePath.isNotEmpty ? imagePath : null,
       audioReadbackPath: null,
       spokenQuantity: 1,
     );
@@ -343,7 +385,10 @@ class LiveApiService implements ApiService {
         .timeout(AppConstants.apiTimeout);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final res = jsonDecode(response.body) as Map<String, dynamic>;
+      res['raw_image_url'] ??= finalRawImageUrl;
+      res['studio_image_url'] ??= finalStudioImageUrl;
+      return res;
     } else {
       throw Exception(
         'Publish failed (${response.statusCode}): ${response.body}',
@@ -352,7 +397,7 @@ class LiveApiService implements ApiService {
   }
 
   @override
-  Future<String?> uploadImage(
+  Future<ImageUploadResult?> uploadImageWithDetails(
     String filePath, {
     String imageType = 'studio',
     String? catalogId,
@@ -398,16 +443,41 @@ class LiveApiService implements ApiService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        return data['url'] as String?;
+        final rawUrl = data['raw_image_url'] as String?;
+        final studioUrl =
+            data['studio_image_url'] as String? ?? data['url'] as String?;
+        final thumbUrl = data['thumbnail_url'] as String?;
+        final catId = data['catalog_id'] as String?;
+        return ImageUploadResult(
+          url: studioUrl ?? data['url'] as String?,
+          rawImageUrl: rawUrl,
+          studioImageUrl: studioUrl,
+          thumbnailUrl: thumbUrl,
+          catalogId: catId,
+        );
       } else {
         debugPrint(
-          '[LiveApiService] uploadImage HTTP ${response.statusCode}: ${response.body}',
+          '[LiveApiService] uploadImageWithDetails HTTP ${response.statusCode}: ${response.body}',
         );
       }
     } catch (e) {
-      debugPrint('[LiveApiService] uploadImage failed: $e');
+      debugPrint('[LiveApiService] uploadImageWithDetails failed: $e');
     }
     return null;
+  }
+
+  @override
+  Future<String?> uploadImage(
+    String filePath, {
+    String imageType = 'studio',
+    String? catalogId,
+  }) async {
+    final result = await uploadImageWithDetails(
+      filePath,
+      imageType: imageType,
+      catalogId: catalogId,
+    );
+    return result?.url;
   }
 
   @override
@@ -751,14 +821,20 @@ Artisan update instruction:
     // Stage 0: image processing with BiRefNet-HR on Kaggle Dual-T4
     onStageComplete?.call(0);
     String? liveStudioUrl;
+    String? liveRawUrl;
     if (imagePath.isNotEmpty) {
       try {
         debugPrint(
           '[LiveApiService] Invoking Kaggle BiRefNet for image: $imagePath',
         );
-        liveStudioUrl = await uploadImage(imagePath, imageType: 'studio');
+        final uploadRes = await uploadImageWithDetails(
+          imagePath,
+          imageType: 'studio',
+        );
+        liveStudioUrl = uploadRes?.studioImageUrl ?? uploadRes?.url;
+        liveRawUrl = uploadRes?.rawImageUrl;
         debugPrint(
-          '[LiveApiService] Kaggle BiRefNet studio URL returned: $liveStudioUrl',
+          '[LiveApiService] Kaggle BiRefNet studio: $liveStudioUrl, raw: $liveRawUrl',
         );
       } catch (e) {
         debugPrint('[LiveApiService] BiRefNet processing error: $e');
@@ -812,6 +888,7 @@ Artisan update instruction:
           descHiFallback: transcript,
           studioImagePath:
               liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null),
+          rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
         );
       } catch (e) {
         debugPrint('[AI] Qwen extraction error: $e');
@@ -842,6 +919,7 @@ Artisan update instruction:
       ),
       studioImagePath:
           liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null),
+      rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
       spokenQuantity: 1,
     );
   }
@@ -981,6 +1059,7 @@ Artisan update instruction:
     Map<String, dynamic> j, {
     required String descHiFallback,
     String? studioImagePath,
+    String? rawImagePath,
   }) {
     final commodity = j['commodity_name']?.toString();
     final craftType = j['craft_type']?.toString();
@@ -1059,6 +1138,7 @@ Artisan update instruction:
       spokenPrice: spokenPrice,
       spokenQuantity: spokenQty,
       studioImagePath: studioImagePath,
+      rawImagePath: rawImagePath,
     );
   }
 

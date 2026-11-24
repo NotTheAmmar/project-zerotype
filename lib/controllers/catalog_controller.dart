@@ -127,7 +127,7 @@ class CatalogController extends ChangeNotifier {
       _currentItem = CatalogItem(
         id: const Uuid().v4(),
         createdAt: DateTime.now(),
-        rawImagePath: imagePath,
+        rawImagePath: result.rawImagePath ?? imagePath,
         studioImagePath: result.studioImagePath,
         audioPath: audioPath,
         galleryImages: galleryImagePaths ?? const [],
@@ -141,11 +141,15 @@ class CatalogController extends ChangeNotifier {
         status: CatalogStatus.draft,
       );
 
-      // Warm the image cache now so the studio photo is ready by the time
+      // Warm the image cache now so both raw & studio photos are ready by the time
       // the user reaches the catalog screen (avoids visible load flash).
       if (result.studioImagePath != null &&
           result.studioImagePath!.startsWith('http')) {
         _precacheStudioImage(result.studioImagePath!);
+      }
+      if (result.rawImagePath != null &&
+          result.rawImagePath!.startsWith('http')) {
+        _precacheStudioImage(result.rawImagePath!);
       }
 
       // Persist locally
@@ -320,7 +324,13 @@ class CatalogController extends ChangeNotifier {
       );
 
       if (response['status'] == 'PUBLISHED') {
-        _currentItem = _currentItem!.copyWith(status: CatalogStatus.published);
+        final returnedRaw = response['raw_image_url'] as String?;
+        final returnedStudio = response['studio_image_url'] as String?;
+        _currentItem = _currentItem!.copyWith(
+          status: CatalogStatus.published,
+          rawImagePath: returnedRaw ?? _currentItem!.rawImagePath,
+          studioImagePath: returnedStudio ?? _currentItem!.studioImagePath,
+        );
         await _storageService.saveCatalog(_currentItem!);
         _updateSavedList(_currentItem!);
         _publishSuccess = true;

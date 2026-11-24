@@ -67,6 +67,19 @@ class FakeApiService implements ApiService {
     String imageType = 'studio',
     String? catalogId,
   }) async => 'https://example.com/mock.jpg';
+
+  @override
+  Future<ImageUploadResult?> uploadImageWithDetails(
+    String filePath, {
+    String imageType = 'studio',
+    String? catalogId,
+  }) async => ImageUploadResult(
+    url: 'https://example.com/mock.jpg',
+    rawImageUrl: 'https://example.com/mock_raw.jpg',
+    studioImageUrl: 'https://example.com/mock_studio.jpg',
+    thumbnailUrl: 'https://example.com/mock_thumb.jpg',
+    catalogId: catalogId,
+  );
 }
 
 class FakeAudioService extends AudioService {
@@ -183,5 +196,28 @@ void main() {
       expect(controller.currentItem!.pricing?.sellerProposedPrice, equals(650));
       expect(controller.currentItem!.pricing?.fairPrice, equals(650));
     });
+
+    test(
+      'publishToOndc persists both raw and studio photos to storage',
+      () async {
+        await controller.createFallbackDraft(
+          imagePath: '/tmp/original_craft.jpg',
+        );
+        expect(
+          controller.currentItem!.rawImagePath,
+          equals('/tmp/original_craft.jpg'),
+        );
+
+        await controller.publishToOndc();
+        expect(controller.publishSuccess, isTrue);
+        expect(controller.currentItem!.status, equals(CatalogStatus.published));
+
+        final savedCatalogs = await storageService.loadCatalogs();
+        expect(savedCatalogs.isNotEmpty, isTrue);
+        final lastSaved = savedCatalogs.last;
+        expect(lastSaved.rawImagePath, isNotNull);
+        expect(lastSaved.studioImagePath, isNotNull);
+      },
+    );
   });
 }
