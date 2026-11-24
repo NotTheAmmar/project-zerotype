@@ -88,9 +88,15 @@ async def upload_image(
         public_url = f"{base_url}/uploads/{safe_basename}"
         storage_type = "local"
 
+    raw_img = public_url if safe_type == "raw" else None
+    studio_img = public_url if safe_type in ("studio", "marketplace") else None
     return {
         "status": "UPLOADED",
         "url": public_url,
+        "raw_image_url": raw_img,
+        "studio_image_url": studio_img,
+        "thumbnail_url": public_url,
+        "catalog_id": cid,
         "filename": filename,
         "image_type": image_type,
         "storage": storage_type,
@@ -119,6 +125,8 @@ async def publish_listing(listing: ArtisanListingPayload) -> dict:
         "catalog_id": listing.catalog_id,
         "artisan": listing.artisan_name,
         "fair_price_inr": listing.fair_price,
+        "raw_image_url": listing.raw_image_url,
+        "studio_image_url": listing.studio_image_url,
     }
 
 
