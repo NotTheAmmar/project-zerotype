@@ -397,6 +397,164 @@ async def load_listings_with_status_db(include_drafts: bool = False) -> List[dic
     return results
 
 
+async def get_listing_media_db(catalog_id: str) -> Optional[dict]:
+    """Fetch image URLs for a listing before deleting its row."""
+    global _pool, _sqlite_path, _db_type
+
+    if _db_type == "postgres" and _pool:
+        try:
+            async with _pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    """
+                    SELECT raw_image_url, studio_image_url, gallery_images
+                    FROM artisan_listings WHERE catalog_id = $1;
+                    """,
+                    catalog_id,
+                )
+                if not row:
+                    return None
+                gallery = row["gallery_images"]
+                if isinstance(gallery, str):
+                    gallery = json.loads(gallery)
+                return {
+                    "raw_image_url": row["raw_image_url"],
+                    "studio_image_url": row["studio_image_url"],
+                    "gallery_images": gallery or [],
+                }
+        except Exception as e:
+            logger.error("PostgreSQL media lookup failed for %s: %s", catalog_id, e)
+
+    if _db_type == "sqlite" and _sqlite_path:
+        try:
+            conn = sqlite3.connect(_sqlite_path)
+            cur = conn.execute(
+                """
+                SELECT raw_image_url, studio_image_url, gallery_images
+                FROM artisan_listings WHERE catalog_id = ?;
+                """,
+                (catalog_id,),
+            )
+            row = cur.fetchone()
+            conn.close()
+            if not row:
+                return None
+            gallery = json.loads(row[2]) if isinstance(row[2], str) and row[2] else []
+            return {
+                "raw_image_url": row[0],
+                "studio_image_url": row[1],
+                "gallery_images": gallery,
+            }
+        except Exception as e:
+            logger.error("SQLite media lookup failed for %s: %s", catalog_id, e)
+
+    return None
+
+
+def extract_storage_object(public_url: Optional[str]) -> Optional[tuple[str, str]]:
+    """Extract (bucket, object_path) from a Supabase Storage public URL."""
+    if not public_url or "/storage/v1/object/public/" not in public_url:
+        return None
+    tail = public_url.split("/storage/v1/object/public/", 1)[1]
+    parts = tail.split("/", 1)
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        return None
+    return parts[0], parts[1].split("?", 1)[0]
+
+
+async def delete_listing_storage_objects(
+    catalog_id: str,
+    media: Optional[dict] = None,
+) -> int:
+    """
+    Remove all raw, studio, and gallery images associated with [catalog_id]
+    from Supabase Storage buckets and local /uploads fallback directories.
+    """
+    removed_count = 0
+
+    # 1. Remove local fallback files if present
+    for sub_dir in ("raw", "processed"):
+        folder = os.path.join("uploads", sub_dir)
+        if os.path.isdir(folder):
+            for fname in os.listdir(folder):
+                if fname.startswith(f"{catalog_id}_"):
+                    try:
+                        os.remove(os.path.join(folder, fname))
+                        removed_count += 1
+                    except OSError:
+                        pass
+
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_key:
+        return removed_count
+
+    base = settings.supabase_url.rstrip("/")
+    headers = {
+        "Authorization": f"Bearer {settings.supabase_key}",
+        "apiKey": settings.supabase_key,
+        "Content-Type": "application/json",
+    }
+
+    bucket_objects: dict[str, set[str]] = {
+        settings.supabase_raw_bucket: set(),
+        settings.supabase_processed_bucket: set(),
+    }
+
+    if media:
+        urls = [
+            media.get("raw_image_url"),
+            media.get("studio_image_url"),
+            *(media.get("gallery_images") or []),
+        ]
+        for u in urls:
+            parsed = extract_storage_object(u)
+            if parsed:
+                bucket_objects.setdefault(parsed[0], set()).add(parsed[1])
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            # Also find any objects prefixed with catalog_id in both buckets
+            for bucket in list(bucket_objects.keys()):
+                try:
+                    list_res = await client.post(
+                        f"{base}/storage/v1/object/list/{bucket}",
+                        json={"prefix": f"{catalog_id}_", "limit": 100},
+                        headers=headers,
+                    )
+                    if list_res.status_code == 200:
+                        for entry in list_res.json():
+                            name = entry.get("name")
+                            if name:
+                                bucket_objects[bucket].add(name)
+                except Exception as e:
+                    logger.warning("Storage list skipped for %s/%s: %s", bucket, catalog_id, e)
+
+            # Delete collected objects per bucket
+            for bucket, prefixes in bucket_objects.items():
+                if not prefixes:
+                    continue
+                try:
+                    del_res = await client.request(
+                        "DELETE",
+                        f"{base}/storage/v1/object/{bucket}",
+                        json={"prefixes": sorted(prefixes)},
+                        headers=headers,
+                    )
+                    if del_res.status_code in (200, 204):
+                        removed_count += len(prefixes)
+                        logger.info(
+                            "Deleted %d storage object(s) from bucket '%s' for %s",
+                            len(prefixes),
+                            bucket,
+                            catalog_id,
+                        )
+                except Exception as e:
+                    logger.warning("Storage delete failed for %s/%s: %s", bucket, catalog_id, e)
+    except Exception as e:
+        logger.error("Failed to clean Supabase Storage for %s: %s", catalog_id, e)
+
+    return removed_count
+
+
 async def delete_listing_db(catalog_id: str) -> bool:
     """Delete a listing from the database by catalog_id."""
     global _pool, _sqlite_path, _db_type

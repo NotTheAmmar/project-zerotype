@@ -496,7 +496,8 @@ class BhashiniService {
     for (int i = 0; i < sampleCount; i++) {
       final f = src.getFloat32(dataOffset + i * 4, Endian.little);
       final clamped = f.isNaN ? 0.0 : f.clamp(-1.0, 1.0);
-      final s16 = (clamped * 32767.0).round().clamp(-32768, 32767);
+      // Apply ~1.4 dB headroom so hot VITS peaks (0.98+) never inter-sample clip on DACs
+      final s16 = (clamped * 0.85 * 32767.0).round().clamp(-32768, 32767);
       dst.setInt16(44 + i * 2, s16, Endian.little);
     }
 

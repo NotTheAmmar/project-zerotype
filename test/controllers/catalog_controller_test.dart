@@ -22,6 +22,7 @@ class FakeApiService implements ApiService {
     required String audioPath,
     List<String>? audioPaths,
     String? manualDimensions,
+    String? catalogId,
     String voiceLanguage = 'hi',
     String primaryLanguage = 'en',
     String? secondaryLanguage = 'hi',

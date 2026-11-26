@@ -336,7 +336,11 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'STEP ${voiceCtrl.currentStep + 1} OF ${voiceCtrl.totalSteps}',
+                                    AppStrings.pair(
+                                      context,
+                                      en: 'STEP ${voiceCtrl.currentStep + 1} OF ${voiceCtrl.totalSteps}',
+                                      hi: 'सवाल ${voiceCtrl.currentStep + 1} / ${voiceCtrl.totalSteps}',
+                                    ),
                                     style: AppTextStyles.labelSmall.copyWith(
                                       color: AppColors.secondaryTerracotta,
                                       letterSpacing: 0.8,

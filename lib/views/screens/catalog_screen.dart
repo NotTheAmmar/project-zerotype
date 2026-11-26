@@ -235,10 +235,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   color: AppColors.textSecondary,
                 ),
                 const SizedBox(height: 16),
-                Text('No Craft Selected', style: AppTextStyles.serifTitle()),
+                Text(
+                  AppStrings.pair(
+                    context,
+                    en: 'No Craft Selected',
+                    hi: 'कोई शिल्प चयनित नहीं',
+                  ),
+                  style: AppTextStyles.serifTitle(),
+                ),
                 const SizedBox(height: 8),
                 Text(
-                  'Please select a craft from your listings or create a new craft listing.',
+                  AppStrings.pair(
+                    context,
+                    en: 'Please select a craft from your listings or create a new craft listing.',
+                    hi: 'कृपया अपनी सूची से कोई शिल्प चुनें या नया शिल्प जोड़ें।',
+                  ),
                   textAlign: TextAlign.center,
                   style: AppTextStyles.body.copyWith(
                     color: AppColors.textSecondary,
@@ -255,7 +266,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       vertical: 12,
                     ),
                   ),
-                  child: const Text('Back to Crafts'),
+                  child: Text(
+                    AppStrings.pair(
+                      context,
+                      en: 'Back to Crafts',
+                      hi: 'शिल्प सूची पर लौटें',
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -516,9 +533,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Text(
-                      'LIVE ON ONDC NETWORK',
-                      style: TextStyle(
+                    Text(
+                      AppStrings.pair(
+                        context,
+                        en: 'LIVE ON ONDC NETWORK',
+                        hi: 'ओएनडीसी नेटवर्क पर लाइव',
+                      ),
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w800,
                         letterSpacing: 0.6,
@@ -986,7 +1007,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'Handmade',
+                                AppStrings.pair(
+                                  context,
+                                  en: 'Handmade',
+                                  hi: 'हस्तनिर्मित',
+                                ),
                                 style: AppTextStyles.labelSmall.copyWith(
                                   color: Colors.white,
                                 ),
@@ -1358,7 +1383,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ],
           ),
           Text(
-            'Inclusive of all taxes',
+            AppStrings.pair(
+              context,
+              en: 'Inclusive of all taxes',
+              hi: 'सभी कर सहित',
+            ),
             style: AppTextStyles.caption.copyWith(
               color: AppColors.textSecondary,
               fontSize: 11,
@@ -2358,7 +2387,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
           Row(
             children: [
               Text(
-                'Meet the Artisan',
+                AppStrings.pair(
+                  context,
+                  en: 'Meet the Artisan',
+                  hi: 'कारीगर परिचय',
+                ),
                 style: AppTextStyles.serifTitle().copyWith(fontSize: 17),
               ),
               const Spacer(),
@@ -2377,7 +2410,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Master Craftsman',
+                      AppStrings.pair(
+                        context,
+                        en: 'Master Craftsman',
+                        hi: 'कुशल शिल्पकार',
+                      ),
                       style: AppTextStyles.labelSmall.copyWith(
                         color: AppColors.primaryTeal,
                       ),
@@ -2522,22 +2559,54 @@ class _CatalogScreenState extends State<CatalogScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Product Specifications',
+            AppStrings.pair(
+              context,
+              en: 'Product Specifications',
+              hi: 'उत्पाद विवरण',
+            ),
             style: AppTextStyles.serifTitle().copyWith(fontSize: 17),
           ),
           const SizedBox(height: 12),
 
           if (category != null && category.isNotEmpty)
-            _buildSpecRow('Category', category, rowIndex++ % 2 == 0),
+            _buildSpecRow(
+              AppStrings.pair(context, en: 'Category', hi: 'श्रेणी'),
+              category,
+              rowIndex++ % 2 == 0,
+            ),
           if (materials != null)
-            _buildSpecRow('Material', materials, rowIndex++ % 2 == 0),
+            _buildSpecRow(
+              AppStrings.pair(context, en: 'Material', hi: 'सामग्री'),
+              materials,
+              rowIndex++ % 2 == 0,
+            ),
           if (technique != null && technique.isNotEmpty)
-            _buildSpecRow('Craft Technique', technique, rowIndex++ % 2 == 0),
+            _buildSpecRow(
+              AppStrings.pair(
+                context,
+                en: 'Craft Technique',
+                hi: 'शिल्प तकनीक',
+              ),
+              technique,
+              rowIndex++ % 2 == 0,
+            ),
           if (guild != null && guild.isNotEmpty)
-            _buildSpecRow('Craft Cluster', guild, rowIndex++ % 2 == 0),
+            _buildSpecRow(
+              AppStrings.pair(
+                context,
+                en: 'Craft Cluster',
+                hi: 'शिल्प क्लस्टर',
+              ),
+              guild,
+              rowIndex++ % 2 == 0,
+            ),
           if (weightDimensions.isNotEmpty)
             _buildSpecRow(
-              'Weight & Dimensions',
+              AppStrings.pair(
+                context,
+                en: 'Weight & Dimensions',
+                hi: 'वज़न और माप',
+              ),
               weightDimensions,
               rowIndex++ % 2 == 0,
             ),
@@ -2761,7 +2830,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     : () async {
                         setState(() => _isPublishing = true);
                         try {
-                          await catalogCtrl.publishToOndc(null, _quantity);
+                          final publishLang = context
+                              .read<LanguageController>()
+                              .primaryLanguageCode;
+                          await catalogCtrl.publishToOndc(
+                            null,
+                            _quantity,
+                            false,
+                            publishLang,
+                          );
                           if (!context.mounted) return;
                           if (!catalogCtrl.publishSuccess) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -3002,7 +3079,11 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
 
     setState(() => _isApplying = true);
     try {
-      await widget.catalogCtrl.applyVoiceUpdate(instruction);
+      final langCode = context.read<LanguageController>().primaryLanguageCode;
+      await widget.catalogCtrl.applyVoiceUpdate(
+        instruction,
+        languageCode: langCode,
+      );
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(

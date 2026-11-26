@@ -55,7 +55,7 @@ void main() {
 
     // Verify BazaarSetu branding and Karigar Hub are rendered
     expect(find.text('BazaarSetu'), findsOneWidget);
-    expect(find.text('Karigar Hub'), findsOneWidget);
+    expect(find.text('Karigar Hub • कारीगर केंद्र'), findsOneWidget);
   });
 
   testWidgets('BazaarSetu first launch opens language selection screen', (

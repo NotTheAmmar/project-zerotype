@@ -34,6 +34,7 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     {
       'icon': '✨',
       'title': 'High-Impact Photos',
+      'titleHi': 'आकर्षक फोटो',
       'subtitle':
           'Clean studio lighting increases buyer orders on ONDC by over 3x.',
       'hi': 'अच्छी रोशनी और साफ बैकग्राउंड से ओएनडीसी पर 3 गुना अधिक ऑर्डर मिलते हैं।',
@@ -41,18 +42,21 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     {
       'icon': '🌿',
       'title': 'Authentic Heritage',
+      'titleHi': 'प्रामाणिक विरासत',
       'subtitle': 'Mentioning traditional materials and your craft cluster builds buyer trust.',
       'hi': 'सामग्री और शिल्प क्षेत्र (क्लस्टर) की जानकारी से खरीदारों का भरोसा बढ़ता है।',
     },
     {
       'icon': '⚖️',
       'title': 'Fair Artisan Pricing',
+      'titleHi': 'उचित कारीगर मूल्य',
       'subtitle': 'BazaarSetu ensures you earn 100% of your labor value without broker cuts.',
       'hi': 'बाज़ारसेतु सुनिश्चित करता है कि आपकी पूरी मेहनत की कमाई सीधे आपको मिले।',
     },
     {
       'icon': '🚀',
       'title': 'Nationwide Reach',
+      'titleHi': 'देशभर में पहुँच',
       'subtitle':
           'Your product will be discoverable on major buyer apps across India.',
       'hi': 'आपका शिल्प पूरे भारत के बड़े खरीदार ऐप्स (पेटीएम, माईस्टोर) पर दिखेगा।',
@@ -368,7 +372,11 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                         const SizedBox(height: 8),
                         Text(
                           isDone
-                              ? 'All product details and fair pricing are ready.'
+                              ? AppStrings.pair(
+                                  context,
+                                  en: 'All product details and fair pricing are ready.',
+                                  hi: 'सभी उत्पाद विवरण और उचित मूल्य तैयार हैं।',
+                                )
                               : _getStageDetail(catalogCtrl.stage),
                           style: AppTextStyles.caption.copyWith(
                             color: AppColors.textSecondary,
@@ -409,28 +417,28 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  tip['title']!,
+                                  AppStrings.pair(
+                                    context,
+                                    en: tip['title']!,
+                                    hi: tip['titleHi']!,
+                                  ),
                                   style: AppTextStyles.labelSmall.copyWith(
                                     fontWeight: FontWeight.w700,
                                     fontSize: 12,
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Text(
-                                  tip['hi']!,
-                                  style: AppTextStyles.caption.copyWith(
-                                    color: AppColors.secondaryTerracotta,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
+                                  AppStrings.pair(
+                                    context,
+                                    en: tip['subtitle']!,
+                                    hi: tip['hi']!,
+                                    separator: '\n',
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  tip['subtitle']!,
                                   style: AppTextStyles.caption.copyWith(
                                     color: AppColors.textSecondary,
-                                    fontSize: 10.5,
+                                    fontSize: 11,
                                   ),
                                 ),
                               ],
@@ -614,7 +622,11 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                   const SizedBox(height: 10),
 
                   Text(
-                    '🔒 All artisan photos & voice recordings are saved locally',
+                    AppStrings.pair(
+                      context,
+                      en: '🔒 All artisan photos & voice recordings are saved locally',
+                      hi: '🔒 आपकी सभी तस्वीरें और आवाज़ सुरक्षित रूप से सहेजी गई हैं',
+                    ),
                     style: AppTextStyles.caption.copyWith(
                       color: AppColors.textSecondary,
                       fontSize: 11,
@@ -736,7 +748,11 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                             en: 'Craft Ready',
                             hi: 'पूर्ण हुआ',
                           )
-                        : 'AI Craft Studio',
+                        : AppStrings.pair(
+                            context,
+                            en: 'AI Craft Studio',
+                            hi: 'AI शिल्प स्टूडियो',
+                          ),
                     style: AppTextStyles.labelSmall.copyWith(
                       color: isDone
                           ? AppColors.primaryTeal
@@ -798,15 +814,35 @@ class _ProcessingScreenState extends State<ProcessingScreen>
   String _getStageDetail(ProcessingStage stage) {
     switch (stage) {
       case ProcessingStage.imageProcessing:
-        return 'Preparing studio photography for buyer apps...';
+        return AppStrings.pair(
+          context,
+          en: 'Preparing studio photography for buyer apps...',
+          hi: 'खरीदार ऐप्स के लिए स्टूडियो फोटो तैयार की जा रही है...',
+        );
       case ProcessingStage.voiceProcessing:
-        return 'Transcribing voice notes and extracting craft attributes...';
+        return AppStrings.pair(
+          context,
+          en: 'Transcribing voice notes and extracting craft attributes...',
+          hi: 'आपकी आवाज़ समझकर शिल्प का विवरण निकाला जा रहा है...',
+        );
       case ProcessingStage.pricing:
-        return 'Computing statutory floor & fair market corridor...';
+        return AppStrings.pair(
+          context,
+          en: 'Computing statutory floor & fair market corridor...',
+          hi: 'लागत और उचित बाजार मूल्य की गणना हो रही है...',
+        );
       case ProcessingStage.done:
-        return 'All product details and fair pricing are ready.';
+        return AppStrings.pair(
+          context,
+          en: 'All product details and fair pricing are ready.',
+          hi: 'सभी उत्पाद विवरण और उचित मूल्य तैयार हैं।',
+        );
       default:
-        return 'Formatting Beckn ONDC schema and attributes...';
+        return AppStrings.pair(
+          context,
+          en: 'Formatting Beckn ONDC schema and attributes...',
+          hi: 'ओएनडीसी मानकों के अनुसार कैटलॉग तैयार हो रहा है...',
+        );
     }
   }
 }

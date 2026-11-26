@@ -233,7 +233,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                 ),
                 Text(
-                  'Karigar AI Studio',
+                  AppStrings.pair(
+                    context,
+                    en: 'Karigar AI Studio',
+                    hi: 'कारीगर AI स्टूडियो',
+                  ),
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.textSecondary,
                     fontSize: 11,
@@ -425,8 +429,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     _searchQuery = val.trim();
                   });
                 },
-                decoration: const InputDecoration(
-                  hintText: 'Search crafts by name, material...',
+                decoration: InputDecoration(
+                  hintText: AppStrings.pair(
+                    context,
+                    en: 'Search crafts by name, material...',
+                    hi: 'नाम या सामग्री से शिल्प खोजें...',
+                  ),
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
@@ -610,7 +618,17 @@ class _ExploreScreenState extends State<ExploreScreen> {
       child: Row(
         children: [
           Text(
-            itemCount > 0 ? 'Your Craft Listings' : 'Craft Listings',
+            itemCount > 0
+                ? AppStrings.pair(
+                    context,
+                    en: 'Your Craft Listings',
+                    hi: 'आपकी शिल्प सूची',
+                  )
+                : AppStrings.pair(
+                    context,
+                    en: 'Craft Listings',
+                    hi: 'शिल्प सूची',
+                  ),
             style: AppTextStyles.serifTitle().copyWith(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -682,7 +700,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             const CircularProgressIndicator(color: AppColors.primaryTeal),
             const SizedBox(height: 16),
             Text(
-              'Loading Crafts from Network...',
+              AppStrings.pair(
+                context,
+                en: 'Loading Crafts from Network...',
+                hi: 'नेटवर्क से शिल्प लोड हो रहे हैं...',
+              ),
               style: AppTextStyles.serifTitle().copyWith(fontSize: 16),
             ),
             const SizedBox(height: 4),
@@ -738,7 +760,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No Craft Products Listed Yet',
+            AppStrings.pair(
+              context,
+              en: 'No Craft Products Listed Yet',
+              hi: 'अभी तक कोई शिल्प सूचीबद्ध नहीं है',
+            ),
             style: AppTextStyles.serifTitle().copyWith(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -748,7 +774,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Start your artisan journey! Tap below to snap a picture of your craft and speak your artisan story.',
+            AppStrings.pair(
+              context,
+              en: 'Start your artisan journey! Tap below to snap a picture of your craft and speak your artisan story.',
+              hi: 'अपनी डिजिटल यात्रा शुरू करें! अपने शिल्प की फोटो लेने और विवरण बोलने के लिए नीचे दबाएं।',
+              separator: '\n',
+            ),
             style: AppTextStyles.body.copyWith(
               fontSize: 13,
               color: AppColors.textSecondary,
@@ -865,7 +896,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        'Handmade',
+                        AppStrings.pair(
+                          context,
+                          en: 'Handmade',
+                          hi: 'हस्तनिर्मित',
+                        ),
                         style: AppTextStyles.labelSmall.copyWith(
                           color: Colors.white,
                           fontSize: 10,
@@ -890,8 +925,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ),
                       child: Text(
                         item.status == CatalogStatus.published
-                            ? 'ONDC Live'
-                            : 'Draft',
+                            ? AppStrings.pair(
+                                context,
+                                en: 'ONDC Live',
+                                hi: 'ONDC लाइव',
+                              )
+                            : AppStrings.pair(
+                                context,
+                                en: 'Draft',
+                                hi: 'ड्राफ्ट',
+                              ),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -1400,16 +1443,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
           color: AppColors.textSecondary,
         ),
         elevation: 0,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.storefront_outlined),
-            activeIcon: Icon(Icons.storefront_rounded),
-            label: 'Crafts',
+            icon: const Icon(Icons.storefront_outlined),
+            activeIcon: const Icon(Icons.storefront_rounded),
+            label: AppStrings.pair(context, en: 'Crafts', hi: 'शिल्प'),
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.add_circle_outline_rounded, size: 26),
-            activeIcon: Icon(Icons.add_circle_rounded, size: 26),
-            label: 'Karigar Hub',
+            icon: const Icon(Icons.add_circle_outline_rounded, size: 26),
+            activeIcon: const Icon(Icons.add_circle_rounded, size: 26),
+            label: AppStrings.pair(
+              context,
+              en: 'Karigar Hub',
+              hi: 'कारीगर केंद्र',
+            ),
           ),
         ],
       ),

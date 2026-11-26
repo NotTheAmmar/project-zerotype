@@ -73,13 +73,23 @@ class ImageService {
     }
   }
 
-  /// Capture a photo from the live viewfinder
+  /// Capture a photo from the live viewfinder with a strict timeout so the
+  /// shutter never hangs indefinitely on Android Camera2/CameraX HAL locks.
   Future<String?> capturePhoto() async {
-    if (_cameraController == null || !_isInitialized) return null;
+    final controller = _cameraController;
+    if (controller == null || !_isInitialized || !controller.value.isInitialized) {
+      return null;
+    }
+    if (controller.value.isTakingPicture) {
+      return null;
+    }
     try {
-      final xFile = await _cameraController!.takePicture();
+      final xFile = await controller.takePicture().timeout(
+        const Duration(seconds: 8),
+      );
       return xFile.path;
     } catch (e) {
+      debugPrint('[ImageService] capturePhoto failed/timed out: $e');
       return null;
     }
   }
@@ -101,7 +111,9 @@ class ImageService {
       return const ImageQualityResult(isBlurry: false, isLowLight: false);
     }
     try {
-      return await compute(_checkQualityIsolate, imagePath);
+      return await compute(_checkQualityIsolate, imagePath).timeout(
+        const Duration(seconds: 4),
+      );
     } catch (_) {
       return const ImageQualityResult(isBlurry: false, isLowLight: false);
     }

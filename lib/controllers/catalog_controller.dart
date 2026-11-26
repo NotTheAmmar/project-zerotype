@@ -255,12 +255,15 @@ class CatalogController extends ChangeNotifier {
     _publishSuccess = false;
     notifyListeners();
 
+    final catalogId = const Uuid().v4();
+
     try {
       final result = await _apiService.processCatalog(
         imagePath: imagePath,
         audioPath: audioPath,
         audioPaths: audioPaths,
         manualDimensions: manualDimensions,
+        catalogId: catalogId,
         voiceLanguage: voiceLanguage,
         primaryLanguage: primaryLanguage,
         secondaryLanguage: secondaryLanguage,
@@ -278,7 +281,7 @@ class CatalogController extends ChangeNotifier {
       );
 
       _currentItem = CatalogItem(
-        id: const Uuid().v4(),
+        id: catalogId,
         createdAt: DateTime.now(),
         rawImagePath: result.rawImagePath ?? imagePath,
         studioImagePath: result.studioImagePath,
@@ -421,8 +424,46 @@ class CatalogController extends ChangeNotifier {
     }
   }
 
-  /// Modifies current item using AI voice command (Whisper + Qwen/Gemini).
-  Future<void> applyVoiceUpdate(String instruction) async {
+  /// Speaks short status confirmations via Bhashini TTS in the selected [languageCode].
+  Future<void> _speakConfirmation({
+    required String textEn,
+    required String textHi,
+    required String languageCode,
+  }) async {
+    try {
+      String text;
+      if (languageCode == 'en') {
+        text = textEn;
+      } else if (languageCode == 'hi') {
+        text = textHi;
+      } else {
+        try {
+          text = await _bhashiniService.translate(
+            textEn,
+            sourceLanguage: 'en',
+            targetLanguage: languageCode,
+          );
+        } catch (_) {
+          text = textEn;
+        }
+      }
+      if (text.trim().isEmpty) return;
+      final audioPath = await _bhashiniService.synthesize(
+        text,
+        sourceLanguage: languageCode,
+        gender: 'female',
+      );
+      await _audioService.playFile(audioPath);
+    } catch (e) {
+      debugPrint('[CatalogController] Confirmation TTS skipped ($languageCode): $e');
+    }
+  }
+
+  /// Modifies current item using AI voice command (Bhashini + Qwen).
+  Future<void> applyVoiceUpdate(
+    String instruction, {
+    String languageCode = 'hi',
+  }) async {
     if (_currentItem == null) return;
     try {
       final updated = await _apiService.updateCatalogWithInstruction(
@@ -430,7 +471,13 @@ class CatalogController extends ChangeNotifier {
         instruction: instruction,
       );
       await updateCurrentItem(updated);
-      await _audioService.speakText('कैटलॉग अपडेट कर दिया गया है।');
+      unawaited(
+        _speakConfirmation(
+          textEn: 'Your catalog listing has been updated.',
+          textHi: 'कैटलॉग अपडेट कर दिया गया है।',
+          languageCode: languageCode,
+        ),
+      );
     } catch (e) {
       debugPrint('[CatalogController] applyVoiceUpdate error: $e');
       rethrow;
@@ -498,6 +545,7 @@ class CatalogController extends ChangeNotifier {
     PricingController? pricingCtrl,
     int availableQuantity = 1,
     bool silent = false,
+    String languageCode = 'hi',
   ]) async {
     if (_currentItem == null || _isPublishing) return;
     _isPublishing = true;
@@ -509,7 +557,10 @@ class CatalogController extends ChangeNotifier {
     final qty = pricingCtrl?.availableQuantity ?? availableQuantity;
 
     if (pricing == null || pricing.floorPrice <= 0 || pricing.fairPrice <= 0) {
-      _errorMessage = 'मूल्य 0 से अधिक होना चाहिए / Price must be greater than ₹0 before publishing';
+      _errorMessage =
+          languageCode == 'en'
+              ? 'Price must be greater than ₹0 before publishing'
+              : 'मूल्य 0 से अधिक होना चाहिए / Price must be greater than ₹0 before publishing';
       _isPublishing = false;
       notifyListeners();
       return;
@@ -539,12 +590,21 @@ class CatalogController extends ChangeNotifier {
         _publishSuccess = true;
         HapticFeedback.heavyImpact();
 
+        _isPublishing = false;
+        notifyListeners();
+
         if (!silent) {
-          // TTS confirmation in Hindi
-          await _audioService.speakText(
-            'आपका उत्पाद ओ.एन.डी.सी. पर प्रकाशित हो गया है।',
+          // Non-blocking confirmation TTS in the user's selected language so the
+          // confirmation dialog appears immediately rather than after speech ends.
+          unawaited(
+            _speakConfirmation(
+              textEn: 'Your craft listing is now published on ONDC.',
+              textHi: 'आपका उत्पाद ओएनडीसी पर प्रकाशित हो गया है।',
+              languageCode: languageCode,
+            ),
           );
         }
+        return;
       } else {
         _errorMessage = response['message'] ?? 'Publish failed';
       }

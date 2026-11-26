@@ -39,8 +39,8 @@ void main() {
         expect(outBd.getUint16(20, Endian.little), equals(1)); // PCM format 1
         expect(outBd.getUint32(24, Endian.little), equals(sampleRate));
         expect(outBd.getUint16(34, Endian.little), equals(16)); // 16-bit
-        expect(outBd.getInt16(44, Endian.little), closeTo(16384, 2));
-        expect(outBd.getInt16(46, Endian.little), equals(-32767));
+        expect(outBd.getInt16(44, Endian.little), closeTo(13926, 2));
+        expect(outBd.getInt16(46, Endian.little), closeTo(-27852, 2));
       },
     );
   });

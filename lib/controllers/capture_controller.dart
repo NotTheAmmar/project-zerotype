@@ -68,6 +68,14 @@ class CaptureController extends ChangeNotifier {
     await _imageService.setFlashMode(_flashOn);
   }
 
+  Future<void> turnOffFlash() async {
+    if (_flashOn) {
+      _flashOn = false;
+      notifyListeners();
+    }
+    await _imageService.setFlashMode(false);
+  }
+
   void toggleGrid() {
     _showGrid = !_showGrid;
     HapticFeedback.selectionClick();
@@ -127,13 +135,17 @@ class CaptureController extends ChangeNotifier {
 
     HapticFeedback.mediumImpact();
 
-    final path = await _imageService.capturePhoto();
-    if (path != null) {
-      await _handleImagePath(path);
+    try {
+      final path = await _imageService.capturePhoto();
+      if (path != null) {
+        await _handleImagePath(path);
+      }
+    } catch (e) {
+      debugPrint('[CaptureController] capturePhoto error: $e');
+    } finally {
+      _isBusy = false;
+      notifyListeners();
     }
-
-    _isBusy = false;
-    notifyListeners();
   }
 
   Future<void> pickFromGallery() async {
@@ -142,13 +154,17 @@ class CaptureController extends ChangeNotifier {
     _clearWarnings();
     notifyListeners();
 
-    final path = await _imageService.pickFromGallery();
-    if (path != null) {
-      await _handleImagePath(path);
+    try {
+      final path = await _imageService.pickFromGallery();
+      if (path != null) {
+        await _handleImagePath(path);
+      }
+    } catch (e) {
+      debugPrint('[CaptureController] pickFromGallery error: $e');
+    } finally {
+      _isBusy = false;
+      notifyListeners();
     }
-
-    _isBusy = false;
-    notifyListeners();
   }
 
   void confirmImage() {
@@ -163,6 +179,8 @@ class CaptureController extends ChangeNotifier {
     _state = CaptureState.idle;
     _capturedPhotos.clear();
     _clearWarnings();
+    _flashOn = false;
+    _imageService.setFlashMode(false);
     notifyListeners();
   }
 

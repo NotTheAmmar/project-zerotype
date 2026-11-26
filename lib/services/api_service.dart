@@ -95,6 +95,7 @@ abstract class ApiService {
     required String audioPath,
     List<String>? audioPaths,
     String? manualDimensions,
+    String? catalogId,
     String voiceLanguage = 'hi',
     String primaryLanguage = 'en',
     String? secondaryLanguage = 'hi',
@@ -254,6 +255,7 @@ class MockApiService implements ApiService {
     required String audioPath,
     List<String>? audioPaths,
     String? manualDimensions,
+    String? catalogId,
     String voiceLanguage = 'hi',
     String primaryLanguage = 'en',
     String? secondaryLanguage = 'hi',
@@ -784,6 +786,7 @@ class LiveApiService implements ApiService {
     required String audioPath,
     List<String>? audioPaths,
     String? manualDimensions,
+    String? catalogId,
     String voiceLanguage = 'hi',
     String primaryLanguage = 'en',
     String? secondaryLanguage = 'hi',
@@ -794,6 +797,7 @@ class LiveApiService implements ApiService {
       audioPath: audioPath,
       audioPaths: audioPaths,
       manualDimensions: manualDimensions,
+      catalogId: catalogId,
       voiceLanguage: voiceLanguage,
       primaryLanguage: primaryLanguage,
       secondaryLanguage: secondaryLanguage,
@@ -1022,6 +1026,7 @@ Artisan update instruction:
     required String audioPath,
     List<String>? audioPaths,
     String? manualDimensions,
+    String? catalogId,
     String voiceLanguage = 'hi',
     String primaryLanguage = 'en',
     String? secondaryLanguage = 'hi',
@@ -1038,6 +1043,7 @@ Artisan update instruction:
         final rawUpload = await uploadImageWithDetails(
           imagePath,
           imageType: 'raw',
+          catalogId: catalogId,
           baseUrl: AppConstants.bppBackendUrl,
         );
         liveRawUrl = rawUpload?.rawImageUrl ?? rawUpload?.url;
@@ -1054,6 +1060,7 @@ Artisan update instruction:
           );
           liveStudioUrl = await processImageWithKaggle(
             imagePath,
+            catalogId: catalogId,
             imageType: 'studio',
           );
           debugPrint(

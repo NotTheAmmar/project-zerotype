@@ -12,6 +12,8 @@ from typing import Dict, List, Optional
 
 from app.db import (
     delete_listing_db,
+    delete_listing_storage_objects,
+    get_listing_media_db,
     load_all_listings_db,
     load_listings_with_status_db,
     save_listing_db,
@@ -126,13 +128,28 @@ def delete_listing(catalog_id: str) -> bool:
 
 
 async def delete_listing_async(catalog_id: str) -> bool:
-    """Remove a listing from both memory cache and persistent database."""
+    """Remove a listing from memory cache, persistent database, and Storage."""
+    cached = _ACTIVE_LISTINGS.get(catalog_id)
+    media = (
+        {
+            "raw_image_url": cached.raw_image_url,
+            "studio_image_url": cached.studio_image_url,
+            "gallery_images": cached.gallery_images,
+        }
+        if cached
+        else None
+    )
+    if media is None:
+        media = await get_listing_media_db(catalog_id)
+
     in_mem = delete_listing(catalog_id)
     in_db = False
     try:
         in_db = await delete_listing_db(catalog_id)
     except Exception as e:
         logger.error("Failed to delete listing %s from DB: %s", catalog_id, e)
+
+    await delete_listing_storage_objects(catalog_id, media=media)
     return in_mem or in_db
 
 

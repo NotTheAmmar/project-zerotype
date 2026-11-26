@@ -145,6 +145,41 @@ class TestBazaarSetuBPP(unittest.TestCase):
         self.assertEqual(fetched.json()["fair_price"], 375.0)
         self.assertEqual(fetched.json()["available_qty"], 8)
 
+    def test_storage_url_parsing_and_delete_cleanup(self):
+        """Verify Supabase object path extraction and local image cleanup on delete."""
+        from app.db import extract_storage_object
+
+        self.assertEqual(
+            extract_storage_object(
+                "https://abc.supabase.co/storage/v1/object/public/raw-craft-images/id_1_raw.jpg"
+            ),
+            ("raw-craft-images", "id_1_raw.jpg"),
+        )
+        self.assertIsNone(extract_storage_object("https://example.com/other.jpg"))
+
+        self.client.post(
+            "/api/v1/bpp/upload-image",
+            data={"catalog_id": "del_cat_1", "image_type": "raw"},
+            files={"file": ("raw.jpg", b"raw-bytes", "image/jpeg")},
+        )
+        self.client.post(
+            "/api/v1/bpp/publish",
+            json={
+                "catalog_id": "del_cat_1",
+                "title_en": "Temp Craft",
+                "description_en": "Temp desc",
+                "floor_price": 100.0,
+                "fair_price": 200.0,
+                "premium_price": 250.0,
+                "raw_image_url": "/uploads/raw/del_cat_1_raw.jpg",
+            },
+        )
+        self.assertTrue(os.path.exists(os.path.join("uploads", "raw", "del_cat_1_raw.jpg")))
+
+        del_res = self.client.delete("/api/v1/bpp/listings/del_cat_1")
+        self.assertEqual(del_res.status_code, 200)
+        self.assertFalse(os.path.exists(os.path.join("uploads", "raw", "del_cat_1_raw.jpg")))
+
 
 if __name__ == "__main__":
     unittest.main()

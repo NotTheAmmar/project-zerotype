@@ -18,25 +18,49 @@ class CaptureScreen extends StatefulWidget {
   State<CaptureScreen> createState() => _CaptureScreenState();
 }
 
-class _CaptureScreenState extends State<CaptureScreen> {
+class _CaptureScreenState extends State<CaptureScreen> with WidgetsBindingObserver {
   bool _cameraInitStarted = false;
+  CaptureController? _captureCtrl;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_cameraInitStarted && mounted) {
         _cameraInitStarted = true;
-        context.read<CaptureController>().initCamera();
+        _captureCtrl = context.read<CaptureController>();
+        _captureCtrl!.initCamera();
       }
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _captureCtrl?.turnOffFlash();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _captureCtrl?.turnOffFlash();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<CaptureController>(
       builder: (context, ctrl, _) {
-        return Scaffold(
+        return PopScope(
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) {
+              ctrl.turnOffFlash();
+            }
+          },
+          child: Scaffold(
           backgroundColor: Colors.black,
           body: Stack(
             fit: StackFit.expand,
@@ -58,6 +82,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
               _buildBottomDock(context, ctrl),
             ],
           ),
+        ),
         );
       },
     );
@@ -188,8 +213,13 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 // Back Button
                 _buildCircleIconButton(
                   icon: Icons.arrow_back_rounded,
-                  tooltip: 'Back',
-                  onTap: () => Navigator.of(context).maybePop(),
+                  tooltip: AppStrings.pair(context, en: 'Back', hi: 'पीछे'),
+                  onTap: () async {
+                    await ctrl.turnOffFlash();
+                    if (context.mounted) {
+                      Navigator.of(context).maybePop();
+                    }
+                  },
                 ),
                 const Spacer(),
 
@@ -214,7 +244,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '${ctrl.photosTakenCount}/4 Photos',
+                        AppStrings.pair(
+                          context,
+                          en: '${ctrl.photosTakenCount} Photo${ctrl.photosTakenCount == 1 ? '' : 's'}',
+                          hi: '${ctrl.photosTakenCount} फ़ोटो',
+                        ),
                         style: AppTextStyles.labelSmall.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -230,7 +264,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                   icon: ctrl.showGrid
                       ? Icons.grid_on_rounded
                       : Icons.grid_off_rounded,
-                  tooltip: 'Grid',
+                  tooltip: AppStrings.pair(context, en: 'Grid', hi: 'ग्रिड'),
                   isActive: ctrl.showGrid,
                   onTap: ctrl.toggleGrid,
                 ),
@@ -241,7 +275,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                   icon: ctrl.flashOn
                       ? Icons.flash_on_rounded
                       : Icons.flash_off_rounded,
-                  tooltip: 'Flash',
+                  tooltip: AppStrings.pair(context, en: 'Flash', hi: 'फ़्लैश'),
                   isActive: ctrl.flashOn,
                   onTap: ctrl.toggleFlash,
                 ),
@@ -593,7 +627,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
                   size: 28,
                 ),
                 onPressed: ctrl.isBusy ? null : ctrl.pickFromGallery,
-                tooltip: 'गैलरी से चुनें',
+                tooltip: AppStrings.pair(
+                  context,
+                  en: 'Choose from gallery',
+                  hi: 'गैलरी से चुनें',
+                ),
               ),
               Text(
                 AppStrings.pair(context, en: 'Gallery', hi: 'गैलरी'),
@@ -646,9 +684,12 @@ class _CaptureScreenState extends State<CaptureScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         HapticFeedback.mediumImpact();
-                        Navigator.of(context).pushNamed(AppRoutes.voice);
+                        await ctrl.turnOffFlash();
+                        if (context.mounted) {
+                          Navigator.of(context).pushNamed(AppRoutes.voice);
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         shape: const CircleBorder(),
