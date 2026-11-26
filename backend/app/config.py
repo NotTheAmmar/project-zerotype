@@ -51,7 +51,13 @@ class Settings(BaseSettings):
     """Supabase service role or anon API key for Storage uploads."""
 
     supabase_storage_bucket: str = "craft-images"
-    """Supabase Storage bucket name for raw and studio craft images."""
+    """Legacy fallback Supabase Storage bucket name."""
+
+    supabase_raw_bucket: str = "raw-craft-images"
+    """Supabase Storage bucket name for original raw camera craft photos."""
+
+    supabase_processed_bucket: str = "processed-craft-images"
+    """Supabase Storage bucket name for AI-processed studio craft photos."""
 
     # ── Server ────────────────────────────────────────────────────
     host: str = "0.0.0.0"

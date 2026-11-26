@@ -270,7 +270,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      langCtrl.currentLanguage.nativeName,
+                      langCtrl.headerBadgeLabel,
                       style: AppTextStyles.caption.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -813,17 +813,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                   const SizedBox(height: 4),
 
-                  // Title
-                  Text(
-                    item.titleEn ?? 'Handmade Craft',
-                    style:
+                  // Title (respects single vs bilingual mode and chosen language(s))
+                  BilingualText(
+                    english: item.titleEn ?? 'Handmade Craft',
+                    local: item.titleHi,
+                    translations: item.localizedTitles,
+                    englishStyle:
                         AppTextStyles.serifSubhead(color: AppColors.textPrimary)
                             .copyWith(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                               height: 1.25,
                             ),
-                    maxLines: 2,
+                    localStyle: AppTextStyles.caption.copyWith(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      height: 1.2,
+                    ),
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
@@ -919,6 +926,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             BilingualText(
                               english: item.titleEn ?? 'Handmade Craft',
                               local: item.titleHi,
+                              translations: item.localizedTitles,
                               englishStyle: AppTextStyles.serifTitle().copyWith(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -1057,6 +1065,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               item.descriptionEn ??
                               'Handcrafted artisan product.',
                           local: item.descriptionHi,
+                          translations: item.localizedDescriptions,
                           englishStyle: AppTextStyles.body.copyWith(
                             fontSize: 13,
                             height: 1.4,

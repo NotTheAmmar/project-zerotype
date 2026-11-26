@@ -32,7 +32,7 @@ Project ZeroType addresses the fundamental barrier preventing rural Indian artis
 ### 2.1 WelcomeScreen (`/welcome`)
 - **Purpose**: Welcoming first-time artisans with zero literacy hurdles.
 - **Components**:
-  - Indic language cards: Hindi (हिन्दी), Marathi (मराठी), Gujarati (ગુજરાતી), Bengali (বাংলা), Tamil (தமிழ்), Telugu (తెలుగు).
+  - 23 Bhashini-supported languages with onboarding choice of **Single Language** or **Bilingual (any 2 languages)** display.
   - Spoken audio greeting button playing native welcome instructions via TTS.
   - Tactile continue button: *"आगे बढ़ें • Continue"*.
 
@@ -101,9 +101,9 @@ Project ZeroType addresses the fundamental barrier preventing rural Indian artis
 
 ### 3.1 Endpoint Configuration (`constants.dart`)
 ```dart
-static const String aiExtractionProvider = 'groq_qwen'; // or 'custom_qwen'
-static const String qwenModel = 'qwen-2.5-32b-it';
-static const String qwenApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+static const String aiExtractionProvider = 'qwen'; // or 'custom_qwen'
+static const String qwenModel = 'qwen-2.5-32b-instruct';
+static const String qwenApiUrl = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
 ```
 
 ### 3.2 Target Beckn Extraction Schema

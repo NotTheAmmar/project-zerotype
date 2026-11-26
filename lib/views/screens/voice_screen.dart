@@ -8,7 +8,9 @@ import 'package:provider/provider.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/capture_controller.dart';
+import '../../controllers/language_controller.dart';
 import '../../controllers/voice_controller.dart';
+import '../widgets/bilingual_text.dart';
 import '../widgets/mic_button.dart';
 import '../widgets/waveform_visualizer.dart';
 
@@ -38,10 +40,14 @@ class _VoiceScreenState extends State<VoiceScreen> {
     if (_lastSpokenStep == voiceCtrl.currentStep) return;
     _lastSpokenStep = voiceCtrl.currentStep;
 
-    final question = voiceCtrl.currentStepData.questionHi;
+    final langCtrl = context.read<LanguageController>();
+    final primaryLang = langCtrl.primaryLanguage;
+    final question = primaryLang.code == 'en'
+        ? voiceCtrl.currentStepData.questionEn
+        : voiceCtrl.currentStepData.questionHi;
     try {
       await _tts.stop();
-      await _tts.setLanguage('hi-IN');
+      await _tts.setLanguage(primaryLang.ttsLocale);
       await _tts.speak(question);
     } catch (e) {
       debugPrint('[VoiceScreen] TTS speak error: $e');
@@ -50,10 +56,15 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
   Future<void> _replayTts() async {
     final voiceCtrl = context.read<VoiceController>();
+    final langCtrl = context.read<LanguageController>();
+    final primaryLang = langCtrl.primaryLanguage;
+    final question = primaryLang.code == 'en'
+        ? voiceCtrl.currentStepData.questionEn
+        : voiceCtrl.currentStepData.questionHi;
     try {
       await _tts.stop();
-      await _tts.setLanguage('hi-IN');
-      await _tts.speak(voiceCtrl.currentStepData.questionHi);
+      await _tts.setLanguage(primaryLang.ttsLocale);
+      await _tts.speak(question);
     } catch (e) {
       debugPrint('[VoiceScreen] TTS replay error: $e');
     }
@@ -106,23 +117,18 @@ class _VoiceScreenState extends State<VoiceScreen> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
+                        child: BilingualText(
+                          english:
+                              'Step ${voiceCtrl.currentStep + 1} / ${voiceCtrl.totalSteps} • ${step.titleEn}',
+                          local:
                               'सवाल ${voiceCtrl.currentStep + 1} / ${voiceCtrl.totalSteps} • ${step.titleHi}',
-                              style: AppTextStyles.label.copyWith(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              step.titleEn,
-                              style: AppTextStyles.caption.copyWith(
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
+                          englishStyle: AppTextStyles.label.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
+                          localStyle: AppTextStyles.caption.copyWith(
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                       IconButton(

@@ -10,6 +10,7 @@ import '../../config/constants.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/catalog_controller.dart';
+import '../../controllers/language_controller.dart';
 import '../../models/catalog_item.dart';
 import '../../models/craft_attributes.dart';
 import '../../models/pricing_corridor.dart';
@@ -98,25 +99,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
       final updated = item.copyWith(pricing: updatedPricing);
       await catalogCtrl.updateCurrentItem(updated);
 
-      if (item.status == CatalogStatus.published) {
-        try {
-          await catalogCtrl.publishToOndc(null, _quantity);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Price updated to ₹$newPrice on ONDC • कीमत ₹$newPrice अपडेट हुई',
-                ),
-                backgroundColor: AppColors.primaryTeal,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          }
-        } catch (e) {
-          debugPrint(
-            '[CatalogScreen] Error updating published price to ONDC BPP: $e',
-          );
-        }
+      if (item.status == CatalogStatus.published && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Price updated to ₹$newPrice in database • कीमत ₹$newPrice अपडेट हुई',
+            ),
+            backgroundColor: AppColors.primaryTeal,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -131,25 +123,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
       final updated = item.copyWith(availableQuantity: qty);
       await catalogCtrl.updateCurrentItem(updated);
 
-      if (item.status == CatalogStatus.published && item.pricing != null) {
-        try {
-          await catalogCtrl.publishToOndc(null, qty);
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Stock updated to $qty units on ONDC • स्टॉक $qty पीस अपडेट हुआ',
-                ),
-                backgroundColor: AppColors.primaryTeal,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          }
-        } catch (e) {
-          debugPrint(
-            '[CatalogScreen] Error updating published stock to ONDC BPP: $e',
-          );
-        }
+      if (item.status == CatalogStatus.published && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Stock updated to $qty units in database • स्टॉक $qty पीस अपडेट हुआ',
+            ),
+            backgroundColor: AppColors.primaryTeal,
+            duration: const Duration(seconds: 2),
+          ),
+        );
       }
     }
   }
@@ -800,6 +783,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final String? activeImagePath = images.isNotEmpty
         ? images[_selectedThumb % images.length]
         : (item.studioImagePath ?? item.rawImagePath);
+    final bool isShowingRaw =
+        activeImagePath != null && activeImagePath == item.rawImagePath;
+    final bool isShowingStudio =
+        activeImagePath != null &&
+        activeImagePath == item.studioImagePath &&
+        !isShowingRaw;
 
     Widget buildImageWidget(String? path) {
       if (path != null && path.isNotEmpty) {
@@ -896,20 +885,29 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryTeal.withValues(alpha: 0.9),
+                            color: (isShowingRaw
+                                    ? AppColors.secondaryTerracotta
+                                    : AppColors.primaryTeal)
+                                .withValues(alpha: 0.92),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(
-                                Icons.auto_awesome,
+                              Icon(
+                                isShowingRaw
+                                    ? Icons.photo_camera_outlined
+                                    : Icons.auto_awesome,
                                 color: Colors.white,
                                 size: 12,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                'AI-Listed',
+                                isShowingRaw
+                                    ? 'Original Raw • App Only'
+                                    : (isShowingStudio
+                                          ? 'AI Studio • ONDC'
+                                          : 'Gallery • ONDC'),
                                 style: AppTextStyles.labelSmall.copyWith(
                                   color: Colors.white,
                                 ),
@@ -994,53 +992,92 @@ class _CatalogScreenState extends State<CatalogScreen> {
                       !kIsWeb &&
                       File(thumbPath).existsSync();
 
+                  final isRawThumb =
+                      thumbPath != null && thumbPath == item.rawImagePath;
+                  final thumbLabel = isRawThumb
+                      ? 'Raw'
+                      : (thumbPath != null && thumbPath == item.studioImagePath
+                            ? 'Studio'
+                            : 'Angle');
+
                   return GestureDetector(
                     onTap: () => setState(() => _selectedThumb = i),
                     child: Container(
-                      width: 60,
-                      height: 60,
+                      width: 64,
+                      height: 64,
                       margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected
-                              ? AppColors.primaryTeal
+                              ? (isRawThumb
+                                    ? AppColors.secondaryTerracotta
+                                    : AppColors.primaryTeal)
                               : AppColors.cardBorder,
                           width: isSelected ? 2 : 1,
                         ),
                       ),
                       clipBehavior: Clip.antiAlias,
-                      child: thumbPath != null
-                          ? (thumbPath.startsWith('http')
-                                ? Image.network(
-                                    thumbPath,
-                                    fit: BoxFit.cover,
-                                    headers: const {
-                                      'bypass-tunnel-reminder': 'true',
-                                      'ngrok-skip-browser-warning': 'true',
-                                    },
-                                    errorBuilder: (ctx, err, stack) =>
-                                        _buildFallbackImagePlaceholder(),
-                                  )
-                                : (kIsWeb || thumbPath.startsWith('blob:')
-                                      ? Image.network(
-                                          thumbPath,
-                                          fit: BoxFit.cover,
-                                          headers: const {
-                                            'bypass-tunnel-reminder': 'true',
-                                            'ngrok-skip-browser-warning':
-                                                'true',
-                                          },
-                                          errorBuilder: (ctx, err, stack) =>
-                                              _buildFallbackImagePlaceholder(),
-                                        )
-                                      : (isLocalThumb
-                                            ? Image.file(
-                                                File(thumbPath),
-                                                fit: BoxFit.cover,
-                                              )
-                                            : _buildFallbackImagePlaceholder())))
-                          : _buildFallbackImagePlaceholder(),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          thumbPath != null
+                              ? (thumbPath.startsWith('http')
+                                    ? Image.network(
+                                        thumbPath,
+                                        fit: BoxFit.cover,
+                                        headers: const {
+                                          'bypass-tunnel-reminder': 'true',
+                                          'ngrok-skip-browser-warning': 'true',
+                                        },
+                                        errorBuilder: (ctx, err, stack) =>
+                                            _buildFallbackImagePlaceholder(),
+                                      )
+                                    : (kIsWeb || thumbPath.startsWith('blob:')
+                                          ? Image.network(
+                                              thumbPath,
+                                              fit: BoxFit.cover,
+                                              headers: const {
+                                                'bypass-tunnel-reminder': 'true',
+                                                'ngrok-skip-browser-warning':
+                                                    'true',
+                                              },
+                                              errorBuilder: (ctx, err, stack) =>
+                                                  _buildFallbackImagePlaceholder(),
+                                            )
+                                          : (isLocalThumb
+                                                ? Image.file(
+                                                    File(thumbPath),
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                : _buildFallbackImagePlaceholder())))
+                              : _buildFallbackImagePlaceholder(),
+                          if (thumbPath != null)
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                color: (isRawThumb
+                                        ? AppColors.secondaryTerracotta
+                                        : AppColors.primaryTeal)
+                                    .withValues(alpha: 0.85),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 1.5,
+                                ),
+                                child: Text(
+                                  thumbLabel,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -1107,6 +1144,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           BilingualText(
             english: item.titleEn ?? 'Handcrafted Artisan Item',
             local: item.titleHi,
+            translations: item.localizedTitles,
             englishStyle: AppTextStyles.serifHeading(
               color: AppColors.textPrimary,
             ).copyWith(fontSize: 22, fontWeight: FontWeight.w700),
@@ -1889,10 +1927,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 10),
 
-          // Bilingual Story description: English first, Hindi/local underneath
+          // Bilingual / Multilingual Story description
           BilingualText(
             english: item.descriptionEn ?? 'Authentic handcrafted product made with traditional techniques and generational artisan skill.',
             local: item.descriptionHi,
+            translations: item.localizedDescriptions,
             englishStyle: AppTextStyles.body.copyWith(
               color: AppColors.textPrimary,
               fontSize: 14,
@@ -1927,7 +1966,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         if (catalogCtrl.isSpeaking) {
                           catalogCtrl.stopReadback();
                         } else {
-                          catalogCtrl.speakReadback();
+                          final langCtrl = context.read<LanguageController>();
+                          catalogCtrl.speakReadback(
+                            languageCode: langCtrl.voiceLanguageCode,
+                            ttsLocale: langCtrl.primaryLanguage.ttsLocale,
+                          );
                         }
                       },
                       child: Container(
@@ -2288,7 +2331,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
               if (catalogCtrl.isSpeaking) {
                 catalogCtrl.stopReadback();
               } else {
-                catalogCtrl.speakReadback();
+                final langCtrl = context.read<LanguageController>();
+                catalogCtrl.speakReadback(
+                  languageCode: langCtrl.voiceLanguageCode,
+                  ttsLocale: langCtrl.primaryLanguage.ttsLocale,
+                );
               }
             },
             child: Container(
@@ -2955,9 +3002,6 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
       );
 
       await widget.catalogCtrl.updateCurrentItem(updated);
-      if (widget.item.status == CatalogStatus.published) {
-        await widget.catalogCtrl.publishToOndc(null, qty);
-      }
 
       if (mounted) {
         Navigator.pop(context);

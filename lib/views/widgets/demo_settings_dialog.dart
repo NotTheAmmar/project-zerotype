@@ -26,7 +26,7 @@ class DemoSettingsSheet extends StatefulWidget {
 
 class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
   late final TextEditingController _urlController;
-  late final TextEditingController _groqController;
+  late final TextEditingController _qwenKeyController;
   bool _isTesting = false;
   String? _testMessage;
   bool? _testSuccess;
@@ -35,13 +35,13 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
   void initState() {
     super.initState();
     _urlController = TextEditingController(text: AppConstants.bppBackendUrl);
-    _groqController = TextEditingController(text: AppConstants.groqApiKey);
+    _qwenKeyController = TextEditingController(text: AppConstants.qwenApiKey);
   }
 
   @override
   void dispose() {
     _urlController.dispose();
-    _groqController.dispose();
+    _qwenKeyController.dispose();
     super.dispose();
   }
 
@@ -95,10 +95,10 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
 
   Future<void> _saveAndApply() async {
     final url = _urlController.text.trim();
-    final groq = _groqController.text.trim();
+    final qwenKey = _qwenKeyController.text.trim();
 
     await AppConstants.setCustomBackendUrl(url);
-    await AppConstants.setCustomGroqApiKey(groq);
+    await AppConstants.setCustomQwenApiKey(qwenKey);
 
     if (mounted) {
       context.read<CatalogController>().loadSavedCatalogs();
@@ -115,10 +115,10 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
 
   Future<void> _resetToDefaults() async {
     await AppConstants.setCustomBackendUrl('');
-    await AppConstants.setCustomGroqApiKey('');
+    await AppConstants.setCustomQwenApiKey('');
     setState(() {
       _urlController.text = AppConstants.bppBackendUrl;
-      _groqController.text = AppConstants.groqApiKey;
+      _qwenKeyController.text = AppConstants.qwenApiKey;
       _testMessage = null;
       _testSuccess = null;
     });
@@ -218,9 +218,9 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
             ),
             const SizedBox(height: 14),
 
-            // Groq API Key Field
+            // Qwen API Key Field
             Text(
-              'Groq API Key (Whisper Voice & Qwen Extraction)',
+              'Qwen API Key (Catalog Extraction LLM)',
               style: AppTextStyles.label.copyWith(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -228,10 +228,10 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
             ),
             const SizedBox(height: 6),
             TextField(
-              controller: _groqController,
+              controller: _qwenKeyController,
               decoration: InputDecoration(
-                hintText: 'gsk_... (optional for live STT)',
-                prefixIcon: const Icon(Icons.mic_none_rounded, size: 20),
+                hintText: 'sk-... (optional for live Qwen LLM)',
+                prefixIcon: const Icon(Icons.auto_awesome_outlined, size: 20),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),

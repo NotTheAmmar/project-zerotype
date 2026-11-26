@@ -152,9 +152,10 @@ class CatalogController extends ChangeNotifier {
         _precacheStudioImage(result.rawImagePath!);
       }
 
-      // Persist locally
+      // Persist locally and sync draft to backend DB
       await _storageService.saveCatalog(_currentItem!);
       _updateSavedList(_currentItem!);
+      await _syncToBackend(_currentItem!);
 
       _stage = ProcessingStage.done;
       notifyListeners();
@@ -214,6 +215,7 @@ class CatalogController extends ChangeNotifier {
 
     await _storageService.saveCatalog(_currentItem!);
     _updateSavedList(_currentItem!);
+    await _syncToBackend(_currentItem!);
 
     _stage = ProcessingStage.done;
     _errorMessage = null;
@@ -226,6 +228,42 @@ class CatalogController extends ChangeNotifier {
     await _storageService.saveCatalog(_currentItem!);
     _updateSavedList(_currentItem!);
     notifyListeners();
+    await _syncToBackend(_currentItem!);
+  }
+
+  Future<void> _syncToBackend(CatalogItem item) async {
+    try {
+      final Map<String, dynamic> res;
+      if (item.status == CatalogStatus.published) {
+        res = await _apiService.updateListingOnBackend(item);
+      } else {
+        res = await _apiService.saveDraftToBackend(item);
+      }
+      final returnedRaw = res['raw_image_url'] as String?;
+      final returnedStudio = res['studio_image_url'] as String?;
+      if ((returnedRaw != null &&
+              returnedRaw.isNotEmpty &&
+              returnedRaw != item.rawImagePath) ||
+          (returnedStudio != null &&
+              returnedStudio.isNotEmpty &&
+              returnedStudio != item.studioImagePath)) {
+        final synced = item.copyWith(
+          rawImagePath: (returnedRaw != null && returnedRaw.isNotEmpty)
+              ? returnedRaw
+              : item.rawImagePath,
+          studioImagePath: (returnedStudio != null && returnedStudio.isNotEmpty)
+              ? returnedStudio
+              : item.studioImagePath,
+        );
+        if (_currentItem?.id == item.id) {
+          _currentItem = synced;
+        }
+        await _storageService.saveCatalog(synced);
+        _updateSavedList(synced);
+      }
+    } catch (e) {
+      debugPrint('[CatalogController] Backend sync skipped (offline/local): $e');
+    }
   }
 
   /// Modifies current item using AI voice command (Whisper + Qwen/Gemini).
@@ -252,26 +290,39 @@ class CatalogController extends ChangeNotifier {
 
   final BhashiniService _bhashiniService = BhashiniService();
 
-  Future<void> speakReadback() async {
+  Future<void> speakReadback({
+    String languageCode = 'hi',
+    String ttsLocale = 'hi-IN',
+  }) async {
     if (_currentItem == null || _isSpeaking) return;
     _isSpeaking = true;
     notifyListeners();
 
     try {
+      final locDesc = _currentItem!.descriptionFor(languageCode)?.trim() ?? '';
       final descHi = _currentItem!.descriptionHi?.trim() ?? '';
       final descEn = _currentItem!.descriptionEn?.trim() ?? '';
-      final textToSpeak = descHi.isNotEmpty
-          ? descHi
-          : (descEn.isNotEmpty
-                ? descEn
-                : (_currentItem!.titleHi ?? _currentItem!.titleEn ?? ''));
+      final textToSpeak = locDesc.isNotEmpty
+          ? locDesc
+          : (descHi.isNotEmpty
+                ? descHi
+                : (descEn.isNotEmpty
+                      ? descEn
+                      : (_currentItem!.titleFor(languageCode) ??
+                            _currentItem!.titleHi ??
+                            _currentItem!.titleEn ??
+                            '')));
 
       if (textToSpeak.isNotEmpty) {
-        if (AppConstants.bhashiniApiKey.isNotEmpty && descHi.isNotEmpty) {
+        final canUseBhashiniTts =
+            AppConstants.bhashiniApiKey.isNotEmpty &&
+            (locDesc.isNotEmpty || descHi.isNotEmpty);
+        if (canUseBhashiniTts) {
           try {
+            final ttsLang = locDesc.isNotEmpty ? languageCode : 'hi';
             final audioPath = await _bhashiniService.synthesize(
               textToSpeak,
-              sourceLanguage: 'hi',
+              sourceLanguage: ttsLang,
               gender: 'female',
             );
             if (!_isSpeaking) return;
@@ -301,6 +352,7 @@ class CatalogController extends ChangeNotifier {
   Future<void> publishToOndc([
     PricingController? pricingCtrl,
     int availableQuantity = 1,
+    bool silent = false,
   ]) async {
     if (_currentItem == null || _isPublishing) return;
     _isPublishing = true;
@@ -330,18 +382,24 @@ class CatalogController extends ChangeNotifier {
         final returnedStudio = response['studio_image_url'] as String?;
         _currentItem = _currentItem!.copyWith(
           status: CatalogStatus.published,
-          rawImagePath: returnedRaw ?? _currentItem!.rawImagePath,
-          studioImagePath: returnedStudio ?? _currentItem!.studioImagePath,
+          rawImagePath: (returnedRaw != null && returnedRaw.isNotEmpty)
+              ? returnedRaw
+              : _currentItem!.rawImagePath,
+          studioImagePath: (returnedStudio != null && returnedStudio.isNotEmpty)
+              ? returnedStudio
+              : _currentItem!.studioImagePath,
         );
         await _storageService.saveCatalog(_currentItem!);
         _updateSavedList(_currentItem!);
         _publishSuccess = true;
         HapticFeedback.heavyImpact();
 
-        // TTS confirmation in Hindi
-        await _audioService.speakText(
-          'आपका उत्पाद ओ.एन.डी.सी. पर प्रकाशित हो गया है।',
-        );
+        if (!silent) {
+          // TTS confirmation in Hindi
+          await _audioService.speakText(
+            'आपका उत्पाद ओ.एन.डी.सी. पर प्रकाशित हो गया है।',
+          );
+        }
       } else {
         _errorMessage = response['message'] ?? 'Publish failed';
       }

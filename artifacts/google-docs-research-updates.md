@@ -33,9 +33,9 @@ BazaarSetu replaces complex e-commerce desktop forms with a strict, zero-typing 
 - **Tactile Touch**: Corridor cards, numerical price nudges, and preset inventory pills.
 
 #### Step-by-Step Screen Walkthrough:
-1. **Language Preference & Vernacular Onboarding (`/welcome`)**:
-   - Offers 6 Indic regional languages: Hindi, Marathi, Gujarati, Bengali, Tamil, Telugu.
-   - Dual-Language UI Standard: English is always shown as the primary anchor for national discovery, while natural regional translations appear directly beneath every title, button, and description.
+1. **Language Preference & Vernacular Onboarding (`/language-selection`)**:
+   - Offers all 23 Bhashini-supported languages (22 Scheduled Indian Languages + English).
+   - User chooses **Single Language** (multilingual mode: 1 chosen language) or **Bilingual** (any 2 chosen languages displayed together).
 2. **Artisan Hub & Catalog Feed (`/explore`)**:
    - Streamlined catalog feed displaying active and published crafts with provenance, GI tags, and direct Karigar Fair Pledge banner.
    - Craft Quick View Modal with artisan audio story playback.

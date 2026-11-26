@@ -18,5 +18,9 @@ services:
         sync: false # e.g. https://[REF].supabase.co
       - key: SUPABASE_KEY
         sync: false # Service role secret
+      - key: SUPABASE_RAW_BUCKET
+        value: raw-craft-images
+      - key: SUPABASE_PROCESSED_BUCKET
+        value: processed-craft-images
       - key: SUPABASE_STORAGE_BUCKET
         value: craft-images

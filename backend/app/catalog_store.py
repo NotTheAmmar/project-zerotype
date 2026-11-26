@@ -13,6 +13,7 @@ from typing import Dict, List, Optional
 from app.db import (
     delete_listing_db,
     load_all_listings_db,
+    load_listings_with_status_db,
     save_listing_db,
     update_listing_status_db,
 )
@@ -68,6 +69,35 @@ async def save_active_listing_async(
         await save_listing_db(payload, status=status)
     except Exception as e:
         logger.error("Failed to persist listing %s to DB: %s", payload.catalog_id, e)
+
+
+async def save_draft_listing_async(payload: ArtisanListingPayload) -> None:
+    """Persist a draft listing to the DB without exposing it to ONDC /beckn/search."""
+    delete_listing(payload.catalog_id)
+    try:
+        await save_listing_db(payload, status="DRAFT")
+    except Exception as e:
+        logger.error("Failed to persist draft %s to DB: %s", payload.catalog_id, e)
+
+
+async def get_all_listings_with_status(include_drafts: bool = False) -> List[dict]:
+    """Fetch listings from DB (with status) or fall back to in-memory cache."""
+    rows = await load_listings_with_status_db(include_drafts=include_drafts)
+    if rows:
+        out: List[dict] = []
+        for r in rows:
+            item = dict(r["payload"])
+            item["status"] = r.get("status", "PUBLISHED")
+            if r.get("created_at"):
+                item["created_at"] = r["created_at"]
+            if r.get("updated_at"):
+                item["updated_at"] = r["updated_at"]
+            out.append(item)
+        return out
+    return [
+        {**lst.model_dump(), "status": "PUBLISHED"}
+        for lst in get_all_listings()
+    ]
 
 
 def get_latest_listing() -> Optional[ArtisanListingPayload]:

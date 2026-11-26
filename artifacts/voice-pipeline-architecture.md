@@ -12,7 +12,7 @@ sequenceDiagram
     participant Vision as Vision/Category Detector
     participant Audio as AudioService
     participant Bhashini as Bhashini Cloud / Local ASR
-    participant Qwen as Qwen / Groq Engine
+    participant Qwen as Qwen Engine
     
     Vision->>Audio: Category Detected (e.g. Pottery RET16)
     Audio->>Artisan: 1. Guided 4-Step Voice Interview
@@ -50,7 +50,7 @@ Rather than an unstructured single voice dump, the flow breaks down cataloging i
 - **Audio Interruption Lifecycle**: Both Flutter TTS synthesis and Bhashini `AudioPlayer` playback halt immediately when navigating away, popping screens, or dismissing quick-view modals, preventing overlapping audio playback.
 
 ### C. Qwen Catalog Extraction (`api_service.dart`)
-- **Default Model**: `qwen-2.5-32b-it` (via Groq OpenAI-compatible free API or custom inference server).
+- **Default Model**: `qwen-2.5-32b-instruct` (via OpenAI-compatible Qwen API or custom inference server).
 - **Temperature**: `0.1` for maximum schema reliability and determinism.
 - **System Prompt**:
 ```text

@@ -15,14 +15,13 @@ This guide provides direct, step-by-step instructions for deploying the **Bazaar
          ┌──────────┴──────────┐
          │ HTTP / JSON         │ Image Upload
          ▼                     ▼
- ┌──────────────────────────────────────┐        ┌─────────────────────────────┐
- │         FastAPI BPP Backend          │        │      Supabase Storage       │
- │       (Hosted 24/7 on Render)        │───────>│  Bucket: craft-images (CDN) │
- │  • /api/v1/bpp/publish               │        │  • Raw Camera Photos        │
- │  • /api/v1/bpp/upload-image          │        │  • AI Studio Images         │
- │  • /beckn/search, select, init       │        └──────────────┬──────────────┘
- └──────────────────┬───────────────────┘                       │
-                    │                                           │ Public CDN URL
+ ┌──────────────────────────────────────┐        ┌──────────────────────────────────────┐
+ │         FastAPI BPP Backend          │        │           Supabase Storage           │
+ │       (Hosted 24/7 on Render)        │───────>│  • Bucket 1: raw-craft-images        │
+ │  • /api/v1/bpp/publish, /draft       │        │  • Bucket 2: processed-craft-images  │
+ │  • /api/v1/bpp/listings (GET/PUT)    │        │    (Only processed sent to ONDC)     │
+ │  • /api/v1/bpp/upload-image          │        └──────────────────┬───────────────────┘
+ │  • /beckn/search, select, init       │                           │ Public CDN URL
          ┌──────────┴──────────┐                                │
          ▼                     ▼                                ▼
  ┌──────────────────┐    ┌────────────────────────┐    ┌────────────────────────┐
@@ -63,22 +62,21 @@ This guide provides direct, step-by-step instructions for deploying the **Bazaar
 
 ---
 
-### Step 3: Configure Supabase Storage for Images
-ONDC buyer apps mandate **public HTTPS image URLs** to display artisan crafts. We store both **raw camera photos** and **AI studio images** in Supabase Storage.
+### Step 3: Configure Supabase Storage for Images (Dual Buckets)
+ONDC buyer apps mandate **public HTTPS image URLs** to display artisan crafts. We store **raw camera photos** and **AI-processed studio images** in two separate Supabase Storage buckets:
 
 1. In Supabase Dashboard, click **Storage** in the left sidebar.
-2. Click **New bucket**.
-3. **Bucket Name**: `craft-images`
-4. **Public bucket**: **Enable this toggle (ON)**.  
-   *(Crucial: Public access allows ONDC buyer apps to display craft photos without requiring authentication tokens).*
-5. Click **Save bucket**.
+2. Create two **Public** buckets:
+   - **`raw-craft-images`** — original raw camera captures (displayed in-app only with an `Original Raw` badge; **never** sent to ONDC).
+   - **`processed-craft-images`** — AI-processed studio photos and processed gallery angles (sent to ONDC `on_search` responses).
+3. Ensure **Public bucket** is **enabled (ON)** on both buckets so ONDC buyer apps can load processed craft photos without auth tokens.
 
 #### Image Storage Strategy:
-- **Raw Camera Photos**: Stored at `craft-images/<catalog_id>_raw.jpg`. Preserves authentic reference photos, useful for dispute resolution and retraining vision models.
-- **AI Studio Images**: Stored at `craft-images/<catalog_id>_studio.jpg`. Features cleaned backgrounds, professional studio lighting, and color balancing for high conversion on ONDC buyer apps.
+- **Raw Camera Photos**: Stored at `raw-craft-images/<catalog_id>_raw.jpg`. Preserves authentic reference photos for in-app verification and retraining.
+- **AI Studio Images**: Stored at `processed-craft-images/<catalog_id>_studio.jpg`. Features cleaned backgrounds and studio lighting, and is the **only** image source exposed on ONDC Beckn `on_search`.
 - **Public CDN URL format**:
   ```
-  https://[YOUR-PROJECT-REF].supabase.co/storage/v1/object/public/craft-images/<catalog_id>_studio.jpg
+  https://[YOUR-PROJECT-REF].supabase.co/storage/v1/object/public/processed-craft-images/<catalog_id>_studio.jpg
   ```
 
 ---
@@ -172,6 +170,8 @@ DATABASE_URL=postgresql+asyncpg://postgres.[YOUR-PROJECT-REF]:[YOUR-PASSWORD]@aw
 # Only required if storing craft photos in Supabase Storage CDN (recommended for ONDC)
 SUPABASE_URL=https://[YOUR-PROJECT-REF].supabase.co
 SUPABASE_KEY=[YOUR-SUPABASE-SERVICE-ROLE-KEY]
+SUPABASE_RAW_BUCKET=raw-craft-images
+SUPABASE_PROCESSED_BUCKET=processed-craft-images
 SUPABASE_STORAGE_BUCKET=craft-images
 ```
 
@@ -242,9 +242,23 @@ BPP_BACKEND_URL=https://project-zerotype-bpp.onrender.com
 | Component | Status | Purpose |
 |---|---|---|
 | **Catalog Store** | ✅ Live | Stores active craft listings in Supabase PostgreSQL |
-| **Media CDN** | ✅ Live | Supabase Storage bucket `craft-images` hosting raw & studio photos |
+| **Media CDN** | ✅ Live | Dual Supabase Storage buckets (`raw-craft-images` & `processed-craft-images`) |
 | **FastAPI BPP Node** | ✅ Live | Hosted on Render with Ed25519 Beckn signatures |
 | **24/7 Keep-Alive** | ✅ Live | UptimeRobot `HEAD /` pinging every 5 minutes |
 | **Bilingual Retails** | ✅ Live | English titles & descriptions with Hindi Devanagari ONDC tags |
 | **Seller Profiles** | 🔜 Phase 3 | `sellers` table schema ready; user profile UI will be added in app |
 | **Order Processing** | 🔜 Phase 3 | `/beckn/confirm` atomic inventory decrement and logistics waybill generation |
+
+---
+
+## 6. 🧹 Resetting Supabase / Backend Test Data (CLI Only)
+
+To wipe test listings and uploaded images from Supabase PostgreSQL, local SQLite, Supabase Storage buckets, and `backend/uploads/` without exposing any reset control inside the app:
+
+```bash
+cd backend
+python scripts/reset_backend.py --yes          # Clears DB tables + all storage buckets
+python scripts/reset_backend.py --db-only -y   # Clears DB tables only
+python scripts/reset_backend.py --storage-only -y
+```
+*(Restart `uvicorn` if running locally so the in-memory Beckn cache reloads empty state.)*
