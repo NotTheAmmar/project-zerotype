@@ -2,15 +2,17 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_strings.dart';
+import '../../config/constants.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/capture_controller.dart';
 import '../../controllers/language_controller.dart';
 import '../../controllers/voice_controller.dart';
+import '../../services/audio_service.dart';
+import '../../services/bhashini_service.dart';
 import '../widgets/bilingual_text.dart';
 import '../widgets/mic_button.dart';
 import '../widgets/waveform_visualizer.dart';
@@ -23,7 +25,8 @@ class VoiceScreen extends StatefulWidget {
 }
 
 class _VoiceScreenState extends State<VoiceScreen> {
-  final FlutterTts _tts = FlutterTts();
+  final BhashiniService _bhashiniService = BhashiniService();
+  final AudioService _questionAudio = AudioService();
   int _lastSpokenStep = -1;
 
   @override
@@ -40,40 +43,62 @@ class _VoiceScreenState extends State<VoiceScreen> {
     final voiceCtrl = context.read<VoiceController>();
     if (_lastSpokenStep == voiceCtrl.currentStep) return;
     _lastSpokenStep = voiceCtrl.currentStep;
+    await _speakQuestionForStep(voiceCtrl.currentStepData);
+  }
 
+  Future<void> _speakQuestionForStep(GuidedVoiceStep step) async {
+    if (AppConstants.bhashiniApiKey.isEmpty) return;
     final langCtrl = context.read<LanguageController>();
-    final primaryLang = langCtrl.primaryLanguage;
-    final question = primaryLang.code == 'en'
-        ? voiceCtrl.currentStepData.questionEn
-        : voiceCtrl.currentStepData.questionHi;
+    final langCode = langCtrl.primaryLanguageCode;
+    String question;
+    if (langCode == 'en') {
+      question = step.questionEn;
+    } else if (langCode == 'hi') {
+      question = step.questionHi;
+    } else {
+      final cached = langCtrl.getCachedTranslation(
+        step.questionEn,
+        targetLang: langCode,
+      );
+      if (cached != null && cached.isNotEmpty) {
+        question = cached;
+      } else {
+        try {
+          question = await _bhashiniService.translate(
+            step.questionEn,
+            sourceLanguage: 'en',
+            targetLanguage: langCode,
+          );
+        } catch (_) {
+          question = step.questionEn;
+        }
+      }
+    }
+
     try {
-      await _tts.stop();
-      await _tts.setLanguage(primaryLang.ttsLocale);
-      await _tts.speak(question);
+      await _questionAudio.stopPlayback();
+      final ttsLang = langCtrl.primaryLanguage.supportsTts ? langCode : 'en';
+      final audioPath = await _bhashiniService.synthesize(
+        question,
+        sourceLanguage: ttsLang,
+        gender: 'female',
+      );
+      if (!mounted) return;
+      await _questionAudio.playFile(audioPath);
     } catch (e) {
-      debugPrint('[VoiceScreen] TTS speak error: $e');
+      debugPrint('[VoiceScreen] Bhashini question TTS error: $e');
     }
   }
 
   Future<void> _replayTts() async {
     final voiceCtrl = context.read<VoiceController>();
-    final langCtrl = context.read<LanguageController>();
-    final primaryLang = langCtrl.primaryLanguage;
-    final question = primaryLang.code == 'en'
-        ? voiceCtrl.currentStepData.questionEn
-        : voiceCtrl.currentStepData.questionHi;
-    try {
-      await _tts.stop();
-      await _tts.setLanguage(primaryLang.ttsLocale);
-      await _tts.speak(question);
-    } catch (e) {
-      debugPrint('[VoiceScreen] TTS replay error: $e');
-    }
+    await _speakQuestionForStep(voiceCtrl.currentStepData);
   }
 
   @override
   void dispose() {
-    _tts.stop();
+    _questionAudio.dispose();
+    _bhashiniService.dispose();
     super.dispose();
   }
 
@@ -100,7 +125,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
                           color: AppColors.textPrimary,
                         ),
                         onPressed: () async {
-                          await _tts.stop();
+                          await _questionAudio.stopPlayback();
                           if (!voiceCtrl.isFirstStep) {
                             await voiceCtrl.previousStep();
                             if (context.mounted) {
@@ -120,9 +145,9 @@ class _VoiceScreenState extends State<VoiceScreen> {
                       Expanded(
                         child: BilingualText(
                           english:
-                              'Step ${voiceCtrl.currentStep + 1} / ${voiceCtrl.totalSteps} • ${step.titleEn}',
+                              'Step ${voiceCtrl.currentStep + 1} / ${voiceCtrl.totalSteps}: ${step.titleEn}',
                           local:
-                              'सवाल ${voiceCtrl.currentStep + 1} / ${voiceCtrl.totalSteps} • ${step.titleHi}',
+                              'सवाल ${voiceCtrl.currentStep + 1} / ${voiceCtrl.totalSteps}: ${step.titleHi}',
                           englishStyle: AppTextStyles.label.copyWith(
                             fontWeight: FontWeight.w700,
                             fontSize: 14,
@@ -138,7 +163,11 @@ class _VoiceScreenState extends State<VoiceScreen> {
                           color: AppColors.primaryTeal,
                         ),
                         onPressed: _replayTts,
-                        tooltip: 'सवाल सुनें',
+                        tooltip: AppStrings.pair(
+                          context,
+                          en: 'Listen to question',
+                          hi: 'सवाल सुनें',
+                        ),
                       ),
                     ],
                   ),
@@ -160,7 +189,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
                           onTap: () async {
                             if (idx == voiceCtrl.currentStep) return;
                             if (idx < voiceCtrl.currentStep) {
-                              await _tts.stop();
+                              await _questionAudio.stopPlayback();
                               await voiceCtrl.jumpToStep(idx);
                               if (context.mounted) {
                                 _speakCurrentStepQuestion();
@@ -169,18 +198,22 @@ class _VoiceScreenState extends State<VoiceScreen> {
                             }
                             if (!voiceCtrl.isCurrentStepSatisfied) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'कृपया पहले इस सवाल का उत्तर दें • Please answer this question first',
+                                    AppStrings.pairRead(
+                                      context,
+                                      en: 'Please answer this question first',
+                                      hi: 'कृपया पहले इस सवाल का उत्तर दें',
+                                    ),
                                   ),
-                                  duration: Duration(seconds: 2),
+                                  duration: const Duration(seconds: 2),
                                   backgroundColor:
                                       AppColors.secondaryTerracotta,
                                 ),
                               );
                               return;
                             }
-                            await _tts.stop();
+                            await _questionAudio.stopPlayback();
                             await voiceCtrl.jumpToStep(idx);
                             if (context.mounted) {
                               _speakCurrentStepQuestion();
@@ -353,7 +386,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
                         MicButton(
                           isRecording: voiceCtrl.state == VoiceState.recording,
                           onTap: () async {
-                            await _tts.stop();
+                            await _questionAudio.stopPlayback();
                             await voiceCtrl.toggleRecording();
                           },
                         ),
@@ -395,7 +428,11 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                 ),
                                 const SizedBox(width: 6),
                                 Text(
-                                  'रिकॉर्ड हो गया • Answer Saved',
+                                  AppStrings.pair(
+                                    context,
+                                    en: 'Answer Saved',
+                                    hi: 'रिकॉर्ड हो गया',
+                                  ),
                                   style: AppTextStyles.labelSmall.copyWith(
                                     color: AppColors.primaryTeal,
                                     fontWeight: FontWeight.w700,
@@ -434,7 +471,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
                       if (!voiceCtrl.isFirstStep) ...[
                         OutlinedButton(
                           onPressed: () async {
-                            await _tts.stop();
+                            await _questionAudio.stopPlayback();
                             await voiceCtrl.previousStep();
                             if (context.mounted) {
                               _speakCurrentStepQuestion();
@@ -465,7 +502,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () async {
-                            await _tts.stop();
+                            await _questionAudio.stopPlayback();
 
                             // 1. If currently recording, stop and save it first
                             if (voiceCtrl.state == VoiceState.recording) {
@@ -476,11 +513,15 @@ class _VoiceScreenState extends State<VoiceScreen> {
                             if (!voiceCtrl.isCurrentStepSatisfied) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'कृपया पहले इस सवाल का उत्तर दें • Please answer this question before proceeding',
+                                      AppStrings.pairRead(
+                                        context,
+                                        en: 'Please answer this question before proceeding',
+                                        hi: 'कृपया पहले इस सवाल का उत्तर दें',
+                                      ),
                                     ),
-                                    duration: Duration(seconds: 2),
+                                    duration: const Duration(seconds: 2),
                                     backgroundColor:
                                         AppColors.secondaryTerracotta,
                                   ),
@@ -505,7 +546,11 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text(
-                                          'कृपया सवाल ${missing + 1} का उत्तर पूरा करें • Please complete question ${missing + 1}',
+                                          AppStrings.pairRead(
+                                            context,
+                                            en: 'Please complete question ${missing + 1}',
+                                            hi: 'कृपया सवाल ${missing + 1} का उत्तर पूरा करें',
+                                          ),
                                         ),
                                         duration: const Duration(seconds: 2),
                                         backgroundColor:
@@ -606,11 +651,17 @@ class _VoiceScreenState extends State<VoiceScreen> {
                 size: 18,
               ),
               const SizedBox(width: 6),
-              Text(
-                'माप एवं आकार (वैकल्पिक) • Manual Dimensions',
-                style: AppTextStyles.label.copyWith(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  AppStrings.pair(
+                    context,
+                    en: 'Manual Dimensions (Optional)',
+                    hi: 'माप एवं आकार (वैकल्पिक)',
+                  ),
+                  style: AppTextStyles.label.copyWith(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -621,10 +672,15 @@ class _VoiceScreenState extends State<VoiceScreen> {
               Expanded(
                 child: TextFormField(
                   initialValue: voiceCtrl.manualLength,
-                  decoration: const InputDecoration(
-                    labelText: 'लंबाई / Length',
+                  decoration: InputDecoration(
+                    labelText: AppStrings.pair(
+                      context,
+                      en: 'Length',
+                      hi: 'लंबाई',
+                      separator: ' / ',
+                    ),
                     isDense: true,
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
                   onChanged: (val) =>
@@ -635,10 +691,15 @@ class _VoiceScreenState extends State<VoiceScreen> {
               Expanded(
                 child: TextFormField(
                   initialValue: voiceCtrl.manualWidth,
-                  decoration: const InputDecoration(
-                    labelText: 'चौड़ाई / Width',
+                  decoration: InputDecoration(
+                    labelText: AppStrings.pair(
+                      context,
+                      en: 'Width',
+                      hi: 'चौड़ाई',
+                      separator: ' / ',
+                    ),
                     isDense: true,
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
                   onChanged: (val) => voiceCtrl.setManualDimensions(width: val),
@@ -652,7 +713,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
           Row(
             children: [
               Text(
-                'इकाई • Unit: ',
+                '${AppStrings.pair(context, en: 'Unit', hi: 'इकाई')}: ',
                 style: AppTextStyles.caption.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -690,10 +751,15 @@ class _VoiceScreenState extends State<VoiceScreen> {
                 flex: 2,
                 child: TextFormField(
                   initialValue: voiceCtrl.manualWeight,
-                  decoration: const InputDecoration(
-                    labelText: 'वज़न / Weight (e.g. 250, 1.2)',
+                  decoration: InputDecoration(
+                    labelText: AppStrings.pair(
+                      context,
+                      en: 'Weight (e.g. 250, 1.2)',
+                      hi: 'वज़न (उदा. 250, 1.2)',
+                      separator: ' / ',
+                    ),
                     isDense: true,
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: TextInputType.number,
                   onChanged: (val) =>

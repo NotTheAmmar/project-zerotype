@@ -103,7 +103,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Price updated to ₹$newPrice in database • कीमत ₹$newPrice अपडेट हुई',
+              AppStrings.pairRead(
+                context,
+                en: 'Price updated to ₹$newPrice in database',
+                hi: 'कीमत ₹$newPrice अपडेट हुई',
+              ),
             ),
             backgroundColor: AppColors.primaryTeal,
             duration: const Duration(seconds: 2),
@@ -127,7 +131,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Stock updated to $qty units in database • स्टॉक $qty पीस अपडेट हुआ',
+              AppStrings.pairRead(
+                context,
+                en: 'Stock updated to $qty units in database',
+                hi: 'स्टॉक $qty पीस अपडेट हुआ',
+              ),
             ),
             backgroundColor: AppColors.primaryTeal,
             duration: const Duration(seconds: 2),
@@ -169,19 +177,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
   Widget _buildFallbackImagePlaceholder() {
     return Container(
       color: AppColors.surfaceContainer,
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
+            const Icon(
               Icons.palette_outlined,
               size: 44,
               color: AppColors.secondaryTerracotta,
             ),
-            SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(
-              'शिल्प छायाचित्र • Artisan Craft Photo',
-              style: TextStyle(
+              AppStrings.pair(
+                context,
+                en: 'Artisan Craft Photo',
+                hi: 'शिल्प छायाचित्र',
+              ),
+              style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
@@ -374,7 +386,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
         onPressed: () => _navigateBackToExplore(context),
       ),
       title: Text(
-        'Product Detail',
+        AppStrings.pair(
+          context,
+          en: 'Product Detail',
+          hi: 'उत्पाद विवरण',
+        ),
         style: AppTextStyles.label.copyWith(
           fontSize: 16,
           fontWeight: FontWeight.w700,
@@ -384,7 +400,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
       actions: [
         if (catalogCtrl != null && item?.status != CatalogStatus.published)
           IconButton(
-            tooltip: 'बोलकर सुधारें • AI Voice Edit',
+            tooltip: AppStrings.pair(
+              context,
+              en: 'AI Voice Edit',
+              hi: 'बोलकर सुधारें',
+            ),
             icon: const Icon(
               Icons.mic_rounded,
               color: AppColors.secondaryTerracotta,
@@ -395,7 +415,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             catalogCtrl != null &&
             item.status != CatalogStatus.published)
           IconButton(
-            tooltip: 'मैन्युअल सुधारें • Manual Edit',
+            tooltip: AppStrings.pair(
+              context,
+              en: 'Manual Edit',
+              hi: 'मैन्युअल सुधारें',
+            ),
             icon: const Icon(
               Icons.edit_note_rounded,
               color: AppColors.primaryTeal,
@@ -406,7 +430,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             catalogCtrl != null &&
             item.status == CatalogStatus.published)
           IconButton(
-            tooltip: 'स्टॉक बदलें • Update Stock',
+            tooltip: AppStrings.pair(
+              context,
+              en: 'Update Stock',
+              hi: 'स्टॉक बदलें',
+            ),
             icon: const Icon(
               Icons.inventory_2_outlined,
               color: AppColors.primaryTeal,
@@ -418,7 +446,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             catalogCtrl != null &&
             item.status != CatalogStatus.published)
           IconButton(
-            tooltip: 'शिल्प हटाएं • Delete Draft',
+            tooltip: AppStrings.pair(
+              context,
+              en: 'Delete Draft',
+              hi: 'शिल्प हटाएं',
+            ),
             icon: const Icon(
               Icons.delete_outline_rounded,
               color: AppColors.alertRed,
@@ -426,7 +458,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             onPressed: () => _confirmDeleteCraft(context, item, catalogCtrl),
           ),
         IconButton(
-          tooltip: 'नेटवर्क विवरण • Network Info',
+          tooltip: AppStrings.pair(
+            context,
+            en: 'Network Info',
+            hi: 'नेटवर्क विवरण',
+          ),
           icon: const Icon(Icons.share_outlined, color: AppColors.textPrimary),
           onPressed: () {
             if (item != null) {
@@ -493,7 +529,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Active on Beckn rails • ओएनडीसी क्रेता ऐप्स पर उपलब्ध',
+                  AppStrings.pair(
+                    context,
+                    en: 'Active on Beckn rails',
+                    hi: 'ओएनडीसी क्रेता ऐप्स पर उपलब्ध',
+                  ),
                   style: AppTextStyles.caption.copyWith(
                     color: const Color(0xFF2E7D32),
                     fontWeight: FontWeight.w500,
@@ -503,7 +543,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ),
           ),
           IconButton(
-            tooltip: 'स्टॉक बदलें • Update Stock',
+            tooltip: AppStrings.pair(
+              context,
+              en: 'Update Stock',
+              hi: 'स्टॉक बदलें',
+            ),
             icon: const Icon(
               Icons.inventory_2_outlined,
               color: Color(0xFF2E7D32),
@@ -516,7 +560,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ),
           ),
           IconButton(
-            tooltip: 'नेटवर्क विवरण देखें • Network Info',
+            tooltip: AppStrings.pair(
+              context,
+              en: 'Network Info',
+              hi: 'नेटवर्क विवरण देखें',
+            ),
             icon: const Icon(
               Icons.info_outline_rounded,
               color: Color(0xFF2E7D32),
@@ -534,6 +582,34 @@ class _CatalogScreenState extends State<CatalogScreen> {
     CatalogItem item,
     CatalogController catalogCtrl,
   ) {
+    final langCtrl = context.read<LanguageController>();
+    final titleText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Delete Craft?',
+      hi: 'शिल्प हटाएं?',
+    );
+    final bodyText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Are you sure you want to permanently delete "${item.titleEn ?? 'this craft'}"? This action cannot be undone.',
+      hi: 'क्या आप वाकई इस शिल्प को स्थायी रूप से हटाना चाहते हैं?',
+      separator: '\n\n',
+    );
+    final cancelText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Cancel',
+      hi: 'रद्द करें',
+    );
+    final deleteText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Delete',
+      hi: 'हटाएं',
+    );
+    final deletedSnackText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Craft deleted successfully',
+      hi: 'शिल्प हटा दिया गया',
+    );
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -549,7 +625,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Delete Craft? • शिल्प हटाएं?',
+                titleText,
                 style: AppTextStyles.serifTitle().copyWith(fontSize: 18),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -557,15 +633,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ],
         ),
         content: Text(
-          'Are you sure you want to permanently delete "${item.titleEn}"? This action cannot be undone.\n\nक्या आप वाकई इस शिल्प को स्थायी रूप से हटाना चाहते हैं?',
+          bodyText,
           style: AppTextStyles.body,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancel • रद्द करें',
-              style: TextStyle(color: AppColors.textSecondary),
+            child: Text(
+              cancelText,
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -574,10 +650,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
               await catalogCtrl.deleteCatalog(item.id);
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Craft deleted successfully • शिल्प हटा दिया गया',
-                  ),
+                SnackBar(
+                  content: Text(deletedSnackText),
                   backgroundColor: AppColors.textPrimary,
                 ),
               );
@@ -587,7 +661,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               backgroundColor: AppColors.alertRed,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Delete • हटाएं'),
+            child: Text(deleteText),
           ),
         ],
       ),
@@ -599,6 +673,34 @@ class _CatalogScreenState extends State<CatalogScreen> {
     CatalogItem item,
     CatalogController catalogCtrl,
   ) {
+    final langCtrl = context.read<LanguageController>();
+    final titleText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Unlist Craft?',
+      hi: 'अनलिस्ट करें?',
+    );
+    final bodyText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'This will remove "${item.titleEn ?? 'this craft'}" from active buyer searches on ONDC and revert it to a local draft.',
+      hi: 'यह शिल्प ओएनडीसी क्रेता खोज से हट जाएगा और ड्राफ्ट में वापस आ जाएगा।',
+      separator: '\n\n',
+    );
+    final cancelText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Cancel',
+      hi: 'रद्द करें',
+    );
+    final unlistText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Unlist',
+      hi: 'अनलिस्ट करें',
+    );
+    final unlistedSnackText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Craft unlisted from ONDC',
+      hi: 'शिल्प ड्राफ्ट में बदल दिया गया',
+    );
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -614,7 +716,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Unlist Craft? • अनलिस्ट करें?',
+                titleText,
                 style: AppTextStyles.serifTitle().copyWith(fontSize: 18),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -622,15 +724,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ],
         ),
         content: Text(
-          'This will remove "${item.titleEn}" from active buyer searches on ONDC and revert it to a local draft.\n\nयह शिल्प ओएनडीसी क्रेता खोज से हट जाएगा और ड्राफ्ट में वापस आ जाएगा।',
+          bodyText,
           style: AppTextStyles.body,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text(
-              'Cancel • रद्द करें',
-              style: TextStyle(color: AppColors.textSecondary),
+            child: Text(
+              cancelText,
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
           ElevatedButton(
@@ -639,10 +741,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
               await catalogCtrl.unpublishCatalog(item);
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Craft unlisted from ONDC • शिल्प ड्राफ्ट में बदल दिया गया',
-                  ),
+                SnackBar(
+                  content: Text(unlistedSnackText),
                   backgroundColor: AppColors.secondaryTerracotta,
                 ),
               );
@@ -651,7 +751,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               backgroundColor: AppColors.secondaryTerracotta,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Unlist • अनलिस्ट करें'),
+            child: Text(unlistText),
           ),
         ],
       ),
@@ -737,7 +837,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
               backgroundColor: AppColors.primaryTeal,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Done • पूर्ण'),
+            child: Text(
+              AppStrings.pairRead(context, en: 'Done', hi: 'पूर्ण'),
+            ),
           ),
         ],
       ),
@@ -918,10 +1020,22 @@ class _CatalogScreenState extends State<CatalogScreen> {
                               const SizedBox(width: 4),
                               Text(
                                 isShowingRaw
-                                    ? 'Original Raw • App Only'
+                                    ? AppStrings.pair(
+                                        context,
+                                        en: 'Original Raw (App Only)',
+                                        hi: 'मूल फोटो (केवल ऐप)',
+                                      )
                                     : (isShowingStudio
-                                          ? 'AI Studio • ONDC'
-                                          : 'Gallery • ONDC'),
+                                          ? AppStrings.pair(
+                                              context,
+                                              en: 'AI Studio (ONDC)',
+                                              hi: 'स्टूडियो फोटो (ONDC)',
+                                            )
+                                          : AppStrings.pair(
+                                              context,
+                                              en: 'Gallery (ONDC)',
+                                              hi: 'गैलरी (ONDC)',
+                                            )),
                                 style: AppTextStyles.labelSmall.copyWith(
                                   color: Colors.white,
                                 ),
@@ -1301,11 +1415,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     child: Column(
                       children: [
                         Text(
-                          'Floor Cost',
+                          AppStrings.resolveForCode(
+                            context.watch<LanguageController>(),
+                            context.watch<LanguageController>().primaryLanguageCode,
+                            en: 'Floor Cost',
+                            hi: 'लागत मूल्य',
+                          ),
                           style: AppTextStyles.caption.copyWith(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -1315,13 +1435,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        Text(
-                          'लागत',
-                          style: AppTextStyles.caption.copyWith(
-                            fontSize: 9,
-                            color: AppColors.textSecondary,
+                        if (context.watch<LanguageController>().isBilingual &&
+                            context.watch<LanguageController>().secondaryLanguageCode != null)
+                          Text(
+                            AppStrings.resolveForCode(
+                              context.watch<LanguageController>(),
+                              context.watch<LanguageController>().secondaryLanguageCode!,
+                              en: 'Floor Cost',
+                              hi: 'लागत',
+                            ),
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 9,
+                              color: AppColors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -1369,7 +1497,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            'RECOMMENDED',
+                            AppStrings.resolveForCode(
+                              context.watch<LanguageController>(),
+                              context.watch<LanguageController>().primaryLanguageCode,
+                              en: 'RECOMMENDED',
+                              hi: 'सुझावित',
+                            ),
                             style: AppTextStyles.caption.copyWith(
                               fontSize: 7,
                               color: Colors.white,
@@ -1386,13 +1519,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             color: AppColors.primaryTeal,
                           ),
                         ),
-                        Text(
-                          'उचित दर',
-                          style: AppTextStyles.caption.copyWith(
-                            fontSize: 9,
-                            color: AppColors.textSecondary,
+                        if (context.watch<LanguageController>().isBilingual &&
+                            context.watch<LanguageController>().secondaryLanguageCode != null)
+                          Text(
+                            AppStrings.resolveForCode(
+                              context.watch<LanguageController>(),
+                              context.watch<LanguageController>().secondaryLanguageCode!,
+                              en: 'Fair Price',
+                              hi: 'उचित दर',
+                            ),
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 9,
+                              color: AppColors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -1431,11 +1572,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     child: Column(
                       children: [
                         Text(
-                          'Premium',
+                          AppStrings.resolveForCode(
+                            context.watch<LanguageController>(),
+                            context.watch<LanguageController>().primaryLanguageCode,
+                            en: 'Premium',
+                            hi: 'प्रीमियम',
+                          ),
                           style: AppTextStyles.caption.copyWith(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -1445,13 +1592,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        Text(
-                          'प्रीमियम',
-                          style: AppTextStyles.caption.copyWith(
-                            fontSize: 9,
-                            color: AppColors.textSecondary,
+                        if (context.watch<LanguageController>().isBilingual &&
+                            context.watch<LanguageController>().secondaryLanguageCode != null)
+                          Text(
+                            AppStrings.resolveForCode(
+                              context.watch<LanguageController>(),
+                              context.watch<LanguageController>().secondaryLanguageCode!,
+                              en: 'Premium',
+                              hi: 'प्रीमियम',
+                            ),
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 9,
+                              color: AppColors.textSecondary,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
                       ],
                     ),
                   ),
@@ -1485,7 +1640,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   color: AppColors.primaryTeal,
                 ),
                 label: Text(
-                  '₹$activePrice  •  बदलें',
+                  '₹$activePrice (${AppStrings.pair(context, en: 'Change', hi: 'बदलें')})',
                   style: AppTextStyles.label.copyWith(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -1513,7 +1668,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             children: [
               Expanded(
                 child: Text(
-                  'AVAILABLE STOCK / उपलब्ध मात्रा',
+                  AppStrings.pair(
+                    context,
+                    en: 'AVAILABLE STOCK',
+                    hi: 'उपलब्ध मात्रा',
+                  ),
                   style: AppTextStyles.caption.copyWith(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -1540,7 +1699,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                     const SizedBox(width: 3),
                     Text(
-                      'संख्या लिखें • Enter Custom',
+                      AppStrings.pair(
+                        context,
+                        en: 'Enter Custom',
+                        hi: 'संख्या लिखें',
+                      ),
                       style: AppTextStyles.labelSmall.copyWith(
                         color: AppColors.primaryTeal,
                         fontSize: 11,
@@ -1728,7 +1891,39 @@ class _CatalogScreenState extends State<CatalogScreen> {
     CatalogItem? item,
     CatalogController? catalogCtrl,
   ) {
+    final langCtrl = context.read<LanguageController>();
     final controller = TextEditingController(text: '$_quantity');
+    final titleText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Set Stock',
+      hi: 'उपलब्ध स्टॉक',
+    );
+    final helperText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'How many total units do you have in stock? (e.g. 50, 100, 500)',
+      hi: 'आपके पास कुल कितने पीस उपलब्ध हैं? (उदा: 50, 100, 500)',
+    );
+    final labelText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Total Units',
+      hi: 'स्टॉक मात्रा',
+    );
+    final hintText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'e.g. 100',
+      hi: 'उदा: 100',
+    );
+    final cancelText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Cancel',
+      hi: 'रद्द करें',
+    );
+    final applyText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Apply',
+      hi: 'लागू करें',
+    );
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1743,7 +1938,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'उपलब्ध स्टॉक • Set Stock',
+                titleText,
                 style: AppTextStyles.label.copyWith(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -1759,7 +1954,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'आपके पास कुल कितने पीस उपलब्ध हैं? (उदा: 50, 100, 500)',
+                helperText,
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -1769,11 +1964,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 controller: controller,
                 autofocus: true,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'स्टॉक मात्रा / Total Units',
-                  hintText: 'उदा: 100',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.tag_rounded),
+                decoration: InputDecoration(
+                  labelText: labelText,
+                  hintText: hintText,
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.tag_rounded),
                 ),
               ),
               const SizedBox(height: 12),
@@ -1796,7 +1991,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('रद्द करें • Cancel'),
+            child: Text(cancelText),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1810,7 +2005,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               backgroundColor: AppColors.primaryTeal,
               foregroundColor: Colors.white,
             ),
-            child: const Text('लागू करें • Apply'),
+            child: Text(applyText),
           ),
         ],
       ),
@@ -1823,12 +2018,29 @@ class _CatalogScreenState extends State<CatalogScreen> {
     int currentPrice,
     CatalogItem item,
   ) {
+    final langCtrl = context.read<LanguageController>();
     final controller = TextEditingController(text: '$currentPrice');
+    final titleText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Enter Custom Price',
+      hi: 'कीमत दर्ज करें',
+    );
+    final cancelText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'Cancel',
+      hi: 'रद्द करें',
+    );
+    final okText = AppStrings.pairFromController(
+      langCtrl,
+      en: 'OK',
+      hi: 'ठीक है',
+    );
+
     showDialog<int>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('कीमत दर्ज करें\nEnter Custom Price'),
+        title: Text(titleText),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
@@ -1842,7 +2054,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('रद्द करें • Cancel'),
+            child: Text(cancelText),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -1856,7 +2068,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               final val = int.tryParse(controller.text.trim());
               Navigator.of(ctx).pop(val);
             },
-            child: const Text('ठीक है • OK'),
+            child: Text(okText),
           ),
         ],
       ),
@@ -1940,7 +2152,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'बोलकर सुधारें',
+                      AppStrings.pair(
+                        context,
+                        en: 'Voice Edit',
+                        hi: 'बोलकर सुधारें',
+                      ),
                       style: AppTextStyles.labelSmall.copyWith(
                         color: AppColors.secondaryTerracotta,
                         fontWeight: FontWeight.bold,
@@ -2024,8 +2240,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         children: [
                           Text(
                             catalogCtrl.isSpeaking
-                                ? 'विवरण सुना रहे हैं • Speaking...'
-                                : 'शिल्प विवरण एवं मूल्य सुनें',
+                                ? AppStrings.pair(
+                                    context,
+                                    en: 'Speaking...',
+                                    hi: 'विवरण सुना रहे हैं...',
+                                  )
+                                : AppStrings.pair(
+                                    context,
+                                    en: 'Listen to craft details & price',
+                                    hi: 'शिल्प विवरण एवं मूल्य सुनें',
+                                  ),
                             style: AppTextStyles.label.copyWith(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
@@ -2033,8 +2257,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           ),
                           Text(
                             catalogCtrl.isSpeaking
-                                ? 'Tap to stop'
-                                : 'AI संश्लेषित विवरण • Synthesized Readback',
+                                ? AppStrings.pair(
+                                    context,
+                                    en: 'Tap to stop',
+                                    hi: 'रोकने के लिए दबाएं',
+                                  )
+                                : AppStrings.pair(
+                                    context,
+                                    en: 'AI Synthesized Readback',
+                                    hi: 'AI संश्लेषित विवरण',
+                                  ),
                             style: AppTextStyles.caption.copyWith(fontSize: 11),
                           ),
                         ],
@@ -2052,7 +2284,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        catalogCtrl.isSpeaking ? 'Playing' : 'Listen',
+                        catalogCtrl.isSpeaking
+                            ? AppStrings.pair(
+                                context,
+                                en: 'Playing',
+                                hi: 'चालू है',
+                              )
+                            : AppStrings.pair(
+                                context,
+                                en: 'Listen',
+                                hi: 'सुनें',
+                              ),
                         style: AppTextStyles.labelSmall.copyWith(
                           color: AppColors.secondaryTerracotta,
                           fontSize: 10,
@@ -2521,6 +2763,44 @@ class _CatalogScreenState extends State<CatalogScreen> {
                         try {
                           await catalogCtrl.publishToOndc(null, _quantity);
                           if (!context.mounted) return;
+                          if (!catalogCtrl.publishSuccess) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  catalogCtrl.errorMessage ??
+                                      AppStrings.pairRead(
+                                        context,
+                                        en: 'Failed to publish listing to ONDC',
+                                        hi: 'ओएनडीसी पर प्रकाशित करने में विफल रहा',
+                                      ),
+                                ),
+                                backgroundColor: AppColors.alertRed,
+                              ),
+                            );
+                            return;
+                          }
+                          final langCtrl = context.read<LanguageController>();
+                          final pubTitle = AppStrings.pairFromController(
+                            langCtrl,
+                            en: 'Published to ONDC!',
+                            hi: 'ओएनडीसी पर लाइव!',
+                          );
+                          final pubBody = AppStrings.pairFromController(
+                            langCtrl,
+                            en: 'Your craft "${item.titleEn ?? 'Artisan Craft'}" has been successfully broadcast to ONDC buyer apps via BazaarSetu BPP.',
+                            hi: 'यह शिल्प ओएनडीसी नेटवर्क पर सक्रिय हो चुका है।',
+                            separator: '\n\n',
+                          );
+                          final stayText = AppStrings.pairFromController(
+                            langCtrl,
+                            en: 'Stay on Listing',
+                            hi: 'यहीं रहें',
+                          );
+                          final backText = AppStrings.pairFromController(
+                            langCtrl,
+                            en: 'Back to Crafts',
+                            hi: 'मुख्य पृष्ठ',
+                          );
                           showDialog(
                             context: context,
                             builder: (ctx) => AlertDialog(
@@ -2538,7 +2818,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Published to ONDC! • ओएनडीसी पर लाइव!',
+                                      pubTitle,
                                       style: AppTextStyles.label.copyWith(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 16,
@@ -2549,15 +2829,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                 ],
                               ),
                               content: Text(
-                                'Your craft "${item.titleEn}" has been successfully broadcast to ONDC buyer apps via BazaarSetu BPP.\n\nयह शिल्प ओएनडीसी नेटवर्क पर सक्रिय हो चुका है।',
+                                pubBody,
                                 style: AppTextStyles.body,
                               ),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx),
-                                  child: const Text(
-                                    'Stay on Listing • यहीं रहें',
-                                  ),
+                                  child: Text(stayText),
                                 ),
                                 ElevatedButton(
                                   onPressed: () {
@@ -2568,9 +2846,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                     backgroundColor: AppColors.primaryTeal,
                                     foregroundColor: Colors.white,
                                   ),
-                                  child: const Text(
-                                    'Back to Crafts • मुख्य पृष्ठ',
-                                  ),
+                                  child: Text(backText),
                                 ),
                               ],
                             ),
@@ -2579,7 +2855,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Publish result: $e'),
+                              content: Text('Publish failed: $e'),
                               backgroundColor: AppColors.alertRed,
                             ),
                           );
@@ -2614,7 +2890,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             const Icon(Icons.rocket_launch_rounded, size: 18),
                             const SizedBox(width: 8),
                             Text(
-                              'ओएनडीसी पर प्रकाशित करें • Publish to ONDC',
+                              AppStrings.pair(
+                                context,
+                                en: 'Publish to ONDC',
+                                hi: 'ओएनडीसी पर प्रकाशित करें',
+                              ),
                               style: AppTextStyles.buttonLabel.copyWith(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
@@ -2653,12 +2933,12 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
   bool _isTranscribing = false;
   bool _isApplying = false;
 
-  static const List<String> _quickSuggestions = [
-    'कीमत ₹450 कर दो',
-    'सामग्री में पीतल जोड़ें',
-    'बनाने में 2 दिन लगे',
-    'शीर्षक: हस्तनिर्मित चंदेरी साड़ी',
-    'कच्चा माल ₹200 का पड़ा',
+  static const List<Map<String, String>> _quickSuggestions = [
+    {'en': 'Set price to ₹450', 'hi': 'कीमत ₹450 कर दो'},
+    {'en': 'Add brass in materials', 'hi': 'सामग्री में पीतल जोड़ें'},
+    {'en': 'Took 2 days to craft', 'hi': 'बनाने में 2 दिन लगे'},
+    {'en': 'Title: Handwoven Chanderi Saree', 'hi': 'शीर्षक: हस्तनिर्मित चंदेरी साड़ी'},
+    {'en': 'Raw material cost ₹200', 'hi': 'कच्चा माल ₹200 का पड़ा'},
   ];
 
   @override
@@ -2677,7 +2957,13 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
       try {
         final path = await _audioService.stopRecording();
         if (path != null && path.isNotEmpty) {
-          final transcript = await _apiService.transcribeAudio(path);
+          final voiceLang = mounted
+              ? context.read<LanguageController>().voiceLanguageCode
+              : 'hi';
+          final transcript = await _apiService.transcribeAudio(
+            path,
+            sourceLanguage: voiceLang,
+          );
           if (transcript.isNotEmpty && mounted) {
             _textController.text = transcript;
           }
@@ -2701,9 +2987,13 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
     final instruction = _textController.text.trim();
     if (instruction.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'कृपया बोलें या निर्देश लिखें • Please speak or type instructions',
+            AppStrings.pairRead(
+              context,
+              en: 'Please speak or type instructions',
+              hi: 'कृपया बोलें या निर्देश लिखें',
+            ),
           ),
         ),
       );
@@ -2716,9 +3006,13 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'कैटलॉग AI द्वारा अपडेट किया गया! • Listing updated by AI!',
+              AppStrings.pairRead(
+                context,
+                en: 'Listing updated by AI!',
+                hi: 'कैटलॉग AI द्वारा अपडेट किया गया!',
+              ),
             ),
             backgroundColor: AppColors.primaryTeal,
           ),
@@ -2787,14 +3081,22 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'बोलकर सुधारें • AI Voice Edit',
+                      AppStrings.pair(
+                        context,
+                        en: 'AI Voice Edit',
+                        hi: 'बोलकर सुधारें',
+                      ),
                       style: AppTextStyles.label.copyWith(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      'माइक दबाकर बोलें कि आप क्या बदलना चाहते हैं',
+                      AppStrings.pair(
+                        context,
+                        en: 'Tap the mic and say what you want to change',
+                        hi: 'माइक दबाकर बोलें कि आप क्या बदलना चाहते हैं',
+                      ),
                       style: AppTextStyles.caption.copyWith(fontSize: 12),
                     ),
                   ],
@@ -2841,10 +3143,22 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
           Center(
             child: Text(
               _isRecording
-                  ? 'सुन रहे हैं... बोलें • Listening...'
+                  ? AppStrings.pair(
+                      context,
+                      en: 'Listening...',
+                      hi: 'सुन रहे हैं... बोलें',
+                    )
                   : (_isTranscribing
-                        ? 'आवाज़ पहचानी जा रही है... • Transcribing...'
-                        : 'माइक दबाकर बोलें • Tap mic to speak'),
+                        ? AppStrings.pair(
+                            context,
+                            en: 'Transcribing...',
+                            hi: 'आवाज़ पहचानी जा रही है...',
+                          )
+                        : AppStrings.pair(
+                            context,
+                            en: 'Tap mic to speak',
+                            hi: 'माइक दबाकर बोलें',
+                          )),
               style: AppTextStyles.caption.copyWith(
                 fontWeight: FontWeight.w600,
                 color: _isRecording
@@ -2860,13 +3174,18 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: _quickSuggestions.map((sug) {
+                final label = AppStrings.pair(
+                  context,
+                  en: sug['en']!,
+                  hi: sug['hi']!,
+                );
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
                   child: ActionChip(
-                    label: Text(sug, style: const TextStyle(fontSize: 11)),
+                    label: Text(label, style: const TextStyle(fontSize: 11)),
                     backgroundColor: AppColors.surfaceContainer,
                     onPressed: () {
-                      _textController.text = sug;
+                      _textController.text = label;
                     },
                   ),
                 );
@@ -2880,7 +3199,11 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
             controller: _textController,
             maxLines: 2,
             decoration: InputDecoration(
-              hintText: 'उदा. "कीमत 450 रुपये कर दो और सामग्री में पीतल लिखो"',
+              hintText: AppStrings.pair(
+                context,
+                en: 'e.g. "Set price to 450 rupees and add brass to materials"',
+                hi: 'उदा. "कीमत 450 रुपये कर दो और सामग्री में पीतल लिखो"',
+              ),
               hintStyle: AppTextStyles.caption.copyWith(fontSize: 12),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -2911,14 +3234,18 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
                       strokeWidth: 2,
                     ),
                   )
-                : const Row(
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.auto_awesome, size: 18),
-                      SizedBox(width: 8),
+                      const Icon(Icons.auto_awesome, size: 18),
+                      const SizedBox(width: 8),
                       Text(
-                        'बदलाव लागू करें • Apply Changes',
-                        style: TextStyle(
+                        AppStrings.pair(
+                          context,
+                          en: 'Apply Changes',
+                          hi: 'बदलाव लागू करें',
+                        ),
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
@@ -3048,9 +3375,13 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'कैटलॉग विवरण सफलतापूर्वक अपडेट किया गया! • Details saved!',
+              AppStrings.pairRead(
+                context,
+                en: 'Catalog details updated!',
+                hi: 'कैटलॉग विवरण सफलतापूर्वक अपडेट किया गया!',
+              ),
             ),
             backgroundColor: AppColors.primaryTeal,
           ),
@@ -3122,14 +3453,22 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'मैन्युअल सुधारें • Edit Craft Form',
+                      AppStrings.pair(
+                        context,
+                        en: 'Edit Craft Form',
+                        hi: 'मैन्युअल सुधारें',
+                      ),
                       style: AppTextStyles.label.copyWith(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
-                      'विवरण, कीमत एवं सामग्री को बदलें',
+                      AppStrings.pair(
+                        context,
+                        en: 'Update description, pricing, and materials',
+                        hi: 'विवरण, कीमत एवं सामग्री को बदलें',
+                      ),
                       style: AppTextStyles.caption.copyWith(fontSize: 12),
                     ),
                   ],
@@ -3145,33 +3484,49 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                 children: [
                   TextFormField(
                     controller: _titleHiCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'उत्पाद का नाम (हिंदी) • Hindi Title',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.pair(
+                        context,
+                        en: 'Product Name (Hindi)',
+                        hi: 'उत्पाद का नाम (हिंदी)',
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _titleEnCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Product Name (English)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.pair(
+                        context,
+                        en: 'Product Name (English / ONDC)',
+                        hi: 'उत्पाद का नाम (अंग्रेजी / ONDC)',
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _categoryCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'श्रेणी • Category',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.pair(
+                        context,
+                        en: 'Category',
+                        hi: 'श्रेणी',
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _materialsCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'सामग्री • Materials (comma separated)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.pair(
+                        context,
+                        en: 'Materials (comma separated)',
+                        hi: 'सामग्री (कॉमा से अलग करें)',
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -3180,9 +3535,13 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                       Expanded(
                         child: TextFormField(
                           controller: _priceCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'विक्रय मूल्य (₹)',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: AppStrings.pair(
+                              context,
+                              en: 'Selling Price (₹)',
+                              hi: 'विक्रय मूल्य (₹)',
+                            ),
+                            border: const OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
                         ),
@@ -3191,9 +3550,13 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                       Expanded(
                         child: TextFormField(
                           controller: _rawCostCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'लागत (₹)',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: AppStrings.pair(
+                              context,
+                              en: 'Raw Material Cost (₹)',
+                              hi: 'लागत (₹)',
+                            ),
+                            border: const OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
                         ),
@@ -3206,9 +3569,13 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                       Expanded(
                         child: TextFormField(
                           controller: _laborDaysCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'श्रम के दिन • Days',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: AppStrings.pair(
+                              context,
+                              en: 'Days',
+                              hi: 'श्रम के दिन',
+                            ),
+                            border: const OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
                         ),
@@ -3217,9 +3584,13 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                       Expanded(
                         child: TextFormField(
                           controller: _dimensionsCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'माप • Dimensions',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: AppStrings.pair(
+                              context,
+                              en: 'Dimensions',
+                              hi: 'माप',
+                            ),
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                       ),
@@ -3227,9 +3598,13 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                       Expanded(
                         child: TextFormField(
                           controller: _quantityCtrl,
-                          decoration: const InputDecoration(
-                            labelText: 'मात्रा • Qty',
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            labelText: AppStrings.pair(
+                              context,
+                              en: 'Qty',
+                              hi: 'मात्रा',
+                            ),
+                            border: const OutlineInputBorder(),
                           ),
                           keyboardType: TextInputType.number,
                         ),
@@ -3240,18 +3615,26 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                   TextFormField(
                     controller: _descHiCtrl,
                     maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'विवरण (हिंदी) • Craft Description',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.pair(
+                        context,
+                        en: 'Description (Hindi)',
+                        hi: 'विवरण (हिंदी)',
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: _descEnCtrl,
                     maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: 'Description (English)',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.pair(
+                        context,
+                        en: 'Description (English / ONDC)',
+                        hi: 'विवरण (अंग्रेजी / ONDC)',
+                      ),
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ],
@@ -3279,14 +3662,18 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                       strokeWidth: 2,
                     ),
                   )
-                : const Row(
+                : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.check_circle_outline_rounded, size: 18),
-                      SizedBox(width: 8),
+                      const Icon(Icons.check_circle_outline_rounded, size: 18),
+                      const SizedBox(width: 8),
                       Text(
-                        'सहेजें एवं अपडेट करें • Save Changes',
-                        style: TextStyle(
+                        AppStrings.pair(
+                          context,
+                          en: 'Save Changes',
+                          hi: 'सहेजें एवं अपडेट करें',
+                        ),
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),

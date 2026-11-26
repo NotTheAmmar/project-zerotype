@@ -464,7 +464,11 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                'AI सहायता • AI Assistance',
+                                AppStrings.pair(
+                                  context,
+                                  en: 'AI Assistance',
+                                  hi: 'AI सहायता',
+                                ),
                                 style: AppTextStyles.label.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.textPrimary,
@@ -474,7 +478,12 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            catalogCtrl.errorMessage ?? 'सर्वर से जवाब नहीं मिला। आपकी खींची गई फोटो और आवाज़ सुरक्षित है।',
+                            catalogCtrl.errorMessage ??
+                                AppStrings.pair(
+                                  context,
+                                  en: 'Could not reach server. Your captured photo and voice recordings are safely saved.',
+                                  hi: 'सर्वर से जवाब नहीं मिला। आपकी खींची गई फोटो और आवाज़ सुरक्षित है।',
+                                ),
                             style: AppTextStyles.caption.copyWith(
                               color: AppColors.textPrimary,
                               fontSize: 12,
@@ -493,7 +502,13 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                                     Icons.refresh_rounded,
                                     size: 16,
                                   ),
-                                  label: const Text('दोबारा प्रयास • Retry'),
+                                  label: Text(
+                                    AppStrings.pair(
+                                      context,
+                                      en: 'Retry',
+                                      hi: 'दोबारा प्रयास',
+                                    ),
+                                  ),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: AppColors.primaryTeal,
                                     side: const BorderSide(
@@ -510,7 +525,13 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                                     Icons.edit_note_rounded,
                                     size: 16,
                                   ),
-                                  label: const Text('ड्राफ्ट खोलें • Draft'),
+                                  label: Text(
+                                    AppStrings.pair(
+                                      context,
+                                      en: 'Draft',
+                                      hi: 'ड्राफ्ट खोलें',
+                                    ),
+                                  ),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.primaryTeal,
                                     foregroundColor: Colors.white,
@@ -561,10 +582,22 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                           ],
                           Text(
                             isDone
-                                ? 'View Listing Preview → सूची देखें'
+                                ? AppStrings.pair(
+                                    context,
+                                    en: 'View Listing Preview',
+                                    hi: 'सूची देखें',
+                                  )
                                 : (isError
-                                      ? 'Open Draft Listing • ड्राफ्ट खोलें'
-                                      : 'Processing craft details... प्रतीक्षा करें'),
+                                      ? AppStrings.pair(
+                                          context,
+                                          en: 'Open Draft Listing',
+                                          hi: 'ड्राफ्ट खोलें',
+                                        )
+                                      : AppStrings.pair(
+                                          context,
+                                          en: 'Processing craft details...',
+                                          hi: 'प्रतीक्षा करें...',
+                                        )),
                             style: AppTextStyles.buttonLabel.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -697,7 +730,13 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    isDone ? 'Craft Ready • पूर्ण हुआ' : 'AI Craft Studio',
+                    isDone
+                        ? AppStrings.pair(
+                            context,
+                            en: 'Craft Ready',
+                            hi: 'पूर्ण हुआ',
+                          )
+                        : 'AI Craft Studio',
                     style: AppTextStyles.labelSmall.copyWith(
                       color: isDone
                           ? AppColors.primaryTeal
@@ -718,17 +757,41 @@ class _ProcessingScreenState extends State<ProcessingScreen>
   String _getStageHeadline(ProcessingStage stage) {
     switch (stage) {
       case ProcessingStage.imageProcessing:
-        return 'Enhancing Studio Photography • फोटो संपादन';
+        return AppStrings.pair(
+          context,
+          en: 'Enhancing Studio Photography',
+          hi: 'फोटो संपादन',
+        );
       case ProcessingStage.voiceProcessing:
-        return 'Transcribing Artisan Speech • आवाज़ का विश्लेषण';
+        return AppStrings.pair(
+          context,
+          en: 'Transcribing Artisan Speech',
+          hi: 'आवाज़ का विश्लेषण',
+        );
       case ProcessingStage.pricing:
-        return 'Calculating Fair Price • उचित मूल्य निर्धारण';
+        return AppStrings.pair(
+          context,
+          en: 'Calculating Fair Price',
+          hi: 'उचित मूल्य निर्धारण',
+        );
       case ProcessingStage.done:
-        return 'Listing Completed • कैटलॉग तैयार';
+        return AppStrings.pair(
+          context,
+          en: 'Listing Completed',
+          hi: 'कैटलॉग तैयार',
+        );
       case ProcessingStage.error:
-        return 'Attention Needed • सहायता आवश्यक';
+        return AppStrings.pair(
+          context,
+          en: 'Attention Needed',
+          hi: 'सहायता आवश्यक',
+        );
       default:
-        return 'Analyzing Craft Details • विश्लेषण जारी';
+        return AppStrings.pair(
+          context,
+          en: 'Analyzing Craft Details',
+          hi: 'विश्लेषण जारी',
+        );
     }
   }
 

@@ -14,11 +14,11 @@ import '../config/constants.dart';
 // BHASHINI SERVICE
 //
 // Wraps the two-step Bhashini / Dhruva API pattern:
-//   1. Pipeline Config  — discovers available model service IDs
+//   1. Pipeline Config  — discovers per-language model service IDs
 //   2. Pipeline Compute — runs ASR / NMT / TTS / Transliteration inference
 //
-// All methods are safe to call concurrently; config is cached after the first
-// successful fetch. Throws [BhashiniException] on any API failure.
+// Configs are cached per (taskType, sourceLanguage, targetLanguage) key so
+// switching languages never reuses another language's model serviceId.
 // ─────────────────────────────────────────────────────────────────────────────
 
 class BhashiniException implements Exception {
@@ -29,20 +29,31 @@ class BhashiniException implements Exception {
   String toString() => 'BhashiniException: $message';
 }
 
+class _CachedTaskConfig {
+  final String serviceId;
+  final String inferenceUrl;
+  final String? inferenceApiKey;
+
+  const _CachedTaskConfig({
+    required this.serviceId,
+    required this.inferenceUrl,
+    this.inferenceApiKey,
+  });
+}
+
 class BhashiniService {
   BhashiniService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
 
-  // ── Config cache ─────────────────────────────────────────────────────────
+  // ── Config cache keyed by "<taskType>:<sourceLanguage>:<targetLanguage>" ───
+  final Map<String, _CachedTaskConfig> _taskConfigs = {};
 
-  /// Lazy-loaded pipeline config: task name → serviceId.
-  final Map<String, String> _serviceIds = {};
-
-  /// The inference URL returned by the config call (may vary by task).
-  String? _inferenceUrl;
-
-  bool _configFetched = false;
+  String _cacheKey(
+    String taskType,
+    String sourceLanguage, [
+    String? targetLanguage,
+  ]) => '$taskType:$sourceLanguage:${targetLanguage ?? ''}';
 
   // ── Public API ────────────────────────────────────────────────────────────
 
@@ -52,29 +63,63 @@ class BhashiniService {
     String audioPath, {
     String sourceLanguage = 'hi',
   }) async {
-    await _ensureConfig(taskType: 'asr', sourceLanguage: sourceLanguage);
+    final cfg = await _ensureConfig(
+      taskType: 'asr',
+      sourceLanguage: sourceLanguage,
+    );
 
     final audioBytes = await _readAudio(audioPath);
     final base64Audio = base64Encode(audioBytes);
+    final audioFormat = audioPath.toLowerCase().endsWith('.flac')
+        ? 'flac'
+        : 'wav';
 
-    final result = await _compute(
-      pipelineTasks: [
-        {
-          'taskType': 'asr',
-          'config': {
-            'language': {'sourceLanguage': sourceLanguage},
-            'serviceId': _serviceIds['asr'] ?? '',
-            'audioFormat': audioPath.endsWith('.wav') ? 'wav' : 'flac',
-            'samplingRate': AppConstants.audioSampleRate,
+    Map<String, dynamic> result;
+    try {
+      // Request Inverse Text Normalization & punctuation so spoken numbers
+      // become digits (e.g. "तीन सौ पचास" -> "350") for accurate Qwen extraction.
+      result = await _compute(
+        taskConfig: cfg,
+        pipelineTasks: [
+          {
+            'taskType': 'asr',
+            'config': {
+              'language': {'sourceLanguage': sourceLanguage},
+              'serviceId': cfg.serviceId,
+              'audioFormat': audioFormat,
+              'samplingRate': AppConstants.audioSampleRate,
+              'postProcessors': const ['itn', 'punctuation'],
+            },
           },
-        },
-      ],
-      inputData: {
-        'audio': [
-          {'audioContent': base64Audio},
         ],
-      },
-    );
+        inputData: {
+          'audio': [
+            {'audioContent': base64Audio},
+          ],
+        },
+      );
+    } on BhashiniException {
+      // Fallback retry without postProcessors if a minor language rejects them.
+      result = await _compute(
+        taskConfig: cfg,
+        pipelineTasks: [
+          {
+            'taskType': 'asr',
+            'config': {
+              'language': {'sourceLanguage': sourceLanguage},
+              'serviceId': cfg.serviceId,
+              'audioFormat': audioFormat,
+              'samplingRate': AppConstants.audioSampleRate,
+            },
+          },
+        ],
+        inputData: {
+          'audio': [
+            {'audioContent': base64Audio},
+          ],
+        },
+      );
+    }
 
     final output =
         result['pipelineResponse']?[0]?['output']?[0]?['source'] as String?;
@@ -90,13 +135,14 @@ class BhashiniService {
     required String sourceLanguage,
     required String targetLanguage,
   }) async {
-    await _ensureConfig(
+    final cfg = await _ensureConfig(
       taskType: 'translation',
       sourceLanguage: sourceLanguage,
       targetLanguage: targetLanguage,
     );
 
     final result = await _compute(
+      taskConfig: cfg,
       pipelineTasks: [
         {
           'taskType': 'translation',
@@ -105,7 +151,7 @@ class BhashiniService {
               'sourceLanguage': sourceLanguage,
               'targetLanguage': targetLanguage,
             },
-            'serviceId': _serviceIds['translation'] ?? '',
+            'serviceId': cfg.serviceId,
           },
         },
       ],
@@ -124,24 +170,29 @@ class BhashiniService {
     return output.trim();
   }
 
-  /// Synthesises speech for [text] in [sourceLanguage].
-  /// Returns the local file path of the decoded WAV audio, ready for playback.
+  /// Synthesises speech for [text] in [sourceLanguage] at 22.05 kHz.
+  /// Converts Bhashini's 32-bit IEEE float WAV output to 16-bit PCM WAV so
+  /// Android/mobile audio players play crisply without clipping or distortion.
   Future<String> synthesize(
     String text, {
     String sourceLanguage = 'hi',
     String gender = 'female',
   }) async {
-    await _ensureConfig(taskType: 'tts', sourceLanguage: sourceLanguage);
+    final cfg = await _ensureConfig(
+      taskType: 'tts',
+      sourceLanguage: sourceLanguage,
+    );
 
     final result = await _compute(
+      taskConfig: cfg,
       pipelineTasks: [
         {
           'taskType': 'tts',
           'config': {
             'language': {'sourceLanguage': sourceLanguage},
-            'serviceId': _serviceIds['tts'] ?? '',
+            'serviceId': cfg.serviceId,
             'gender': gender,
-            'samplingRate': 8000,
+            'samplingRate': AppConstants.ttsSampleRate,
           },
         },
       ],
@@ -171,13 +222,14 @@ class BhashiniService {
     String sourceScriptCode = 'Deva',
     String targetScriptCode = 'Latn',
   }) async {
-    await _ensureConfig(
+    final cfg = await _ensureConfig(
       taskType: 'transliteration',
       sourceLanguage: sourceLanguage,
       targetLanguage: targetLanguage,
     );
 
     final result = await _compute(
+      taskConfig: cfg,
       pipelineTasks: [
         {
           'taskType': 'transliteration',
@@ -188,7 +240,7 @@ class BhashiniService {
               'sourceScriptCode': sourceScriptCode,
               'targetScriptCode': targetScriptCode,
             },
-            'serviceId': _serviceIds['transliteration'] ?? '',
+            'serviceId': cfg.serviceId,
           },
         },
       ],
@@ -207,16 +259,16 @@ class BhashiniService {
     return output.trim();
   }
 
-  // ── Config (lazy init) ───────────────────────────────────────────────────
+  // ── Config (per-language cached) ─────────────────────────────────────────
 
-  /// Calls the ULCA model search endpoint to discover service IDs and the
-  /// inference URL for [taskType]. Results are cached for the session.
-  Future<void> _ensureConfig({
+  Future<_CachedTaskConfig> _ensureConfig({
     required String taskType,
     String sourceLanguage = 'hi',
     String? targetLanguage,
   }) async {
-    if (_configFetched && _serviceIds.containsKey(taskType)) return;
+    final key = _cacheKey(taskType, sourceLanguage, targetLanguage);
+    final existing = _taskConfigs[key];
+    if (existing != null) return existing;
 
     final pipelineTask = <String, dynamic>{
       'taskType': taskType,
@@ -257,57 +309,59 @@ class BhashiniService {
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
 
-    // Extract inference URL (can differ per task) — fall back to default
     final callbackUrl =
         body['pipelineInferenceAPIEndPoint']?['callbackUrl'] as String?;
-    _inferenceUrl = (callbackUrl != null && callbackUrl.isNotEmpty)
+    final inferenceUrl = (callbackUrl != null && callbackUrl.isNotEmpty)
         ? callbackUrl
         : '${AppConstants.bhashiniApiUrl}/services/inference/pipeline';
 
-    // Extract service IDs per task type from the config response
+    final apiKey =
+        body['pipelineInferenceAPIEndPoint']?['inferenceApiKey']?['value']
+            as String?;
+
+    String resolvedServiceId = '';
     final taskConfigs = body['pipelineResponseConfig'] as List?;
     if (taskConfigs != null) {
       for (final taskCfg in taskConfigs) {
         final type = taskCfg['taskType'] as String?;
         final configs = taskCfg['config'] as List?;
-        if (type != null && configs != null && configs.isNotEmpty) {
+        if (type == taskType && configs != null && configs.isNotEmpty) {
           final serviceId = configs.first['serviceId'] as String?;
           if (serviceId != null && serviceId.isNotEmpty) {
-            _serviceIds[type] = serviceId;
+            resolvedServiceId = serviceId;
+            break;
           }
         }
       }
     }
 
-    // Also try to read the infer endpoint per-task (Bhashini v2 style)
-    final apiKey =
-        body['pipelineInferenceAPIEndPoint']?['inferenceApiKey']?['value']
-            as String?;
-    if (apiKey != null && apiKey.isNotEmpty) {
-      // Store separately so compute() can use it
-      _inferenceApiKey = apiKey;
+    if (resolvedServiceId.isEmpty) {
+      throw BhashiniException(
+        'No serviceId available for $taskType ($sourceLanguage${targetLanguage != null ? "->$targetLanguage" : ""})',
+      );
     }
 
-    _configFetched = true;
-    debugPrint('[BhashiniService] Config OK — serviceIds: $_serviceIds');
-    debugPrint('[BhashiniService] Inference URL: $_inferenceUrl');
-  }
+    final cached = _CachedTaskConfig(
+      serviceId: resolvedServiceId,
+      inferenceUrl: inferenceUrl,
+      inferenceApiKey: (apiKey != null && apiKey.isNotEmpty) ? apiKey : null,
+    );
+    _taskConfigs[key] = cached;
 
-  String? _inferenceApiKey;
+    debugPrint('[BhashiniService] Config OK [$key] -> $resolvedServiceId');
+    return cached;
+  }
 
   // ── Compute ──────────────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _compute({
+    required _CachedTaskConfig taskConfig,
     required List<Map<String, dynamic>> pipelineTasks,
     required Map<String, dynamic> inputData,
   }) async {
-    final url =
-        _inferenceUrl ??
-        '${AppConstants.bhashiniApiUrl}/services/inference/pipeline';
-
-    // Prefer the key from the config response; fall back to the API key from .env
-    final authValue = _inferenceApiKey?.isNotEmpty == true
-        ? _inferenceApiKey!
+    final url = taskConfig.inferenceUrl;
+    final authValue = taskConfig.inferenceApiKey?.isNotEmpty == true
+        ? taskConfig.inferenceApiKey!
         : AppConstants.bhashiniApiKey;
 
     final requestBody = {
@@ -336,7 +390,6 @@ class BhashiniService {
     if (kDebugMode) {
       debugPrint('==== BHASHINI RESPONSE ====');
       debugPrint('Status Code: ${response.statusCode}');
-      // Only print first 500 chars to avoid huge base64 spam
       final bodyStr = response.body;
       debugPrint(
         'Body: ${bodyStr.length > 500 ? "${bodyStr.substring(0, 500)}..." : bodyStr}',
@@ -365,17 +418,103 @@ class BhashiniService {
     return File(audioPath).readAsBytes();
   }
 
-  /// Decodes a base64 WAV string and writes it to a temp file.
-  /// Returns the file path.
-  Future<String> _saveBase64Audio(String base64Audio) async {
-    if (kIsWeb) {
-      return 'data:audio/wav;base64,$base64Audio';
+  /// Converts 32-bit IEEE float RIFF WAV (format tag 3, returned by Bhashini
+  /// indic-tts-coqui models) into standard 16-bit signed PCM WAV (format tag 1)
+  /// so mobile audio decoders play cleanly without distortion or clipping.
+  static Uint8List normalizeWavToPcm16(Uint8List bytes) {
+    if (bytes.length < 44) return bytes;
+    // Check 'RIFF' and 'WAVE'
+    if (bytes[0] != 0x52 ||
+        bytes[1] != 0x49 ||
+        bytes[2] != 0x46 ||
+        bytes[3] != 0x46 ||
+        bytes[8] != 0x57 ||
+        bytes[9] != 0x41 ||
+        bytes[10] != 0x56 ||
+        bytes[11] != 0x45) {
+      return bytes;
     }
-    final bytes = base64Decode(base64Audio);
+
+    final src = ByteData.sublistView(bytes);
+    int offset = 12;
+    int audioFormat = 1;
+    int channels = 1;
+    int sampleRate = 22050;
+    int bitsPerSample = 16;
+    int dataOffset = -1;
+    int dataSize = 0;
+
+    while (offset + 8 <= bytes.length) {
+      final chunkId = String.fromCharCodes(bytes.sublist(offset, offset + 4));
+      final chunkSize = src.getUint32(offset + 4, Endian.little);
+      final chunkDataStart = offset + 8;
+
+      if (chunkId == 'fmt ' && chunkSize >= 16 && chunkDataStart + 16 <= bytes.length) {
+        audioFormat = src.getUint16(chunkDataStart, Endian.little);
+        channels = src.getUint16(chunkDataStart + 2, Endian.little);
+        sampleRate = src.getUint32(chunkDataStart + 4, Endian.little);
+        bitsPerSample = src.getUint16(chunkDataStart + 14, Endian.little);
+      } else if (chunkId == 'data') {
+        dataOffset = chunkDataStart;
+        dataSize = chunkSize.clamp(0, bytes.length - chunkDataStart);
+        break;
+      }
+
+      // RIFF chunks are word-aligned (padded to even byte boundary)
+      offset = chunkDataStart + chunkSize + (chunkSize & 1);
+    }
+
+    // Only convert when IEEE 32-bit float (audioFormat == 3 && bitsPerSample == 32)
+    if (audioFormat != 3 || bitsPerSample != 32 || dataOffset < 0 || dataSize < 4) {
+      return bytes;
+    }
+
+    final sampleCount = dataSize ~/ 4;
+    final pcmDataSize = sampleCount * 2;
+    final out = Uint8List(44 + pcmDataSize);
+    final dst = ByteData.view(out.buffer);
+
+    // RIFF header
+    out.setAll(0, [0x52, 0x49, 0x46, 0x46]); // 'RIFF'
+    dst.setUint32(4, 36 + pcmDataSize, Endian.little);
+    out.setAll(8, [0x57, 0x41, 0x56, 0x45]); // 'WAVE'
+
+    // fmt chunk
+    out.setAll(12, [0x66, 0x6D, 0x74, 0x20]); // 'fmt '
+    dst.setUint32(16, 16, Endian.little); // PCM fmt chunk size
+    dst.setUint16(20, 1, Endian.little); // PCM format = 1
+    dst.setUint16(22, channels, Endian.little);
+    dst.setUint32(24, sampleRate, Endian.little);
+    dst.setUint32(28, sampleRate * channels * 2, Endian.little); // byteRate
+    dst.setUint16(32, channels * 2, Endian.little); // blockAlign
+    dst.setUint16(34, 16, Endian.little); // bitsPerSample
+
+    // data chunk
+    out.setAll(36, [0x64, 0x61, 0x74, 0x61]); // 'data'
+    dst.setUint32(40, pcmDataSize, Endian.little);
+
+    for (int i = 0; i < sampleCount; i++) {
+      final f = src.getFloat32(dataOffset + i * 4, Endian.little);
+      final clamped = f.isNaN ? 0.0 : f.clamp(-1.0, 1.0);
+      final s16 = (clamped * 32767.0).round().clamp(-32768, 32767);
+      dst.setInt16(44 + i * 2, s16, Endian.little);
+    }
+
+    return out;
+  }
+
+  /// Decodes a base64 WAV string, normalizes IEEE-float WAV to 16-bit PCM, and
+  /// writes it to a temp file. Returns the file path.
+  Future<String> _saveBase64Audio(String base64Audio) async {
+    final rawBytes = base64Decode(base64Audio);
+    final pcmBytes = normalizeWavToPcm16(rawBytes);
+    if (kIsWeb) {
+      return 'data:audio/wav;base64,${base64Encode(pcmBytes)}';
+    }
     final dir = await getTemporaryDirectory();
     final ts = DateTime.now().millisecondsSinceEpoch;
     final path = '${dir.path}/bhashini_tts_$ts.wav';
-    await File(path).writeAsBytes(bytes);
+    await File(path).writeAsBytes(pcmBytes);
     return path;
   }
 

@@ -10,9 +10,11 @@ import 'package:project_zerotype/services/bhashini_service.dart';
 import 'package:project_zerotype/services/storage_service.dart';
 
 class FakeApiService implements ApiService {
+  bool kaggleHealthy = false;
   PricingCorridor? lastPublishedPricing;
   int draftSyncCalls = 0;
   int updateSyncCalls = 0;
+  int kaggleProcessCalls = 0;
 
   @override
   Future<CatalogProcessResult> processCatalog({
@@ -99,6 +101,7 @@ class FakeApiService implements ApiService {
     String filePath, {
     String imageType = 'studio',
     String? catalogId,
+    String? baseUrl,
   }) async => ImageUploadResult(
     url: 'https://example.com/mock.jpg',
     rawImageUrl: 'https://example.com/mock_raw.jpg',
@@ -106,6 +109,19 @@ class FakeApiService implements ApiService {
     thumbnailUrl: 'https://example.com/mock_thumb.jpg',
     catalogId: catalogId,
   );
+
+  @override
+  Future<bool> isKaggleHealthy() async => kaggleHealthy;
+
+  @override
+  Future<String?> processImageWithKaggle(
+    String sourcePathOrUrl, {
+    String? catalogId,
+    String imageType = 'studio',
+  }) async {
+    kaggleProcessCalls++;
+    return 'https://example.com/processed-craft-images/${catalogId}_$imageType.jpg';
+  }
 }
 
 class FakeBhashiniService extends BhashiniService {
@@ -352,6 +368,42 @@ void main() {
         expect(restored.status, equals(CatalogStatus.draft));
         expect(restored.rawImagePath, contains('raw-craft-images'));
         expect(restored.studioImagePath, isNull);
+      },
+    );
+
+    test(
+      'processes missing studio image in background when Kaggle comes online',
+      () async {
+        // 1. Kaggle offline when draft is created
+        apiService.kaggleHealthy = false;
+        await controller.createFallbackDraft(imagePath: '/tmp/raw_pottery.jpg');
+        final offlineItem = controller.currentItem!;
+        expect(offlineItem.studioImagePath, equals('/tmp/raw_pottery.jpg'));
+
+        // Save to simulate a draft with null studioImagePath & raw Supabase URL
+        final withoutStudio = CatalogItem(
+          id: offlineItem.id,
+          createdAt: offlineItem.createdAt,
+          rawImagePath: 'https://example.com/raw-craft-images/p1_raw.jpg',
+          studioImagePath: null,
+          titleEn: 'Clay Vase',
+          pricing: offlineItem.pricing,
+        );
+        await controller.updateCurrentItem(withoutStudio);
+
+        final updatesBefore = apiService.updateSyncCalls;
+
+        // 2. Kaggle comes back online later -> background sync processes raw photo
+        apiService.kaggleHealthy = true;
+        final syncedCount = await controller.syncPendingWithBackendAndKaggle();
+
+        expect(syncedCount, equals(1));
+        expect(apiService.kaggleProcessCalls, greaterThanOrEqualTo(1));
+        expect(
+          controller.currentItem?.studioImagePath,
+          contains('processed-craft-images'),
+        );
+        expect(apiService.updateSyncCalls, greaterThanOrEqualTo(updatesBefore));
       },
     );
   });

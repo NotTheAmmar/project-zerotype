@@ -52,16 +52,26 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _checkBackendHealth() async {
+    final kaggleUrl = AppConstants.kaggleUrl;
+    if (kaggleUrl.isEmpty) {
+      if (mounted) {
+        setState(() => _isBackendConnected = false);
+      }
+      return;
+    }
     try {
-      final url = AppConstants.bppBackendUrl;
       final res = await http
           .get(
-            Uri.parse('$url/health'),
-            headers: {'bypass-tunnel-reminder': 'true'},
+            Uri.parse('$kaggleUrl/health'),
+            headers: const {'bypass-tunnel-reminder': 'true'},
           )
           .timeout(const Duration(seconds: 5));
+      final connected = res.statusCode == 200;
       if (mounted) {
-        setState(() => _isBackendConnected = res.statusCode == 200);
+        setState(() => _isBackendConnected = connected);
+        if (connected) {
+          context.read<CatalogController>().syncPendingWithBackendAndKaggle();
+        }
       }
     } catch (_) {
       if (mounted) {
@@ -237,16 +247,21 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           const SizedBox(width: 6),
 
-          // Kaggle / Backend Status Icon Button (Green = connected, Red = offline)
+          // Kaggle GPU Server Status Icon Button (Green = connected, Red = offline)
           Tooltip(
             message: _isBackendConnected == true
-                ? 'Backend Connected'
-                : 'Backend Offline (Tap to configure)',
+                ? 'Kaggle GPU Connected'
+                : 'Kaggle GPU Offline (Tap to configure)',
             child: InkWell(
               onTap: () async {
+                final catalogCtrl = context.read<CatalogController>();
                 final updated = await showDemoSettingsDialog(context);
-                if (updated != null && mounted) {
+                if (!mounted) return;
+                if (updated != null) {
                   setState(() => _isBackendConnected = updated);
+                  if (updated) {
+                    catalogCtrl.syncPendingWithBackendAndKaggle();
+                  }
                 } else {
                   _checkBackendHealth();
                 }
@@ -563,8 +578,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
       final audioPath = await _audioService.stopRecording();
       if (audioPath != null && audioPath.isNotEmpty) {
+        final voiceLang = mounted
+            ? context.read<LanguageController>().voiceLanguageCode
+            : 'hi';
         final apiService = ApiService();
-        final text = await apiService.transcribeAudio(audioPath);
+        final text = await apiService.transcribeAudio(
+          audioPath,
+          sourceLanguage: voiceLang,
+        );
         if (text.isNotEmpty && mounted) {
           _searchController.text = text;
           setState(() {
@@ -1188,8 +1209,16 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                     const SizedBox(width: 4),
                                     Text(
                                       _isPlayingStory
-                                          ? 'Stop'
-                                          : 'Listen • सुनें',
+                                          ? AppStrings.pairRead(
+                                              modalCtx,
+                                              en: 'Stop',
+                                              hi: 'रोकें',
+                                            )
+                                          : AppStrings.pairRead(
+                                              modalCtx,
+                                              en: 'Listen',
+                                              hi: 'सुनें',
+                                            ),
                                       style: AppTextStyles.labelSmall.copyWith(
                                         color: Colors.white,
                                         fontSize: 11,

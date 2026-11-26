@@ -33,7 +33,7 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
   @override
   void initState() {
     super.initState();
-    _urlController = TextEditingController(text: AppConstants.bppBackendUrl);
+    _urlController = TextEditingController(text: AppConstants.kaggleUrl);
   }
 
   @override
@@ -92,14 +92,19 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
 
   Future<void> _saveAndApply() async {
     final url = _urlController.text.trim();
-    await AppConstants.setCustomBackendUrl(url);
+    await AppConstants.setCustomKaggleUrl(url);
 
     if (mounted) {
-      context.read<CatalogController>().loadSavedCatalogs();
+      final catalogCtrl = context.read<CatalogController>();
+      catalogCtrl.loadSavedCatalogs();
+      catalogCtrl.syncPendingWithBackendAndKaggle();
       Navigator.of(context).pop(_testSuccess);
+      final targetMsg = AppConstants.kaggleUrl.isNotEmpty
+          ? 'Kaggle GPU linked: ${AppConstants.kaggleUrl}'
+          : 'Kaggle GPU cleared (using Render backend only)';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Connected to backend: ${AppConstants.bppBackendUrl}'),
+          content: Text(targetMsg),
           backgroundColor: AppColors.primaryTeal,
           duration: const Duration(seconds: 3),
         ),
@@ -108,9 +113,9 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
   }
 
   Future<void> _resetToDefaults() async {
-    await AppConstants.setCustomBackendUrl('');
+    await AppConstants.setCustomKaggleUrl('');
     setState(() {
-      _urlController.text = AppConstants.bppBackendUrl;
+      _urlController.text = AppConstants.kaggleUrl;
       _testMessage = null;
       _testSuccess = null;
     });

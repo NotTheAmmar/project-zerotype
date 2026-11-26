@@ -137,6 +137,19 @@ abstract class ApiService {
     String filePath, {
     String imageType = 'studio',
     String? catalogId,
+    String? baseUrl,
+  });
+
+  /// Checks whether the temporary Kaggle BiRefNet GPU server is configured and healthy.
+  Future<bool> isKaggleHealthy();
+
+  /// Sends [sourcePathOrUrl] (local path or raw Supabase URL) to the live Kaggle
+  /// BiRefNet server and ensures the resulting studio image is stored permanently
+  /// in the BPP's Supabase processed bucket. Returns null if Kaggle is offline.
+  Future<String?> processImageWithKaggle(
+    String sourcePathOrUrl, {
+    String? catalogId,
+    String imageType = 'studio',
   });
 
   factory ApiService() => LiveApiService();
@@ -214,6 +227,7 @@ class MockApiService implements ApiService {
     String filePath, {
     String imageType = 'studio',
     String? catalogId,
+    String? baseUrl,
   }) async {
     return ImageUploadResult(
       url: 'https://images.unsplash.com/photo-artisan-mock-$imageType',
@@ -223,6 +237,16 @@ class MockApiService implements ApiService {
       catalogId: catalogId,
     );
   }
+
+  @override
+  Future<bool> isKaggleHealthy() async => false;
+
+  @override
+  Future<String?> processImageWithKaggle(
+    String sourcePathOrUrl, {
+    String? catalogId,
+    String imageType = 'studio',
+  }) async => 'https://images.unsplash.com/photo-artisan-mock-$imageType';
 
   @override
   Future<CatalogProcessResult> processCatalog({
@@ -361,7 +385,10 @@ class LiveApiService implements ApiService {
       }
     }
 
-    // Upload ADDITIONAL gallery photos (excluding primary raw image)
+    // Upload ADDITIONAL gallery photos ONLY if Kaggle GPU processed them or they are
+    // already remote HTTP URLs; raw local gallery files stay on-device until Kaggle
+    // processes them so raw un-processed images are never sent to ONDC.
+    final kaggleOnline = await isKaggleHealthy();
     final uploadedGalleryUrls = <String>[];
     for (int i = 0; i < item.galleryImages.length; i++) {
       final gPath = item.galleryImages[i];
@@ -373,21 +400,21 @@ class LiveApiService implements ApiService {
             !uploadedGalleryUrls.contains(gPath)) {
           uploadedGalleryUrls.add(gPath);
         }
-      } else if (isLocalPath(gPath)) {
+      } else if (isLocalPath(gPath) && kaggleOnline) {
         try {
-          final uploaded = await uploadImage(
+          final processedGalleryUrl = await processImageWithKaggle(
             gPath,
             imageType: 'gallery_$i',
             catalogId: item.id,
           );
-          if (uploaded != null &&
-              uploaded.isNotEmpty &&
-              uploaded != finalRawImageUrl &&
-              !uploadedGalleryUrls.contains(uploaded)) {
-            uploadedGalleryUrls.add(uploaded);
+          if (processedGalleryUrl != null &&
+              processedGalleryUrl.isNotEmpty &&
+              processedGalleryUrl != finalRawImageUrl &&
+              !uploadedGalleryUrls.contains(processedGalleryUrl)) {
+            uploadedGalleryUrls.add(processedGalleryUrl);
           }
         } catch (e) {
-          debugPrint('[LiveApiService] Gallery image $i upload skipped: $e');
+          debugPrint('[LiveApiService] Gallery image $i Kaggle processing skipped: $e');
         }
       }
     }
@@ -530,10 +557,62 @@ class LiveApiService implements ApiService {
   }
 
   @override
+  Future<bool> isKaggleHealthy() async {
+    final kUrl = AppConstants.kaggleUrl;
+    if (kUrl.isEmpty) return false;
+    try {
+      final res = await http
+          .get(
+            Uri.parse('$kUrl/health'),
+            headers: const {'bypass-tunnel-reminder': 'true'},
+          )
+          .timeout(const Duration(seconds: 4));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<String?> processImageWithKaggle(
+    String sourcePathOrUrl, {
+    String? catalogId,
+    String imageType = 'studio',
+  }) async {
+    final kUrl = AppConstants.kaggleUrl;
+    if (kUrl.isEmpty || sourcePathOrUrl.isEmpty) return null;
+
+    final kaggleRes = await uploadImageWithDetails(
+      sourcePathOrUrl,
+      imageType: imageType,
+      catalogId: catalogId,
+      baseUrl: kUrl,
+    );
+    final studioUrl = kaggleRes?.studioImageUrl ?? kaggleRes?.url;
+    if (studioUrl == null || studioUrl.isEmpty) return null;
+
+    // If Kaggle already uploaded to Supabase CDN, return it directly.
+    if (studioUrl.contains('supabase.co')) {
+      return studioUrl;
+    }
+
+    // Otherwise Kaggle returned a temporary tunnel URL — copy it into the persistent
+    // Render BPP Supabase `processed-craft-images` bucket so it never expires.
+    final persisted = await uploadImageWithDetails(
+      studioUrl,
+      imageType: imageType,
+      catalogId: catalogId,
+      baseUrl: AppConstants.bppBackendUrl,
+    );
+    return persisted?.studioImageUrl ?? persisted?.url ?? studioUrl;
+  }
+
+  @override
   Future<ImageUploadResult?> uploadImageWithDetails(
     String filePath, {
     String imageType = 'studio',
     String? catalogId,
+    String? baseUrl,
   }) async {
     try {
       if (filePath.isEmpty) return null;
@@ -541,9 +620,22 @@ class LiveApiService implements ApiService {
       Uint8List bytes;
       String filename = 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-      if (kIsWeb ||
-          filePath.startsWith('blob:') ||
-          filePath.startsWith('http')) {
+      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        final imgResp = await http
+            .get(
+              Uri.parse(filePath),
+              headers: const {'bypass-tunnel-reminder': 'true'},
+            )
+            .timeout(const Duration(seconds: 30));
+        if (imgResp.statusCode != 200 || imgResp.bodyBytes.isEmpty) {
+          return null;
+        }
+        bytes = imgResp.bodyBytes;
+        final segs = Uri.tryParse(filePath)?.pathSegments;
+        if (segs != null && segs.isNotEmpty && segs.last.contains('.')) {
+          filename = segs.last;
+        }
+      } else if (kIsWeb || filePath.startsWith('blob:')) {
         final xFile = XFile(filePath);
         bytes = await xFile.readAsBytes();
         if (xFile.name.isNotEmpty) filename = xFile.name;
@@ -556,9 +648,10 @@ class LiveApiService implements ApiService {
         }
       }
 
-      final uri = Uri.parse(
-        '${AppConstants.bppBackendUrl}/api/v1/bpp/upload-image',
-      );
+      final targetRoot = (baseUrl != null && baseUrl.isNotEmpty)
+          ? baseUrl
+          : AppConstants.bppBackendUrl;
+      final uri = Uri.parse('$targetRoot/api/v1/bpp/upload-image');
       final request = http.MultipartRequest('POST', uri);
       request.headers['bypass-tunnel-reminder'] = 'true';
       if (catalogId != null) {
@@ -934,32 +1027,52 @@ Artisan update instruction:
     String? secondaryLanguage = 'hi',
     StageCallback? onStageComplete,
   }) async {
-    // Stage 0: image processing with BiRefNet-HR on Kaggle Dual-T4
+    // Stage 0: Raw upload to Render Supabase bucket (always attempted), plus optional
+    // BiRefNet-HR studio processing via Kaggle GPU when online.
     onStageComplete?.call(0);
     String? liveStudioUrl;
     String? liveRawUrl;
     if (imagePath.isNotEmpty) {
+      // 1. Upload raw camera photo directly to persistent BPP raw-craft-images bucket.
       try {
-        debugPrint(
-          '[LiveApiService] Invoking Kaggle BiRefNet for image: $imagePath',
-        );
-        final uploadRes = await uploadImageWithDetails(
+        final rawUpload = await uploadImageWithDetails(
           imagePath,
-          imageType: 'studio',
+          imageType: 'raw',
+          baseUrl: AppConstants.bppBackendUrl,
         );
-        liveStudioUrl = uploadRes?.studioImageUrl ?? uploadRes?.url;
-        liveRawUrl = uploadRes?.rawImageUrl;
-        debugPrint(
-          '[LiveApiService] Kaggle BiRefNet studio: $liveStudioUrl, raw: $liveRawUrl',
-        );
+        liveRawUrl = rawUpload?.rawImageUrl ?? rawUpload?.url;
+        debugPrint('[LiveApiService] Render raw upload URL: $liveRawUrl');
+      } catch (e) {
+        debugPrint('[LiveApiService] Raw upload error: $e');
+      }
+
+      // 2. Only call Kaggle BiRefNet if configured and responsive on /health (4s cap).
+      try {
+        if (await isKaggleHealthy()) {
+          debugPrint(
+            '[LiveApiService] Invoking Kaggle BiRefNet for image: $imagePath',
+          );
+          liveStudioUrl = await processImageWithKaggle(
+            imagePath,
+            imageType: 'studio',
+          );
+          debugPrint(
+            '[LiveApiService] Kaggle BiRefNet studio: $liveStudioUrl',
+          );
+        } else {
+          debugPrint(
+            '[LiveApiService] Kaggle GPU offline; skipping studio image for background sync later.',
+          );
+        }
       } catch (e) {
         debugPrint('[LiveApiService] BiRefNet processing error: $e');
       }
     }
 
     final List<String> segments = [];
+    final List<String> nativeSegments = [];
 
-    // Step 1: Transcribe multi-step audios or single audioPath
+    // Step 1: Transcribe multi-step audios or single audioPath via Bhashini ASR
     final audiosToTranscribe = (audioPaths != null && audioPaths.isNotEmpty)
         ? audioPaths
         : (audioPath.isNotEmpty ? [audioPath] : <String>[]);
@@ -973,6 +1086,7 @@ Artisan update instruction:
             sourceLanguage: voiceLanguage,
           );
           if (text.isNotEmpty) {
+            nativeSegments.add(text);
             segments.add('Step ${i + 1}: $text');
           }
         } catch (e) {
@@ -983,13 +1097,36 @@ Artisan update instruction:
 
     if (manualDimensions != null && manualDimensions.isNotEmpty) {
       segments.add(
-        'उत्पाद माप एवं मात्रा / Dimensions & Quantity: $manualDimensions',
+        'Dimensions & Quantity: $manualDimensions',
       );
     }
 
-    String transcript = segments.join('. ').trim();
-    if (transcript.isEmpty) {
-      transcript = 'Handmade artisan craft with natural raw materials, traditional skills, and delicate craftwork.';
+    String transcriptForQwen = segments.join('. ').trim();
+    final nativeTranscript = nativeSegments.join('. ').trim();
+
+    // Translate non-English artisan speech to English via Bhashini NMT so Qwen
+    // extracts attributes, prices, and craft names with high accuracy across all 23 languages.
+    if (transcriptForQwen.isNotEmpty &&
+        voiceLanguage != 'en' &&
+        AppConstants.bhashiniApiKey.isNotEmpty) {
+      try {
+        final translatedEn = await _bhashiniService.translate(
+          transcriptForQwen,
+          sourceLanguage: voiceLanguage,
+          targetLanguage: 'en',
+        );
+        if (translatedEn.isNotEmpty) {
+          transcriptForQwen =
+              '$translatedEn\n(Original artisan speech in $voiceLanguage: $transcriptForQwen)';
+        }
+      } catch (e) {
+        debugPrint('[LiveApiService] Bhashini NMT ($voiceLanguage->en) skipped: $e');
+      }
+    }
+
+    if (transcriptForQwen.isEmpty) {
+      transcriptForQwen =
+          'Handmade artisan craft with natural raw materials, traditional skills, and delicate craftwork.';
     }
 
     // Stage 1: voice transcription done
@@ -1001,24 +1138,30 @@ Artisan update instruction:
     CatalogProcessResult result;
     if (useQwen && AppConstants.qwenApiKey.isNotEmpty) {
       try {
-        final extracted = await _extractWithQwen(transcript);
+        final extracted = await _extractWithQwen(transcriptForQwen);
         result = resultFromQwenExtraction(
           extracted,
-          descHiFallback: transcript,
+          descHiFallback: nativeTranscript.isNotEmpty
+              ? nativeTranscript
+              : transcriptForQwen,
           studioImagePath: liveStudioUrl,
           rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
         );
       } catch (e) {
         debugPrint('[AI] Qwen extraction error: $e');
         result = _buildFallbackProcessResult(
-          transcript: transcript,
+          transcript: nativeTranscript.isNotEmpty
+              ? nativeTranscript
+              : transcriptForQwen,
           liveStudioUrl: liveStudioUrl,
           rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
         );
       }
     } else {
       result = _buildFallbackProcessResult(
-        transcript: transcript,
+        transcript: nativeTranscript.isNotEmpty
+            ? nativeTranscript
+            : transcriptForQwen,
         liveStudioUrl: liveStudioUrl,
         rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
       );

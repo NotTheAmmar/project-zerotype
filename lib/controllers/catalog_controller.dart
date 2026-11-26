@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
@@ -44,6 +46,7 @@ class CatalogController extends ChangeNotifier {
   bool _isSpeaking = false;
   bool _isPublishing = false;
   bool _publishSuccess = false;
+  bool _isBackgroundSyncing = false;
   String? _errorMessage;
 
   ProcessingStage get stage => _stage;
@@ -55,6 +58,7 @@ class CatalogController extends ChangeNotifier {
   bool get isSpeaking => _isSpeaking;
   bool get isPublishing => _isPublishing;
   bool get publishSuccess => _publishSuccess;
+  bool get isBackgroundSyncing => _isBackgroundSyncing;
   String? get errorMessage => _errorMessage;
 
   Future<void> loadSavedCatalogs() async {
@@ -68,23 +72,165 @@ class CatalogController extends ChangeNotifier {
 
       // 2. Remote sync: fetch active listings persisted in the backend database
       final remoteListings = await _apiService.fetchPublishedListings();
+      final remoteIds = <String>{};
       if (remoteListings.isNotEmpty) {
         for (final remote in remoteListings) {
+          remoteIds.add(remote.id);
           final idx = _savedCatalogs.indexWhere((c) => c.id == remote.id);
           if (idx >= 0) {
-            _savedCatalogs[idx] = remote;
+            final localItem = _savedCatalogs[idx];
+            // Preserve local raw/gallery paths if remote doesn't yet have them
+            final merged = remote.copyWith(
+              rawImagePath: (remote.rawImagePath?.isNotEmpty == true)
+                  ? remote.rawImagePath
+                  : localItem.rawImagePath,
+              studioImagePath: (remote.studioImagePath?.isNotEmpty == true)
+                  ? remote.studioImagePath
+                  : localItem.studioImagePath,
+              galleryImages: remote.galleryImages.isNotEmpty
+                  ? remote.galleryImages
+                  : localItem.galleryImages,
+            );
+            _savedCatalogs[idx] = merged;
+            await _storageService.saveCatalog(merged);
           } else {
             _savedCatalogs.insert(0, remote);
+            await _storageService.saveCatalog(remote);
           }
-          await _storageService.saveCatalog(remote);
         }
       }
+
+      // 3. Fire non-blocking offline -> online sync + deferred Kaggle image processing
+      unawaited(syncPendingWithBackendAndKaggle(knownRemoteIds: remoteIds));
     } catch (e) {
       debugPrint('[CatalogController] Error loading catalogs: $e');
     } finally {
       _isLoadingCatalogs = false;
       notifyListeners();
     }
+  }
+
+  /// Syncs any offline-saved catalogs to Supabase/Render and, whenever the
+  /// Kaggle BiRefNet GPU server is reachable, processes any catalog missing
+  /// an AI studio photo (or having unprocessed local gallery photos) in the background.
+  Future<int> syncPendingWithBackendAndKaggle({
+    Set<String>? knownRemoteIds,
+  }) async {
+    if (_isBackgroundSyncing) return 0;
+    _isBackgroundSyncing = true;
+    int updatedCount = 0;
+
+    try {
+      final kaggleOnline = await _apiService.isKaggleHealthy();
+      final snapshot = List<CatalogItem>.from(_savedCatalogs);
+
+      for (final item in snapshot) {
+        bool changed = false;
+        CatalogItem working = item;
+
+        final hasLocalRaw =
+            working.rawImagePath != null &&
+            working.rawImagePath!.isNotEmpty &&
+            !working.rawImagePath!.startsWith('http');
+        final notSyncedRemotely =
+            knownRemoteIds != null && !knownRemoteIds.contains(working.id);
+
+        // 1. Ensure draft/published item & raw image are synced to Supabase via Render
+        if (hasLocalRaw || notSyncedRemotely) {
+          await _syncToBackend(working);
+          final refreshed = _savedCatalogs.firstWhere(
+            (c) => c.id == working.id,
+            orElse: () => working,
+          );
+          if (refreshed.rawImagePath != working.rawImagePath) {
+            working = refreshed;
+            changed = true;
+          }
+        }
+
+        // 2. If Kaggle GPU is online and item lacks a processed studio photo, generate it now
+        if (kaggleOnline) {
+          final needsStudio =
+              (working.studioImagePath == null ||
+                  working.studioImagePath!.isEmpty ||
+                  working.studioImagePath == working.rawImagePath) &&
+              working.rawImagePath != null &&
+              working.rawImagePath!.isNotEmpty;
+
+          String? newStudioUrl;
+          if (needsStudio) {
+            try {
+              newStudioUrl = await _apiService.processImageWithKaggle(
+                working.rawImagePath!,
+                catalogId: working.id,
+                imageType: 'studio',
+              );
+            } catch (e) {
+              debugPrint(
+                '[CatalogController] Deferred Kaggle studio failed for ${working.id}: $e',
+              );
+            }
+          }
+
+          // Also process any local gallery photos not yet turned into remote URLs
+          bool galleryChanged = false;
+          final updatedGallery = <String>[];
+          for (int i = 0; i < working.galleryImages.length; i++) {
+            final g = working.galleryImages[i];
+            if (g.startsWith('http://') || g.startsWith('https://')) {
+              updatedGallery.add(g);
+            } else if (g.isNotEmpty) {
+              try {
+                final proc = await _apiService.processImageWithKaggle(
+                  g,
+                  catalogId: working.id,
+                  imageType: 'gallery_$i',
+                );
+                if (proc != null && proc.isNotEmpty) {
+                  updatedGallery.add(proc);
+                  galleryChanged = true;
+                } else {
+                  updatedGallery.add(g);
+                }
+              } catch (_) {
+                updatedGallery.add(g);
+              }
+            }
+          }
+
+          if ((newStudioUrl != null && newStudioUrl.isNotEmpty) ||
+              galleryChanged) {
+            working = working.copyWith(
+              studioImagePath:
+                  (newStudioUrl != null && newStudioUrl.isNotEmpty)
+                  ? newStudioUrl
+                  : working.studioImagePath,
+              galleryImages: galleryChanged
+                  ? updatedGallery
+                  : working.galleryImages,
+            );
+            if (_currentItem?.id == working.id) {
+              _currentItem = working;
+            }
+            await _storageService.saveCatalog(working);
+            _updateSavedList(working);
+            await _syncToBackend(working);
+            if (working.studioImagePath?.startsWith('http') == true) {
+              _precacheStudioImage(working.studioImagePath!);
+            }
+            updatedCount++;
+            changed = true;
+          }
+        }
+
+        if (changed) notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('[CatalogController] Background sync error: $e');
+    } finally {
+      _isBackgroundSyncing = false;
+    }
+    return updatedCount;
   }
 
   void setItem(CatalogItem item) {
