@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_strings.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/language_controller.dart';
@@ -64,6 +65,29 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     });
   }
 
+  String _uiText(
+    LanguageController langCtrl, {
+    required String en,
+    required String hi,
+    String separator = ' • ',
+  }) {
+    final p = AppStrings.resolveForCode(langCtrl, _primaryCode, en: en, hi: hi);
+    if (_displayMode == LanguageDisplayMode.single ||
+        _secondaryCode == null ||
+        _secondaryCode!.isEmpty ||
+        _secondaryCode == _primaryCode) {
+      return p;
+    }
+    final s = AppStrings.resolveForCode(
+      langCtrl,
+      _secondaryCode!,
+      en: en,
+      hi: hi,
+    );
+    if (s.trim().isEmpty || s.trim() == p.trim()) return p;
+    return '$p$separator$s';
+  }
+
   Future<void> _onConfirm() async {
     final langCtrl = context.read<LanguageController>();
     await langCtrl.setLanguagePreferences(
@@ -116,8 +140,12 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
               ),
         title: Text(
           widget.isInitialSetup
-              ? 'BazaarSetu • बाज़ार सेतु'
-              : 'भाषा व मोड चुनें • Language Setup',
+              ? _uiText(langCtrl, en: 'BazaarSetu', hi: 'बाज़ार सेतु')
+              : _uiText(
+                  langCtrl,
+                  en: 'Language Setup',
+                  hi: 'भाषा व मोड चुनें',
+                ),
           style: AppTextStyles.label.copyWith(
             fontWeight: FontWeight.w700,
             fontSize: 16,
@@ -156,7 +184,12 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
 
                     // Title
                     Text(
-                      'अपनी भाषा चुनें\nChoose Your Language Display',
+                      _uiText(
+                        langCtrl,
+                        en: 'Choose Your Language Display',
+                        hi: 'अपनी भाषा चुनें',
+                        separator: '\n',
+                      ),
                       textAlign: TextAlign.center,
                       style: AppTextStyles.serifTitle().copyWith(fontSize: 22),
                     ),
@@ -178,8 +211,16 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                       children: [
                         Expanded(
                           child: _ModeCard(
-                            title: 'Single Language',
-                            subtitle: 'एक भाषा • 1 language only',
+                            title: _uiText(
+                              langCtrl,
+                              en: 'Single Language',
+                              hi: 'एक भाषा',
+                            ),
+                            subtitle: _uiText(
+                              langCtrl,
+                              en: '1 language only',
+                              hi: 'केवल 1 भाषा',
+                            ),
                             icon: Icons.looks_one_outlined,
                             isSelected:
                                 _displayMode == LanguageDisplayMode.single,
@@ -194,8 +235,16 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: _ModeCard(
-                            title: 'Bilingual (2)',
-                            subtitle: 'दो भाषाएँ • Any 2 languages',
+                            title: _uiText(
+                              langCtrl,
+                              en: 'Bilingual (2)',
+                              hi: 'दो भाषाएँ (2)',
+                            ),
+                            subtitle: _uiText(
+                              langCtrl,
+                              en: 'Any 2 languages',
+                              hi: 'कोई भी 2 भाषाएँ',
+                            ),
                             icon: Icons.looks_two_outlined,
                             isSelected:
                                 _displayMode == LanguageDisplayMode.bilingual,
@@ -463,8 +512,16 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                     children: [
                       Text(
                         widget.isInitialSetup
-                            ? 'आगे बढ़ें • Continue'
-                            : 'लागू करें • Apply',
+                            ? _uiText(
+                                langCtrl,
+                                en: 'Continue',
+                                hi: 'आगे बढ़ें',
+                              )
+                            : _uiText(
+                                langCtrl,
+                                en: 'Apply',
+                                hi: 'लागू करें',
+                              ),
                         style: AppTextStyles.buttonLabel.copyWith(
                           color: Colors.white,
                           fontSize: 15,

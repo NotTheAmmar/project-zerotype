@@ -97,11 +97,11 @@ void main() {
 
     // Verify Language selection title and mode options are shown on first launch
     expect(
-      find.text('अपनी भाषा चुनें\nChoose Your Language Display'),
+      find.text('Choose Your Language Display\nअपनी भाषा चुनें'),
       findsOneWidget,
     );
-    expect(find.text('Single Language'), findsOneWidget);
-    expect(find.text('Bilingual (2)'), findsOneWidget);
+    expect(find.text('Single Language • एक भाषा'), findsOneWidget);
+    expect(find.text('Bilingual (2) • दो भाषाएँ (2)'), findsOneWidget);
   });
 
   testWidgets('BilingualText switches between single and bilingual modes', (

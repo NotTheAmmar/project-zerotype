@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_strings.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/capture_controller.dart';
@@ -107,12 +108,26 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  ctrl.isBusy ? 'कैमरा शुरू हो रहा है...' : 'कैमरा तैयार है',
+                  ctrl.isBusy
+                      ? AppStrings.pair(
+                          context,
+                          en: 'Starting camera...',
+                          hi: 'कैमरा शुरू हो रहा है...',
+                        )
+                      : AppStrings.pair(
+                          context,
+                          en: 'Camera Ready',
+                          hi: 'कैमरा तैयार है',
+                        ),
                   style: AppTextStyles.label.copyWith(color: Colors.white),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'फोटो खींचें या नीचे गैलरी से चुनें',
+                  AppStrings.pair(
+                    context,
+                    en: 'Take a photo or pick from gallery',
+                    hi: 'फोटो खींचें या नीचे गैलरी से चुनें',
+                  ),
                   style: AppTextStyles.caption.copyWith(color: Colors.white60),
                 ),
               ],
@@ -303,8 +318,16 @@ class _CaptureScreenState extends State<CaptureScreen> {
               const SizedBox(width: 8),
               Text(
                 ctrl.isQualityWarningBlur
-                    ? 'फोटो थोड़ी धुंधली है • Hold camera steady'
-                    : 'कम रोशनी • Better light recommended',
+                    ? AppStrings.pair(
+                        context,
+                        en: 'Hold camera steady',
+                        hi: 'फोटो थोड़ी धुंधली है',
+                      )
+                    : AppStrings.pair(
+                        context,
+                        en: 'Better light recommended',
+                        hi: 'कम रोशनी',
+                      ),
                 style: AppTextStyles.caption.copyWith(
                   color: Colors.black87,
                   fontWeight: FontWeight.w700,
@@ -377,7 +400,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
             ),
             const SizedBox(width: 8),
             Text(
-              'शिल्प की तस्वीरें लें (कम से कम 1 ज़रूरी) • Take craft photos',
+              AppStrings.pair(
+                context,
+                en: 'Take craft photos (at least 1)',
+                hi: 'शिल्प की तस्वीरें लें (कम से कम 1 ज़रूरी)',
+              ),
               style: AppTextStyles.caption.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w500,
@@ -420,7 +447,11 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      '${ctrl.photosCount} फ़ोटो जोड़ी गईं • ${ctrl.photosCount} photo${ctrl.photosCount > 1 ? 's' : ''} added',
+                      AppStrings.pair(
+                        context,
+                        en: '${ctrl.photosCount} photo${ctrl.photosCount > 1 ? 's' : ''} added',
+                        hi: '${ctrl.photosCount} फ़ोटो जोड़ी गईं',
+                      ),
                       style: AppTextStyles.caption.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -500,7 +531,13 @@ class _CaptureScreenState extends State<CaptureScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        isMain ? 'मुख्य #1' : '#${index + 1}',
+                        isMain
+                            ? AppStrings.pair(
+                                context,
+                                en: 'Main #1',
+                                hi: 'मुख्य #1',
+                              )
+                            : '#${index + 1}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,
@@ -559,7 +596,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 tooltip: 'गैलरी से चुनें',
               ),
               Text(
-                'गैलरी • Pick',
+                AppStrings.pair(context, en: 'Gallery', hi: 'गैलरी'),
                 style: AppTextStyles.caption.copyWith(
                   color: Colors.white70,
                   fontSize: 10,
@@ -624,7 +661,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'आगे • Voice',
+                      AppStrings.pair(context, en: 'Voice', hi: 'आगे'),
                       style: AppTextStyles.caption.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,

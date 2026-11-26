@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_strings.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/capture_controller.dart';
@@ -257,8 +258,25 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                   // ── Title & Subtitle ──────────────────────────────────────
                   Text(
                     isDone
-                        ? 'Catalog Ready!'
-                        : (isError ? 'Notice' : 'Crafting your listing...'),
+                        ? AppStrings.pair(
+                            context,
+                            en: 'Catalog Ready!',
+                            hi: 'आपका डिजिटल कैटलॉग तैयार है!',
+                            separator: '\n',
+                          )
+                        : (isError
+                              ? AppStrings.pair(
+                                  context,
+                                  en: 'Notice',
+                                  hi: 'कैटलॉग निर्माण में कुछ देरी हुई',
+                                  separator: '\n',
+                                )
+                              : AppStrings.pair(
+                                  context,
+                                  en: 'Crafting your listing...',
+                                  hi: 'डिजिटल कैटलॉग तैयार किया जा रहा है...',
+                                  separator: '\n',
+                                )),
                     textAlign: TextAlign.center,
                     style:
                         AppTextStyles.serifHeadingLarge(
@@ -266,24 +284,10 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                               ? AppColors.alertRed
                               : AppColors.textPrimary,
                         ).copyWith(
-                          fontSize: 26,
+                          fontSize: 24,
                           fontWeight: FontWeight.w700,
-                          height: 1.25,
+                          height: 1.3,
                         ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isDone
-                        ? 'आपका डिजिटल कैटलॉग तैयार है!'
-                        : (isError
-                              ? 'कैटलॉग निर्माण में कुछ देरी हुई'
-                              : 'डिजिटल कैटलॉग तैयार किया जा रहा है...'),
-                    textAlign: TextAlign.center,
-                    style: AppTextStyles.serifTitle(
-                      color: isDone
-                          ? AppColors.primaryTeal
-                          : AppColors.secondaryTerracotta,
-                    ).copyWith(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 24),
 
@@ -318,7 +322,11 @@ class _ProcessingScreenState extends State<ProcessingScreen>
                             Expanded(
                               child: Text(
                                 isDone
-                                    ? 'Analysis Complete • पूर्ण हुआ'
+                                    ? AppStrings.pair(
+                                        context,
+                                        en: 'Analysis Complete',
+                                        hi: 'पूर्ण हुआ',
+                                      )
                                     : _getStageHeadline(catalogCtrl.stage),
                                 style: AppTextStyles.label.copyWith(
                                   fontSize: 13,

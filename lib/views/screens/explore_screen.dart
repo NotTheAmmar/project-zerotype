@@ -1,12 +1,15 @@
 import '../widgets/demo_settings_dialog.dart';
 
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_strings.dart';
+import '../../config/constants.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/capture_controller.dart';
@@ -35,6 +38,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   String _searchQuery = '';
   bool _isVoiceSearching = false;
   bool _isPlayingStory = false;
+  bool? _isBackendConnected;
 
   @override
   void initState() {
@@ -42,8 +46,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<CatalogController>().loadSavedCatalogs();
+        _checkBackendHealth();
       }
     });
+  }
+
+  Future<void> _checkBackendHealth() async {
+    try {
+      final url = AppConstants.bppBackendUrl;
+      final res = await http
+          .get(
+            Uri.parse('$url/health'),
+            headers: {'bypass-tunnel-reminder': 'true'},
+          )
+          .timeout(const Duration(seconds: 5));
+      if (mounted) {
+        setState(() => _isBackendConnected = res.statusCode == 200);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isBackendConnected = false);
+      }
+    }
   }
 
   @override
@@ -188,8 +212,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
               children: [
                 Text(
                   'BazaarSetu',
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.serifHeading().copyWith(
-                    fontSize: 22,
+                    fontSize: isTablet ? 22 : 19,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                     letterSpacing: -0.3,
@@ -210,41 +237,53 @@ class _ExploreScreenState extends State<ExploreScreen> {
           ),
           const SizedBox(width: 6),
 
-          // Demo Server Status & Settings Pill
-          InkWell(
-            onTap: () => showDemoSettingsDialog(context),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.primaryTeal.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: AppColors.primaryTeal.withValues(alpha: 0.3),
+          // Kaggle / Backend Status Icon Button (Green = connected, Red = offline)
+          Tooltip(
+            message: _isBackendConnected == true
+                ? 'Backend Connected'
+                : 'Backend Offline (Tap to configure)',
+            child: InkWell(
+              onTap: () async {
+                final updated = await showDemoSettingsDialog(context);
+                if (updated != null && mounted) {
+                  setState(() => _isBackendConnected = updated);
+                } else {
+                  _checkBackendHealth();
+                }
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: (_isBackendConnected == true
+                          ? AppColors.successGreen
+                          : (_isBackendConnected == false
+                                ? AppColors.alertRed
+                                : AppColors.textSecondary))
+                      .withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: (_isBackendConnected == true
+                            ? AppColors.successGreen
+                            : (_isBackendConnected == false
+                                  ? AppColors.alertRed
+                                  : AppColors.textSecondary))
+                        .withValues(alpha: 0.4),
+                  ),
                 ),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.sensors_rounded,
-                    size: 14,
-                    color: AppColors.primaryTeal,
-                  ),
-                  SizedBox(width: 4),
-                  Text(
-                    'GPU Live',
-                    style: TextStyle(
-                      color: AppColors.primaryTeal,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+                child: Icon(
+                  Icons.sensors_rounded,
+                  size: 16,
+                  color: _isBackendConnected == true
+                      ? AppColors.successGreen
+                      : (_isBackendConnected == false
+                            ? AppColors.alertRed
+                            : AppColors.textSecondary),
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
 
           // Language Switcher Pill
           Consumer<LanguageController>(
@@ -258,36 +297,46 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 );
               },
               borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.cardBorder),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.translate_rounded,
-                      size: 14,
-                      color: AppColors.secondaryTerracotta,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      langCtrl.headerBadgeLabel,
-                      style: AppTextStyles.caption.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                        fontSize: 11,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: isTablet ? 160 : 88),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.translate_rounded,
+                        size: 14,
+                        color: AppColors.secondaryTerracotta,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          langCtrl.headerBadgeLabel,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
 
           // New Craft Listing CTA button in Header
           FilledButton.icon(
@@ -296,9 +345,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
               context.read<VoiceController>().reset();
               Navigator.pushNamed(context, AppRoutes.capture);
             },
-            icon: const Icon(Icons.add_rounded, size: 18),
+            icon: const Icon(Icons.add_rounded, size: 17),
             label: Text(
-              isTablet ? 'Create Craft Listing' : 'List Craft',
+              isTablet
+                  ? AppStrings.pair(
+                      context,
+                      en: 'Create Craft Listing',
+                      hi: 'नया शिल्प जोड़ें',
+                    )
+                  : AppStrings.pair(
+                      context,
+                      en: 'Add',
+                      hi: 'जोड़ें',
+                      separator: '/',
+                    ),
               style: AppTextStyles.labelSmall.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -306,7 +366,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             style: FilledButton.styleFrom(
               backgroundColor: AppColors.primaryTeal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: isTablet ? 12 : 10,
+                vertical: 8,
+              ),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -453,12 +518,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'बोलकर खोजें • Speak to Search',
+                AppStrings.pairRead(
+                  context,
+                  en: 'Speak to Search',
+                  hi: 'बोलकर खोजें',
+                ),
                 style: AppTextStyles.serifTitle().copyWith(fontSize: 18),
               ),
               const SizedBox(height: 6),
               Text(
-                'उदा: "सिल्क साड़ी", "टेराकोटा दीया", "लकड़ी के खिलौने"',
+                AppStrings.pairRead(
+                  context,
+                  en: 'e.g. "Silk Saree", "Terracotta Diya", "Wooden Toys"',
+                  hi: 'उदा: "सिल्क साड़ी", "टेराकोटा दीया", "लकड़ी के खिलौने"',
+                ),
                 style: AppTextStyles.caption.copyWith(
                   color: AppColors.textSecondary,
                 ),
@@ -467,7 +540,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
               ElevatedButton.icon(
                 onPressed: () => Navigator.pop(ctx),
                 icon: const Icon(Icons.check_rounded, size: 18),
-                label: const Text('खोजें • Search Now'),
+                label: Text(
+                  AppStrings.pairRead(
+                    context,
+                    en: 'Search Now',
+                    hi: 'खोजें',
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryTeal,
                   foregroundColor: Colors.white,
@@ -545,7 +624,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Refresh • ताज़ा करें',
+                  AppStrings.pair(
+                    context,
+                    en: 'Refresh',
+                    hi: 'ताज़ा करें',
+                  ),
                   style: AppTextStyles.caption.copyWith(
                     color: AppColors.primaryTeal,
                     fontWeight: FontWeight.w600,
@@ -583,7 +666,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              'डेटाबेस और ONDC नेटवर्क से शिल्प सिंक हो रहे हैं...',
+              AppStrings.pair(
+                context,
+                en: 'Syncing crafts from database and ONDC network...',
+                hi: 'डेटाबेस और ONDC नेटवर्क से शिल्प सिंक हो रहे हैं...',
+              ),
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.textSecondary,
               ),
@@ -656,8 +743,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 Navigator.pushNamed(context, AppRoutes.capture);
               },
               icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-              label: const Text(
-                'Create First Craft Listing • नया शिल्प जोड़ें',
+              label: Text(
+                AppStrings.pair(
+                  context,
+                  en: 'Create First Craft Listing',
+                  hi: 'नया शिल्प जोड़ें',
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondaryTerracotta,
@@ -682,9 +773,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 size: 18,
                 color: AppColors.primaryTeal,
               ),
-              label: const Text(
-                'Sync from Network • नेटवर्क से सिंक करें',
-                style: TextStyle(
+              label: Text(
+                AppStrings.pair(
+                  context,
+                  en: 'Sync from Network',
+                  hi: 'नेटवर्क से सिंक करें',
+                ),
+                style: const TextStyle(
                   color: AppColors.primaryTeal,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1005,7 +1100,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Craft Story • कारीगरी विवरण',
+                              AppStrings.pairRead(
+                                context,
+                                en: 'Craft Story',
+                                hi: 'कारीगरी विवरण',
+                              ),
                               style: AppTextStyles.labelSmall.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.primaryTeal,
@@ -1140,7 +1239,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         Navigator.pushNamed(context, AppRoutes.catalog);
                       },
                       icon: const Icon(Icons.edit_note_rounded, size: 20),
-                      label: const Text('View & Edit Listing • कैटलॉग देखें'),
+                      label: Text(
+                        AppStrings.pairRead(
+                          context,
+                          en: 'View & Edit Listing',
+                          hi: 'कैटलॉग देखें',
+                        ),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryTeal,
                         foregroundColor: Colors.white,

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_strings.dart';
 import '../../config/constants.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
@@ -1253,7 +1254,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
           // ── TACTILE PRICING CORRIDOR SELECTOR (Directive: Zero Typing) ──
           Text(
-            'FAIR-PRICE CORRIDOR • उचित मूल्य चयन',
+            AppStrings.pair(
+              context,
+              en: 'FAIR-PRICE CORRIDOR',
+              hi: 'उचित मूल्य चयन',
+            ),
             style: AppTextStyles.caption.copyWith(
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -1461,7 +1466,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Custom Price • अपनी कीमत',
+                AppStrings.pair(
+                  context,
+                  en: 'Custom Price',
+                  hi: 'अपनी कीमत',
+                ),
                 style: AppTextStyles.caption.copyWith(
                   fontSize: 11,
                   color: AppColors.textSecondary,
@@ -1906,7 +1915,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  'About Craft • शिल्प विवरण',
+                  AppStrings.pair(
+                    context,
+                    en: 'About Craft',
+                    hi: 'शिल्प विवरण',
+                  ),
                   style: AppTextStyles.serifTitle().copyWith(fontSize: 16),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2382,8 +2395,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   Expanded(
                     child: Text(
                       catalogCtrl.isSpeaking
-                          ? 'सुनाई दे रहा है... (Tap to stop)'
-                          : 'सुनें: ऑडियो पुष्टि • Listen to audio summary',
+                          ? AppStrings.pair(
+                              context,
+                              en: 'Playing... (Tap to stop)',
+                              hi: 'सुनाई दे रहा है... (रोकने के लिए दबाएं)',
+                            )
+                          : AppStrings.pair(
+                              context,
+                              en: 'Listen to audio summary',
+                              hi: 'सुनें: ऑडियो पुष्टि',
+                            ),
                       style: AppTextStyles.labelSmall.copyWith(
                         color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
@@ -2434,7 +2455,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Unlist • ड्राफ्ट बनाएं',
+                            AppStrings.pair(
+                              context,
+                              en: 'Unlist',
+                              hi: 'ड्राफ्ट बनाएं',
+                            ),
                             style: AppTextStyles.labelSmall.copyWith(
                               color: AppColors.secondaryTerracotta,
                               fontWeight: FontWeight.bold,
@@ -2468,7 +2493,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           const Icon(Icons.hub_outlined, size: 16),
                           const SizedBox(width: 6),
                           Text(
-                            'Network Info • ओएनडीसी स्थिति',
+                            AppStrings.pair(
+                              context,
+                              en: 'Network Info',
+                              hi: 'ओएनडीसी स्थिति',
+                            ),
                             style: AppTextStyles.buttonLabel.copyWith(
                               fontSize: 13,
                             ),

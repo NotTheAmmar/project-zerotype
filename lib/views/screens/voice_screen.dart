@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
 
+import '../../config/app_strings.dart';
 import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/capture_controller.dart';
@@ -449,7 +450,13 @@ class _VoiceScreenState extends State<VoiceScreen> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
-                          child: const Text('← पिछला • Back'),
+                          child: Text(
+                            AppStrings.pair(
+                              context,
+                              en: 'Back',
+                              hi: '← पिछला',
+                            ),
+                          ),
                         ),
                         const SizedBox(width: 10),
                       ],
@@ -538,11 +545,27 @@ class _VoiceScreenState extends State<VoiceScreen> {
                           label: Text(
                             voiceCtrl.state == VoiceState.recording
                                 ? (voiceCtrl.isLastStep
-                                      ? 'रिकॉर्डिंग रोकें और कैटलॉग बनाएं • Finish & Create'
-                                      : 'रिकॉर्डिंग रोकें और अगला सवाल • Finish & Next →')
+                                      ? AppStrings.pair(
+                                          context,
+                                          en: 'Finish & Create',
+                                          hi: 'रिकॉर्डिंग रोकें और कैटलॉग बनाएं',
+                                        )
+                                      : AppStrings.pair(
+                                          context,
+                                          en: 'Finish & Next →',
+                                          hi: 'रिकॉर्डिंग रोकें और अगला सवाल',
+                                        ))
                                 : (voiceCtrl.isLastStep
-                                      ? 'कैटलॉग बनाएं • Create Catalog'
-                                      : 'अगला सवाल • Next Step →'),
+                                      ? AppStrings.pair(
+                                          context,
+                                          en: 'Create Catalog',
+                                          hi: 'कैटलॉग बनाएं',
+                                        )
+                                      : AppStrings.pair(
+                                          context,
+                                          en: 'Next Step →',
+                                          hi: 'अगला सवाल',
+                                        )),
                             style: AppTextStyles.buttonLabel.copyWith(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
@@ -735,10 +758,22 @@ class _RecordingTimer extends StatelessWidget {
         ),
         Text(
           isRecording
-              ? 'Recording... बोल रहे हैं'
+              ? AppStrings.pair(
+                  context,
+                  en: 'Recording...',
+                  hi: 'बोल रहे हैं...',
+                )
               : (seconds > 0
-                    ? 'Recorded • रिकॉर्ड हुआ'
-                    : 'माइक दबाकर बोलें • Tap mic to speak'),
+                    ? AppStrings.pair(
+                        context,
+                        en: 'Recorded',
+                        hi: 'रिकॉर्ड हुआ',
+                      )
+                    : AppStrings.pair(
+                        context,
+                        en: 'Tap mic to speak',
+                        hi: 'माइक दबाकर बोलें',
+                      )),
           style: AppTextStyles.caption.copyWith(fontSize: 11),
         ),
       ],

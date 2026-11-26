@@ -8,8 +8,8 @@ import '../../config/constants.dart';
 import '../../config/theme.dart';
 import '../../controllers/catalog_controller.dart';
 
-void showDemoSettingsDialog(BuildContext context) {
-  showModalBottomSheet(
+Future<bool?> showDemoSettingsDialog(BuildContext context) {
+  return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
@@ -26,7 +26,6 @@ class DemoSettingsSheet extends StatefulWidget {
 
 class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
   late final TextEditingController _urlController;
-  late final TextEditingController _qwenKeyController;
   bool _isTesting = false;
   String? _testMessage;
   bool? _testSuccess;
@@ -35,13 +34,11 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
   void initState() {
     super.initState();
     _urlController = TextEditingController(text: AppConstants.bppBackendUrl);
-    _qwenKeyController = TextEditingController(text: AppConstants.qwenApiKey);
   }
 
   @override
   void dispose() {
     _urlController.dispose();
-    _qwenKeyController.dispose();
     super.dispose();
   }
 
@@ -50,7 +47,7 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
     if (url.isEmpty) {
       setState(() {
         _testSuccess = false;
-        _testMessage = 'Please enter a valid backend URL.';
+        _testMessage = 'Please enter a valid Kaggle / BPP backend URL.';
       });
       return;
     }
@@ -72,7 +69,7 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
         final gpus =
-            (data['devices'] as List<dynamic>?)?.join(', ') ?? 'GPU Ready';
+            (data['devices'] as List<dynamic>?)?.join(', ') ?? 'Server Ready';
         setState(() {
           _testSuccess = true;
           _testMessage = 'Connected! $gpus';
@@ -95,14 +92,11 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
 
   Future<void> _saveAndApply() async {
     final url = _urlController.text.trim();
-    final qwenKey = _qwenKeyController.text.trim();
-
     await AppConstants.setCustomBackendUrl(url);
-    await AppConstants.setCustomQwenApiKey(qwenKey);
 
     if (mounted) {
       context.read<CatalogController>().loadSavedCatalogs();
-      Navigator.of(context).pop();
+      Navigator.of(context).pop(_testSuccess);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Connected to backend: ${AppConstants.bppBackendUrl}'),
@@ -115,10 +109,8 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
 
   Future<void> _resetToDefaults() async {
     await AppConstants.setCustomBackendUrl('');
-    await AppConstants.setCustomQwenApiKey('');
     setState(() {
       _urlController.text = AppConstants.bppBackendUrl;
-      _qwenKeyController.text = AppConstants.qwenApiKey;
       _testMessage = null;
       _testSuccess = null;
     });
@@ -159,7 +151,7 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
-                    Icons.tune_rounded,
+                    Icons.sensors_rounded,
                     color: AppColors.primaryTeal,
                     size: 22,
                   ),
@@ -170,13 +162,13 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Demo Server & AI Settings',
+                        'Kaggle GPU Server Link',
                         style: AppTextStyles.serifTitle().copyWith(
                           fontSize: 18,
                         ),
                       ),
                       Text(
-                        'Live Kaggle Tunnel & Voice API Keys',
+                        'Temporary Kaggle tunnel for live image processing',
                         style: AppTextStyles.caption.copyWith(
                           color: AppColors.textSecondary,
                         ),
@@ -186,15 +178,15 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded),
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: () => Navigator.of(context).pop(_testSuccess),
                 ),
               ],
             ),
             const SizedBox(height: 20),
 
-            // Backend URL Field
+            // Kaggle Backend URL Field
             Text(
-              'Kaggle Dual-T4 Tunnel URL (BPP Backend)',
+              'Kaggle Tunnel URL (BPP / BiRefNet)',
               style: AppTextStyles.label.copyWith(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -215,31 +207,6 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                 ),
               ),
               keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: 14),
-
-            // Qwen API Key Field
-            Text(
-              'Qwen API Key (Catalog Extraction LLM)',
-              style: AppTextStyles.label.copyWith(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _qwenKeyController,
-              decoration: InputDecoration(
-                hintText: 'sk-... (optional for live Qwen LLM)',
-                prefixIcon: const Icon(Icons.auto_awesome_outlined, size: 20),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 12,
-                ),
-              ),
             ),
             const SizedBox(height: 12),
 
@@ -302,8 +269,8 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                             height: 14,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.speed_rounded, size: 18),
-                    label: Text(_isTesting ? 'Testing...' : 'Test Ping'),
+                        : const Icon(Icons.wifi_tethering_rounded, size: 18),
+                    label: Text(_isTesting ? 'Testing...' : 'Test'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -312,12 +279,12 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   flex: 2,
                   child: ElevatedButton.icon(
                     onPressed: _saveAndApply,
-                    icon: const Icon(Icons.done_all_rounded, size: 18),
+                    icon: const Icon(Icons.check_rounded, size: 18),
                     label: const Text('Save & Connect'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryTeal,
@@ -335,9 +302,9 @@ class _DemoSettingsSheetState extends State<DemoSettingsSheet> {
             Center(
               child: TextButton(
                 onPressed: _resetToDefaults,
-                child: const Text(
-                  'Reset to .env Defaults',
-                  style: TextStyle(fontSize: 12),
+                child: Text(
+                  'Reset to Default (.env)',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ),
             ),

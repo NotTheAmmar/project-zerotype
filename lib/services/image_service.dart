@@ -38,7 +38,7 @@ class ImageService {
 
     _cameraController = CameraController(
       backCamera,
-      ResolutionPreset.high,
+      ResolutionPreset.medium,
       enableAudio: false,
     );
 
@@ -132,7 +132,11 @@ ImageQualityResult _checkQualityIsolate(String imagePath) {
       return const ImageQualityResult(isBlurry: false, isLowLight: false);
     }
 
-    final gray = img.grayscale(decoded);
+    // Downscale before pixel-level blur & luminance analysis so capture stays <50ms
+    final resized = decoded.width > 200
+        ? img.copyResize(decoded, width: 200)
+        : decoded;
+    final gray = img.grayscale(resized);
 
     // Blur: Laplacian variance — low variance = blurry
     double sum = 0, sumSq = 0;
