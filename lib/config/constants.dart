@@ -11,9 +11,7 @@ class AppConstants {
     try {
       final prefs = await SharedPreferences.getInstance();
       _customBackendUrl = prefs.getString('custom_backend_url');
-      _customQwenApiKey =
-          prefs.getString('custom_qwen_api_key') ??
-          prefs.getString('custom_groq_api_key');
+      _customQwenApiKey = prefs.getString('custom_qwen_api_key');
     } catch (_) {}
   }
 
@@ -64,10 +62,7 @@ class AppConstants {
     if (_customQwenApiKey != null && _customQwenApiKey!.isNotEmpty) {
       return _customQwenApiKey!;
     }
-    final qwenKey = _getEnv('QWEN_API_KEY') ?? '';
-    if (qwenKey.isNotEmpty) return qwenKey;
-    // Backwards compatibility with .env / APP_ENV keys hosting Qwen on free tiers
-    return _getEnv('GROQ_API_KEY') ?? '';
+    return _getEnv('QWEN_API_KEY') ?? '';
   }
 
   static String get qwenModel =>
