@@ -141,7 +141,6 @@ async def main() -> None:
         buckets = [
             settings.supabase_raw_bucket,
             settings.supabase_processed_bucket,
-            settings.supabase_storage_bucket,
         ]
         await reset_storage(settings.supabase_url, settings.supabase_key, buckets)
 

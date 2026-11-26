@@ -313,24 +313,22 @@ class _VoiceScreenState extends State<VoiceScreen> {
                                 ],
                               ),
                               const SizedBox(height: 10),
-                              Text(
-                                step.questionHi,
-                                style: AppTextStyles.label.copyWith(
+                              BilingualText(
+                                english: step.questionEn,
+                                local: step.questionHi,
+                                englishStyle: AppTextStyles.label.copyWith(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textPrimary,
                                   height: 1.35,
                                 ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                step.questionEn,
-                                style: AppTextStyles.caption.copyWith(
-                                  fontSize: 12,
+                                localStyle: AppTextStyles.caption.copyWith(
+                                  fontSize: 13,
                                   color: AppColors.textSecondary,
+                                  height: 1.35,
                                 ),
-                                textAlign: TextAlign.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                spacing: 6.0,
                               ),
                             ],
                           ),

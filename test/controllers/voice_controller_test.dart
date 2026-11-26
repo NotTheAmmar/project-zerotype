@@ -184,5 +184,23 @@ void main() {
       expect(controller.manualUnit, equals('inch'));
       expect(controller.manualQuantity, equals('2 units'));
     });
+
+    test('toggleRecording allows re-recording from stopped state and reset clears weight', () async {
+      await controller.toggleRecording();
+      await controller.toggleRecording();
+      expect(controller.state, equals(VoiceState.stopped));
+
+      // Tapping mic again from stopped starts a fresh recording
+      await controller.toggleRecording();
+      expect(controller.state, equals(VoiceState.recording));
+      await controller.toggleRecording();
+
+      controller.setManualDimensions(weight: '250', weightUnit: 'kg', unit: 'cm');
+      controller.reset();
+      expect(controller.manualWeight, isEmpty);
+      expect(controller.manualWeightUnit, equals('g'));
+      expect(controller.manualUnit, equals('inch'));
+      expect(controller.state, equals(VoiceState.idle));
+    });
   });
 }

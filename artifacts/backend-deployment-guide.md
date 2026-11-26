@@ -172,7 +172,6 @@ SUPABASE_URL=https://[YOUR-PROJECT-REF].supabase.co
 SUPABASE_KEY=[YOUR-SUPABASE-SERVICE-ROLE-KEY]
 SUPABASE_RAW_BUCKET=raw-craft-images
 SUPABASE_PROCESSED_BUCKET=processed-craft-images
-SUPABASE_STORAGE_BUCKET=craft-images
 ```
 
 #### 🔐 ONDC Registry & Signing (Optional / Defaults provided):

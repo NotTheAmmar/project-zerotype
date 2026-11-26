@@ -261,7 +261,7 @@ class VoiceController extends ChangeNotifier {
   }
 
   Future<void> toggleRecording() async {
-    if (_state == VoiceState.idle) {
+    if (_state == VoiceState.idle || _state == VoiceState.stopped) {
       await _startRecording();
     } else if (_state == VoiceState.recording) {
       await _stopRecording();
@@ -277,19 +277,27 @@ class VoiceController extends ChangeNotifier {
     HapticFeedback.mediumImpact();
     notifyListeners();
 
-    final amplitudeStream = await _audioService.startRecording();
+    try {
+      final amplitudeStream = await _audioService.startRecording();
 
-    _amplitudeSub = amplitudeStream.listen((dbfs) {
-      final normalized = ((dbfs + 60) / 60).clamp(0.0, 1.0);
-      _amplitudeHistory = [..._amplitudeHistory.skip(1), normalized];
-      _isSilent = dbfs < AppConstants.silenceAmplitudeThreshold;
-      notifyListeners();
-    });
+      await _amplitudeSub?.cancel();
+      _amplitudeSub = amplitudeStream.listen((dbfs) {
+        final normalized = ((dbfs + 60) / 60).clamp(0.0, 1.0);
+        _amplitudeHistory = [..._amplitudeHistory.skip(1), normalized];
+        _isSilent = dbfs < AppConstants.silenceAmplitudeThreshold;
+        notifyListeners();
+      });
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _recordingSeconds++;
+      _timer?.cancel();
+      _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        _recordingSeconds++;
+        notifyListeners();
+      });
+    } catch (e) {
+      debugPrint('[VoiceController] startRecording failed: $e');
+      _state = VoiceState.idle;
       notifyListeners();
-    });
+    }
   }
 
   Future<void> _stopRecording() async {
@@ -321,6 +329,8 @@ class VoiceController extends ChangeNotifier {
   void reset() {
     _timer?.cancel();
     _timer = null;
+    _amplitudeSub?.cancel();
+    _amplitudeSub = null;
     _state = VoiceState.idle;
     _audioPath = null;
     _recordingSeconds = 0;
@@ -331,7 +341,9 @@ class VoiceController extends ChangeNotifier {
     _manualLength = '';
     _manualWidth = '';
     _manualHeight = '';
-    _manualUnit = 'cm';
+    _manualUnit = 'inch';
+    _manualWeight = '';
+    _manualWeightUnit = 'g';
     _manualQuantity = '1 unit';
     _amplitudeHistory = List.filled(30, 0.0);
     notifyListeners();

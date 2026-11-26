@@ -9,8 +9,10 @@ import 'package:provider/provider.dart';
 
 import '../../config/routes.dart';
 import '../../config/theme.dart';
+import '../../controllers/capture_controller.dart';
 import '../../controllers/catalog_controller.dart';
 import '../../controllers/language_controller.dart';
+import '../../controllers/voice_controller.dart';
 import 'language_selection_screen.dart';
 import '../../models/catalog_item.dart';
 import '../../services/api_service.dart';
@@ -287,6 +289,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
           // New Craft Listing CTA button in Header
           FilledButton.icon(
             onPressed: () {
+              context.read<CaptureController>().retake();
+              context.read<VoiceController>().reset();
               Navigator.pushNamed(context, AppRoutes.capture);
             },
             icon: const Icon(Icons.add_rounded, size: 18),
@@ -1007,21 +1011,42 @@ class _ExploreScreenState extends State<ExploreScreen> {
                             const Spacer(),
                             GestureDetector(
                               onTap: () async {
+                                final langCtrl = context.read<LanguageController>();
+                                final locDesc = item
+                                    .descriptionFor(langCtrl.voiceLanguageCode)
+                                    ?.trim();
                                 final textToSpeak =
-                                    item.descriptionHi?.trim().isNotEmpty ==
-                                        true
-                                    ? item.descriptionHi!
-                                    : (item.descriptionEn ?? '');
+                                    (locDesc != null && locDesc.isNotEmpty)
+                                        ? locDesc
+                                        : (item.descriptionHi?.trim().isNotEmpty ==
+                                                  true
+                                              ? item.descriptionHi!
+                                              : (item.descriptionEn ?? ''));
                                 if (_isPlayingStory) {
                                   await _audioService.stopTts();
-                                  setModalState(() => _isPlayingStory = false);
-                                  setState(() => _isPlayingStory = false);
+                                  if (modalCtx.mounted) {
+                                    setModalState(() => _isPlayingStory = false);
+                                  }
+                                  if (mounted) {
+                                    setState(() => _isPlayingStory = false);
+                                  }
                                 } else if (textToSpeak.isNotEmpty) {
                                   setModalState(() => _isPlayingStory = true);
-                                  setState(() => _isPlayingStory = true);
-                                  await _audioService.speakText(textToSpeak);
-                                  setModalState(() => _isPlayingStory = false);
-                                  setState(() => _isPlayingStory = false);
+                                  if (mounted) {
+                                    setState(() => _isPlayingStory = true);
+                                  }
+                                  try {
+                                    await _audioService.speakText(textToSpeak);
+                                  } finally {
+                                    if (modalCtx.mounted) {
+                                      setModalState(
+                                        () => _isPlayingStory = false,
+                                      );
+                                    }
+                                    if (mounted) {
+                                      setState(() => _isPlayingStory = false);
+                                    }
+                                  }
                                 }
                               },
                               child: Container(
@@ -1203,7 +1228,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         currentIndex: _bottomNavIndex,
         onTap: (index) {
           if (index == 1) {
-            // Karigar Hub: Start AI Product Creation
+            // Karigar Hub: Start fresh AI Product Creation
+            context.read<CaptureController>().retake();
+            context.read<VoiceController>().reset();
             Navigator.pushNamed(context, AppRoutes.capture);
           } else {
             setState(() => _bottomNavIndex = index);

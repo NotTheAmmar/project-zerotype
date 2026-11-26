@@ -22,5 +22,3 @@ services:
         value: raw-craft-images
       - key: SUPABASE_PROCESSED_BUCKET
         value: processed-craft-images
-      - key: SUPABASE_STORAGE_BUCKET
-        value: craft-images

@@ -29,9 +29,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
   int _quantity = 1;
   int _selectedThumb = 0;
   bool _isPublishing = false;
-  int? _overridePrice;
   String _selectedTier = 'fair'; // 'floor' | 'fair' | 'premium'
   CatalogController? _catalogCtrl;
+  String? _lastItemId;
 
   @override
   void didChangeDependencies() {
@@ -78,7 +78,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
     if (newPrice <= 0) return;
     setState(() {
       if (tier != null) _selectedTier = tier;
-      _overridePrice = newPrice;
     });
     if (item != null && catalogCtrl != null) {
       final currentPricing =
@@ -198,6 +197,15 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final catalogCtrl = context.watch<CatalogController>();
     final item = catalogCtrl.item;
 
+    // Sync local UI trackers whenever item changes or is updated externally (e.g. voice/manual edit)
+    if (item != null) {
+      _quantity = item.availableQuantity;
+      if (_lastItemId != item.id) {
+        _lastItemId = item.id;
+        _selectedThumb = 0;
+      }
+    }
+
     if (item == null) {
       return Scaffold(
         backgroundColor: AppColors.warmCream,
@@ -244,14 +252,19 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
 
     final floorPrice = item.pricing?.floorPrice ?? 200;
-    final baseFairPrice = item.pricing?.fairPrice ?? 300;
+    final activePrice = item.pricing?.fairPrice ?? 300;
     final premiumPrice = item.pricing?.premiumPrice ?? 450;
 
-    final selectedTierPrice = _selectedTier == 'floor'
-        ? floorPrice
-        : (_selectedTier == 'premium' ? premiumPrice : baseFairPrice);
+    // Keep the recommended Fair Market card stable even if user selected Floor or Premium
+    final baseFairPrice = (item.pricing != null &&
+            (activePrice == floorPrice || activePrice == premiumPrice))
+        ? PricingCorridor.compute(
+            rawMaterialCost: item.pricing!.rawMaterialCost,
+            laborDays: item.pricing!.laborDays,
+            itemsProduced: item.pricing!.itemsProduced,
+          ).fairPrice
+        : activePrice;
 
-    final activePrice = _overridePrice ?? selectedTierPrice;
     final mrp = (activePrice * 1.25).round();
     final discountPercent = mrp > activePrice && mrp > 0
         ? (((mrp - activePrice) / mrp) * 100).round()

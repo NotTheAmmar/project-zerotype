@@ -99,6 +99,9 @@ class CatalogController extends ChangeNotifier {
     List<String>? audioPaths,
     List<String>? galleryImagePaths,
     String? manualDimensions,
+    String voiceLanguage = 'hi',
+    String primaryLanguage = 'en',
+    String? secondaryLanguage = 'hi',
   }) async {
     _stage = ProcessingStage.imageProcessing;
     _errorMessage = null;
@@ -111,6 +114,9 @@ class CatalogController extends ChangeNotifier {
         audioPath: audioPath,
         audioPaths: audioPaths,
         manualDimensions: manualDimensions,
+        voiceLanguage: voiceLanguage,
+        primaryLanguage: primaryLanguage,
+        secondaryLanguage: secondaryLanguage,
         onStageComplete: (stage) {
           switch (stage) {
             case 0:
@@ -135,6 +141,8 @@ class CatalogController extends ChangeNotifier {
         titleHi: result.titleHi,
         descriptionEn: result.descriptionEn,
         descriptionHi: result.descriptionHi,
+        localizedTitles: result.localizedTitles,
+        localizedDescriptions: result.localizedDescriptions,
         craftAttributes: result.craftAttributes,
         pricing: result.pricing,
         availableQuantity: result.spokenQuantity ?? 1,

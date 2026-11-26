@@ -9,6 +9,7 @@ import '../../config/routes.dart';
 import '../../config/theme.dart';
 import '../../controllers/capture_controller.dart';
 import '../../controllers/catalog_controller.dart';
+import '../../controllers/language_controller.dart';
 import '../../controllers/voice_controller.dart';
 
 class ProcessingScreen extends StatefulWidget {
@@ -99,6 +100,7 @@ class _ProcessingScreenState extends State<ProcessingScreen>
     final captureCtrl = context.read<CaptureController>();
     final voiceCtrl = context.read<VoiceController>();
     final catalogCtrl = context.read<CatalogController>();
+    final langCtrl = context.read<LanguageController>();
 
     final manualDims = [
       if (voiceCtrl.manualLength.isNotEmpty || voiceCtrl.manualWidth.isNotEmpty)
@@ -128,6 +130,9 @@ class _ProcessingScreenState extends State<ProcessingScreen>
         audioPaths: voiceCtrl.stepAudioPaths.values.toList(),
         galleryImagePaths: additionalGallery,
         manualDimensions: manualDims.isNotEmpty ? manualDims : null,
+        voiceLanguage: langCtrl.voiceLanguageCode,
+        primaryLanguage: langCtrl.primaryLanguageCode,
+        secondaryLanguage: langCtrl.secondaryLanguageCode,
       );
     } catch (e) {
       debugPrint('[ProcessingScreen] processing error: $e');

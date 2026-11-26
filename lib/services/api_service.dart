@@ -35,6 +35,8 @@ class CatalogProcessResult {
   final String? titleHi;
   final String? descriptionEn;
   final String? descriptionHi;
+  final Map<String, String> localizedTitles;
+  final Map<String, String> localizedDescriptions;
   final CraftAttributes? craftAttributes;
   final PricingCorridor? pricing;
   final String? studioImagePath;
@@ -48,6 +50,8 @@ class CatalogProcessResult {
     this.titleHi,
     this.descriptionEn,
     this.descriptionHi,
+    this.localizedTitles = const {},
+    this.localizedDescriptions = const {},
     this.craftAttributes,
     this.pricing,
     this.studioImagePath,
@@ -56,6 +60,28 @@ class CatalogProcessResult {
     this.spokenPrice,
     this.spokenQuantity,
   });
+
+  CatalogProcessResult copyWith({
+    Map<String, String>? localizedTitles,
+    Map<String, String>? localizedDescriptions,
+  }) {
+    return CatalogProcessResult(
+      titleEn: titleEn,
+      titleHi: titleHi,
+      descriptionEn: descriptionEn,
+      descriptionHi: descriptionHi,
+      localizedTitles: localizedTitles ?? this.localizedTitles,
+      localizedDescriptions:
+          localizedDescriptions ?? this.localizedDescriptions,
+      craftAttributes: craftAttributes,
+      pricing: pricing,
+      studioImagePath: studioImagePath,
+      rawImagePath: rawImagePath,
+      audioReadbackPath: audioReadbackPath,
+      spokenPrice: spokenPrice,
+      spokenQuantity: spokenQuantity,
+    );
+  }
 }
 
 /// Callback to report processing stage progress.
@@ -70,6 +96,9 @@ abstract class ApiService {
     required String audioPath,
     List<String>? audioPaths,
     String? manualDimensions,
+    String voiceLanguage = 'hi',
+    String primaryLanguage = 'en',
+    String? secondaryLanguage = 'hi',
     StageCallback? onStageComplete,
   });
 
@@ -207,6 +236,9 @@ class MockApiService implements ApiService {
     required String audioPath,
     List<String>? audioPaths,
     String? manualDimensions,
+    String voiceLanguage = 'hi',
+    String primaryLanguage = 'en',
+    String? secondaryLanguage = 'hi',
     StageCallback? onStageComplete,
   }) async {
     await Future.delayed(AppConstants.mockStage1Delay);
@@ -665,6 +697,9 @@ class LiveApiService implements ApiService {
     required String audioPath,
     List<String>? audioPaths,
     String? manualDimensions,
+    String voiceLanguage = 'hi',
+    String primaryLanguage = 'en',
+    String? secondaryLanguage = 'hi',
     StageCallback? onStageComplete,
   }) async {
     return _processViaBhashini(
@@ -672,6 +707,9 @@ class LiveApiService implements ApiService {
       audioPath: audioPath,
       audioPaths: audioPaths,
       manualDimensions: manualDimensions,
+      voiceLanguage: voiceLanguage,
+      primaryLanguage: primaryLanguage,
+      secondaryLanguage: secondaryLanguage,
       onStageComplete: onStageComplete,
     );
   }
@@ -897,6 +935,9 @@ Artisan update instruction:
     required String audioPath,
     List<String>? audioPaths,
     String? manualDimensions,
+    String voiceLanguage = 'hi',
+    String primaryLanguage = 'en',
+    String? secondaryLanguage = 'hi',
     StageCallback? onStageComplete,
   }) async {
     // Stage 0: image processing with BiRefNet-HR on Kaggle Dual-T4
@@ -933,7 +974,10 @@ Artisan update instruction:
       final p = audiosToTranscribe[i];
       if (p.isNotEmpty) {
         try {
-          final text = await transcribeAudio(p);
+          final text = await transcribeAudio(
+            p,
+            sourceLanguage: voiceLanguage,
+          );
           if (text.isNotEmpty) {
             segments.add('Step ${i + 1}: $text');
           }
@@ -960,11 +1004,11 @@ Artisan update instruction:
     // Step 2: Extract structured catalog with Qwen
     final useQwen = AppConstants.aiExtractionProvider.contains('qwen');
 
+    CatalogProcessResult result;
     if (useQwen && AppConstants.qwenApiKey.isNotEmpty) {
       try {
         final extracted = await _extractWithQwen(transcript);
-        onStageComplete?.call(2);
-        return resultFromQwenExtraction(
+        result = resultFromQwenExtraction(
           extracted,
           descHiFallback: transcript,
           studioImagePath: liveStudioUrl,
@@ -972,15 +1016,86 @@ Artisan update instruction:
         );
       } catch (e) {
         debugPrint('[AI] Qwen extraction error: $e');
+        result = _buildFallbackProcessResult(
+          transcript: transcript,
+          liveStudioUrl: liveStudioUrl,
+          rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
+        );
+      }
+    } else {
+      result = _buildFallbackProcessResult(
+        transcript: transcript,
+        liveStudioUrl: liveStudioUrl,
+        rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
+      );
+    }
+
+    // Populate localizedTitles & localizedDescriptions for selected languages
+    final locTitles = <String, String>{
+      if (result.titleEn != null && result.titleEn!.isNotEmpty)
+        'en': result.titleEn!,
+      if (result.titleHi != null && result.titleHi!.isNotEmpty)
+        'hi': result.titleHi!,
+    };
+    final locDescs = <String, String>{
+      if (result.descriptionEn != null && result.descriptionEn!.isNotEmpty)
+        'en': result.descriptionEn!,
+      if (result.descriptionHi != null && result.descriptionHi!.isNotEmpty)
+        'hi': result.descriptionHi!,
+    };
+
+    if (AppConstants.bhashiniApiKey.isNotEmpty) {
+      for (final targetLang in {
+        primaryLanguage,
+        ?secondaryLanguage,
+      }) {
+        if (targetLang.isEmpty ||
+            targetLang == 'en' ||
+            targetLang == 'hi') {
+          continue;
+        }
+        if (!locTitles.containsKey(targetLang) &&
+            result.titleEn != null &&
+            result.titleEn!.isNotEmpty) {
+          try {
+            locTitles[targetLang] = await _bhashiniService.translate(
+              result.titleEn!,
+              sourceLanguage: 'en',
+              targetLanguage: targetLang,
+            );
+          } catch (_) {}
+        }
+        if (!locDescs.containsKey(targetLang) &&
+            result.descriptionEn != null &&
+            result.descriptionEn!.isNotEmpty) {
+          try {
+            locDescs[targetLang] = await _bhashiniService.translate(
+              result.descriptionEn!,
+              sourceLanguage: 'en',
+              targetLanguage: targetLang,
+            );
+          } catch (_) {}
+        }
       }
     }
 
-    // Fallback: Safe default draft result so progress is never lost
     onStageComplete?.call(2);
+    return result.copyWith(
+      localizedTitles: locTitles,
+      localizedDescriptions: locDescs,
+    );
+  }
+
+  CatalogProcessResult _buildFallbackProcessResult({
+    required String transcript,
+    String? liveStudioUrl,
+    String? rawImagePath,
+  }) {
     return CatalogProcessResult(
       titleEn: 'Handcrafted Artisan Item',
       titleHi: 'हस्तनिर्मित शिल्प उत्पाद',
-      descriptionEn: 'Authentic handcrafted product made with traditional techniques and generational artisan skill.',
+      descriptionEn:
+          'Authentic handcrafted product made with traditional techniques and generational artisan skill.',
       descriptionHi: transcript.isNotEmpty
           ? transcript
           : 'कुशल कारीगर द्वारा पारंपरिक विधि से हस्तनिर्मित उत्कृष्ट उत्पाद।',
@@ -998,7 +1113,7 @@ Artisan update instruction:
         sellerProposedPrice: 350,
       ),
       studioImagePath: liveStudioUrl,
-      rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
+      rawImagePath: rawImagePath,
       spokenQuantity: 1,
     );
   }

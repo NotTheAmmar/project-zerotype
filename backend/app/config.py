@@ -50,9 +50,6 @@ class Settings(BaseSettings):
     supabase_key: str = ""
     """Supabase service role or anon API key for Storage uploads."""
 
-    supabase_storage_bucket: str = "craft-images"
-    """Legacy fallback Supabase Storage bucket name."""
-
     supabase_raw_bucket: str = "raw-craft-images"
     """Supabase Storage bucket name for original raw camera craft photos."""
 
