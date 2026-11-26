@@ -339,21 +339,34 @@ async def save_listing_db(listing: ArtisanListingPayload, status: str = "PUBLISH
 
 async def load_all_listings_db() -> List[ArtisanListingPayload]:
     """Retrieve all published listings from the database."""
+    rows = await load_listings_with_status_db(include_drafts=False)
+    return [ArtisanListingPayload(**row["payload"]) for row in rows]
+
+
+async def load_listings_with_status_db(include_drafts: bool = False) -> List[dict]:
+    """Retrieve listings from the database along with status and timestamps."""
     global _pool, _sqlite_path, _db_type
-    results: List[ArtisanListingPayload] = []
+    results: List[dict] = []
+    status_filter = "" if include_drafts else "WHERE status = 'PUBLISHED'"
 
     if _db_type == "postgres" and _pool:
         try:
             async with _pool.acquire() as conn:
-                rows = await conn.fetch("""
-                    SELECT payload FROM artisan_listings
-                    WHERE status = 'PUBLISHED'
+                rows = await conn.fetch(f"""
+                    SELECT payload, status, created_at, updated_at
+                    FROM artisan_listings
+                    {status_filter}
                     ORDER BY updated_at ASC;
                 """)
                 for row in rows:
                     raw_payload = row["payload"]
                     data = json.loads(raw_payload) if isinstance(raw_payload, str) else raw_payload
-                    results.append(ArtisanListingPayload(**data))
+                    results.append({
+                        "payload": data,
+                        "status": row["status"],
+                        "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                        "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None,
+                    })
             return results
         except Exception as e:
             logger.error("PostgreSQL fetch failed: %s", e)
@@ -362,14 +375,20 @@ async def load_all_listings_db() -> List[ArtisanListingPayload]:
         try:
             conn = sqlite3.connect(_sqlite_path)
             cursor = conn.cursor()
-            cursor.execute("""
-                SELECT payload FROM artisan_listings
-                WHERE status = 'PUBLISHED'
+            cursor.execute(f"""
+                SELECT payload, status, created_at, updated_at
+                FROM artisan_listings
+                {status_filter}
                 ORDER BY updated_at ASC;
             """)
             for row in cursor.fetchall():
                 data = json.loads(row[0])
-                results.append(ArtisanListingPayload(**data))
+                results.append({
+                    "payload": data,
+                    "status": row[1],
+                    "created_at": row[2],
+                    "updated_at": row[3],
+                })
             conn.close()
             return results
         except Exception as e:
@@ -442,21 +461,60 @@ async def update_listing_status_db(catalog_id: str, new_status: str) -> bool:
     return False
 
 
+def resolve_storage_bucket(image_type: str = "studio", bucket: Optional[str] = None) -> str:
+    """Resolve target Supabase Storage bucket: raw vs AI-processed."""
+    if bucket:
+        return bucket
+    settings = get_settings()
+    if image_type == "raw":
+        return settings.supabase_raw_bucket
+    return settings.supabase_processed_bucket
+
+
+async def _ensure_bucket_exists(
+    client: httpx.AsyncClient,
+    supabase_url: str,
+    supabase_key: str,
+    bucket: str,
+) -> bool:
+    """Attempt to create a public Supabase Storage bucket if it does not exist."""
+    create_url = f"{supabase_url.rstrip('/')}/storage/v1/bucket"
+    headers = {
+        "Authorization": f"Bearer {supabase_key}",
+        "apiKey": supabase_key,
+        "Content-Type": "application/json",
+    }
+    try:
+        res = await client.post(
+            create_url,
+            json={"id": bucket, "name": bucket, "public": True},
+            headers=headers,
+        )
+        return res.status_code in (200, 201, 409)
+    except Exception as e:
+        logger.warning("Could not auto-create Supabase bucket %s: %s", bucket, e)
+        return False
+
+
 async def upload_image_to_storage(
     content: bytes,
     filename: str,
     content_type: str = "image/jpeg",
+    bucket: Optional[str] = None,
+    image_type: str = "studio",
 ) -> Optional[str]:
     """
-    Upload image directly to Supabase Storage bucket and return public CDN URL.
+    Upload image directly to the appropriate Supabase Storage bucket
+    (raw-craft-images vs processed-craft-images) and return its public CDN URL.
     Returns None if Supabase Storage is not configured.
     """
     settings = get_settings()
     if not settings.supabase_url or not settings.supabase_key:
         return None
 
-    bucket = settings.supabase_storage_bucket
-    upload_url = f"{settings.supabase_url.rstrip('/')}/storage/v1/object/{bucket}/{filename}"
+    target_bucket = resolve_storage_bucket(image_type=image_type, bucket=bucket)
+    base = settings.supabase_url.rstrip("/")
+    upload_url = f"{base}/storage/v1/object/{target_bucket}/{filename}"
     headers = {
         "Authorization": f"Bearer {settings.supabase_key}",
         "apiKey": settings.supabase_key,
@@ -467,13 +525,23 @@ async def upload_image_to_storage(
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             res = await client.post(upload_url, content=content, headers=headers)
+            if res.status_code in (400, 404) and "not found" in res.text.lower():
+                if await _ensure_bucket_exists(client, base, settings.supabase_key, target_bucket):
+                    res = await client.post(upload_url, content=content, headers=headers)
+
             if res.status_code in (200, 201):
-                public_url = f"{settings.supabase_url.rstrip('/')}/storage/v1/object/public/{bucket}/{filename}"
-                logger.info("Uploaded %s to Supabase Storage: %s", filename, public_url)
+                public_url = f"{base}/storage/v1/object/public/{target_bucket}/{filename}"
+                logger.info(
+                    "Uploaded %s to Supabase Storage bucket '%s': %s",
+                    filename,
+                    target_bucket,
+                    public_url,
+                )
                 return public_url
             else:
                 logger.warning(
-                    "Supabase Storage upload returned HTTP %d: %s",
+                    "Supabase Storage upload to '%s' returned HTTP %d: %s",
+                    target_bucket,
                     res.status_code,
                     res.text,
                 )

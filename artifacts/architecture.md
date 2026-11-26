@@ -26,7 +26,7 @@ Bounding Geometry             MIC opened (No 15s limit)         Floor/Fair/Premi
 2. **Guided 4-Step Voice Interview (Speech Input)**:
    - Structured 4-stage guided prompts: (1) Craft & Material, (2) Dimensions & Weight with manual fallback dialog, (3) Price & Labor Effort, (4) Artisan Story & Heritage.
    - Mic opens for open-ended spoken narration (unlimited recording duration; no 15-second cap).
-   - Speech transcribed via Bhashini ASR / Whisper and structured via **Qwen** (Qwen-2.5 / Qwen-3.8 via Groq free API or dedicated backend).
+   - Speech transcribed via Bhashini ASR and structured via **Qwen** (`qwen-2.5-32b-instruct` or OpenAI-compatible Qwen endpoint).
 3. **Tactile & Direct Zero-Typing Controls (Quantities & Pricing)**:
    - Available stock configured via tactile preset pills (`[1]`, `[2]`, `[5]`, `[10]`, `[25]`, `[50]`) or custom quantity dialog with batch chips (`+10` to `+500`).
    - Pricing selected via 3 Fair-Price Corridor Cards (**Floor Price**, **Fair Price**, **Premium Price**) with `[±₹50]` quick adjustment nudges, or direct **Set Exact Price** numeric entry. Stated selling prices are respected directly.
@@ -44,7 +44,7 @@ Bounding Geometry             MIC opened (No 15s limit)         Floor/Fair/Premi
 
 - **Frontend**: Flutter (Cross-platform Android / iOS / Web)
 - **Speech Pipeline**: Bhashini Cloud ASR / NMT / TTS (Govt. of India Dhruva platform) + On-device Flutter TTS fallback
-- **Catalog Structuring LLM**: **Qwen-2.5-32B-Instruct** (via free Groq API endpoint or custom OpenAI-compatible server)
+- **Catalog Structuring LLM**: **Qwen-2.5-32B-Instruct** (OpenAI-compatible Qwen API endpoint)
 - **Computer Vision / Image Processing**: BiRefNet background isolation & studio composite pipeline via FastAPI backend
 - **ONDC Integration**: Beckn protocol v1.2.0 BPP adapter (`/api/v1/bpp/publish`)
 
@@ -58,10 +58,10 @@ API_BASE_URL=https://api.bazaarsetu.in/v1
 USE_MOCK_DATA=true
 
 # AI Extraction Provider (Qwen)
-AI_EXTRACTION_PROVIDER=groq_qwen
-QWEN_MODEL=qwen-2.5-32b-it
-QWEN_API_URL=https://api.groq.com/openai/v1/chat/completions
-GROQ_API_KEY=gsk_your_groq_api_key_here
+AI_EXTRACTION_PROVIDER=qwen
+QWEN_MODEL=qwen-2.5-32b-instruct
+QWEN_API_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions
+QWEN_API_KEY=your_qwen_api_key_here
 
 # Bhashini Configuration (Govt. of India Indic NLP)
 BHASHINI_API_KEY=your_bhashini_api_key

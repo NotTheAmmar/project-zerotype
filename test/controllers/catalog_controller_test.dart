@@ -10,6 +10,8 @@ import 'package:project_zerotype/services/storage_service.dart';
 
 class FakeApiService implements ApiService {
   PricingCorridor? lastPublishedPricing;
+  int draftSyncCalls = 0;
+  int updateSyncCalls = 0;
 
   @override
   Future<CatalogProcessResult> processCatalog({
@@ -29,7 +31,10 @@ class FakeApiService implements ApiService {
   }
 
   @override
-  Future<String> transcribeAudio(String audioPath) async {
+  Future<String> transcribeAudio(
+    String audioPath, {
+    String sourceLanguage = 'hi',
+  }) async {
     return 'कीमत ₹650 कर दो';
   }
 
@@ -54,6 +59,18 @@ class FakeApiService implements ApiService {
     required int availableQuantity,
   }) async {
     lastPublishedPricing = pricing;
+    return {'status': 'PUBLISHED', 'catalog_id': item.id};
+  }
+
+  @override
+  Future<Map<String, dynamic>> saveDraftToBackend(CatalogItem item) async {
+    draftSyncCalls++;
+    return {'status': 'DRAFT', 'catalog_id': item.id};
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateListingOnBackend(CatalogItem item) async {
+    updateSyncCalls++;
     return {'status': 'PUBLISHED', 'catalog_id': item.id};
   }
 
@@ -280,6 +297,36 @@ void main() {
 
         await controller.publishToOndc();
         expect(apiService.lastPublishedPricing?.fairPrice, equals(999));
+      },
+    );
+
+    test(
+      'syncs draft and published updates to backend and keeps raw/studio separated',
+      () async {
+        await controller.createFallbackDraft(imagePath: '/tmp/raw_craft.jpg');
+        expect(apiService.draftSyncCalls, greaterThanOrEqualTo(1));
+
+        await controller.publishToOndc();
+        final beforeUpdate = apiService.updateSyncCalls;
+        await controller.updateCurrentItem(
+          controller.currentItem!.copyWith(titleEn: 'Updated Brass Lamp'),
+        );
+        expect(apiService.updateSyncCalls, equals(beforeUpdate + 1));
+
+        final restored = CatalogItem.fromBppListing({
+          'catalog_id': 'c_1',
+          'title_en': 'Lamp',
+          'description_en': 'Desc',
+          'floor_price': 100,
+          'fair_price': 200,
+          'premium_price': 250,
+          'raw_image_url': 'https://example.com/raw-craft-images/c_1_raw.jpg',
+          'studio_image_url': '',
+          'status': 'DRAFT',
+        });
+        expect(restored.status, equals(CatalogStatus.draft));
+        expect(restored.rawImagePath, contains('raw-craft-images'));
+        expect(restored.studioImagePath, isNull);
       },
     );
   });

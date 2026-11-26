@@ -110,9 +110,10 @@ void main() {
 
         final parsed = CatalogItem.fromBppListing(bppPayload);
         expect(parsed.id, equals('bpp_item_123'));
-        // Dummy saree photo must be purged and replaced with raw_image_url
+        // Dummy saree photo must be purged and NOT replaced with raw_image_url
+        expect(parsed.studioImagePath, isNull);
         expect(
-          parsed.studioImagePath,
+          parsed.rawImagePath,
           equals('https://storage.supabase.co/raw.jpg'),
         );
         expect(

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ import 'package:project_zerotype/services/api_service.dart';
 import 'package:project_zerotype/services/audio_service.dart';
 import 'package:project_zerotype/services/image_service.dart';
 import 'package:project_zerotype/services/storage_service.dart';
+import 'package:project_zerotype/views/widgets/bilingual_text.dart';
 
 void main() {
   testWidgets('BazaarSetu app smoke test', (WidgetTester tester) async {
@@ -93,10 +95,51 @@ void main() {
 
     await tester.pump();
 
-    // Verify Language selection title is shown on first launch
+    // Verify Language selection title and mode options are shown on first launch
     expect(
-      find.text('अपनी क्षेत्रीय भाषा चुनें\nChoose Your Regional Language'),
+      find.text('अपनी भाषा चुनें\nChoose Your Language Display'),
       findsOneWidget,
     );
+    expect(find.text('Single Language'), findsOneWidget);
+    expect(find.text('Bilingual (2)'), findsOneWidget);
+  });
+
+  testWidgets('BilingualText switches between single and bilingual modes', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    final languageCtrl = LanguageController(autoLoad: false);
+    await languageCtrl.setLanguagePreferences(
+      mode: LanguageDisplayMode.single,
+      primaryCode: 'ta',
+    );
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: languageCtrl,
+        child: const MaterialApp(
+          home: Scaffold(
+            body: BilingualText(
+              english: 'Clay Pot',
+              local: 'मिट्टी का घड़ा',
+              translations: {'en': 'Clay Pot', 'hi': 'मिट्टी का घड़ा', 'ta': 'மண் பானை'},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('மண் பானை'), findsOneWidget);
+    expect(find.text('Clay Pot'), findsNothing);
+
+    await languageCtrl.setLanguagePreferences(
+      mode: LanguageDisplayMode.bilingual,
+      primaryCode: 'en',
+      secondaryCode: 'ta',
+    );
+    await tester.pump();
+
+    expect(find.text('Clay Pot'), findsOneWidget);
+    expect(find.text('மண் பானை'), findsOneWidget);
   });
 }

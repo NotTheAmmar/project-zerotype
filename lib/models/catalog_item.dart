@@ -13,11 +13,13 @@ class CatalogItem {
   final String? audioPath;
   final List<String> galleryImages;
 
-  // Bilingual descriptors
+  // Bilingual / Multilingual descriptors
   final String? titleEn;
   final String? titleHi;
   final String? descriptionEn;
   final String? descriptionHi;
+  final Map<String, String> localizedTitles;
+  final Map<String, String> localizedDescriptions;
 
   // Craft attributes
   final CraftAttributes? craftAttributes;
@@ -54,6 +56,8 @@ class CatalogItem {
     this.titleHi,
     this.descriptionEn,
     this.descriptionHi,
+    this.localizedTitles = const {},
+    this.localizedDescriptions = const {},
     this.craftAttributes,
     this.pricing,
     this.availableQuantity = 1,
@@ -79,6 +83,8 @@ class CatalogItem {
     String? titleHi,
     String? descriptionEn,
     String? descriptionHi,
+    Map<String, String>? localizedTitles,
+    Map<String, String>? localizedDescriptions,
     CraftAttributes? craftAttributes,
     PricingCorridor? pricing,
     int? availableQuantity,
@@ -103,6 +109,9 @@ class CatalogItem {
       titleHi: titleHi ?? this.titleHi,
       descriptionEn: descriptionEn ?? this.descriptionEn,
       descriptionHi: descriptionHi ?? this.descriptionHi,
+      localizedTitles: localizedTitles ?? this.localizedTitles,
+      localizedDescriptions:
+          localizedDescriptions ?? this.localizedDescriptions,
       craftAttributes: craftAttributes ?? this.craftAttributes,
       pricing: pricing ?? this.pricing,
       availableQuantity: availableQuantity ?? this.availableQuantity,
@@ -118,6 +127,22 @@ class CatalogItem {
     );
   }
 
+  String? titleFor(String code) {
+    final t = localizedTitles[code]?.trim();
+    if (t != null && t.isNotEmpty) return t;
+    if (code == 'en') return titleEn;
+    if (code == 'hi') return titleHi;
+    return null;
+  }
+
+  String? descriptionFor(String code) {
+    final d = localizedDescriptions[code]?.trim();
+    if (d != null && d.isNotEmpty) return d;
+    if (code == 'en') return descriptionEn;
+    if (code == 'hi') return descriptionHi;
+    return null;
+  }
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'createdAt': createdAt.toIso8601String(),
@@ -129,6 +154,8 @@ class CatalogItem {
     'titleHi': titleHi,
     'descriptionEn': descriptionEn,
     'descriptionHi': descriptionHi,
+    'localizedTitles': localizedTitles,
+    'localizedDescriptions': localizedDescriptions,
     'craftAttributes': craftAttributes?.toJson(),
     'pricing': pricing?.toJson(),
     'availableQuantity': availableQuantity,
@@ -158,6 +185,16 @@ class CatalogItem {
     titleHi: json['titleHi'] as String?,
     descriptionEn: json['descriptionEn'] as String?,
     descriptionHi: json['descriptionHi'] as String?,
+    localizedTitles:
+        (json['localizedTitles'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, v.toString()),
+        ) ??
+        const {},
+    localizedDescriptions:
+        (json['localizedDescriptions'] as Map<String, dynamic>?)?.map(
+          (k, v) => MapEntry(k, v.toString()),
+        ) ??
+        const {},
     craftAttributes: json['craftAttributes'] != null
         ? CraftAttributes.fromJson(
             json['craftAttributes'] as Map<String, dynamic>,
@@ -208,12 +245,13 @@ class CatalogItem {
     String? studioImg =
         json['studio_image_url'] as String? ??
         json['studioImagePath'] as String?;
-    // Discard any legacy dummy saree fallback image
+    // Discard any legacy dummy saree fallback image or accidental raw duplicate
     if (studioImg != null &&
-        studioImg.contains('photo-1610030469983-98e550d6193c')) {
+        (studioImg.isEmpty ||
+            studioImg.contains('photo-1610030469983-98e550d6193c') ||
+            studioImg == rawImg)) {
       studioImg = null;
     }
-    studioImg ??= rawImg;
 
     final galleryList = <String>[];
     final rawGallery = json['gallery_images'] ?? json['galleryImages'];
@@ -231,6 +269,25 @@ class CatalogItem {
       }
     }
 
+    final statusStr = (json['status'] as String?)?.toUpperCase();
+    final restoredStatus = (statusStr == 'DRAFT' || statusStr == 'UNLISTED')
+        ? CatalogStatus.draft
+        : CatalogStatus.published;
+
+    final locTitles =
+        (json['localized_titles'] as Map<String, dynamic>? ??
+                json['localizedTitles'] as Map<String, dynamic>?)
+            ?.map((k, v) => MapEntry(k, v.toString())) ??
+        const <String, String>{};
+    final locDescs =
+        (json['localized_descriptions'] as Map<String, dynamic>? ??
+                json['localizedDescriptions'] as Map<String, dynamic>?)
+            ?.map((k, v) => MapEntry(k, v.toString())) ??
+        const <String, String>{};
+
+    final rawCost = (json['raw_material_cost'] as num?)?.round();
+    final laborDays = (json['labor_days'] as num?)?.toInt() ?? 1;
+
     return CatalogItem(
       id: catalogId,
       createdAt: json['created_at'] != null
@@ -242,6 +299,8 @@ class CatalogItem {
           json['description_en'] as String? ?? json['descriptionEn'] as String?,
       descriptionHi:
           json['description_hi'] as String? ?? json['descriptionHi'] as String?,
+      localizedTitles: locTitles,
+      localizedDescriptions: locDescs,
       rawImagePath: rawImg,
       studioImagePath: studioImg,
       galleryImages: galleryList,
@@ -249,7 +308,9 @@ class CatalogItem {
           (json['available_qty'] as num?)?.toInt() ??
           (json['availableQuantity'] as num?)?.toInt() ??
           1,
-      status: CatalogStatus.published,
+      status: restoredStatus,
+      craftTechnique:
+          json['craft_technique'] as String? ?? json['craftTechnique'] as String?,
       craftAttributes: CraftAttributes(
         category:
             json['craft_category'] as String? ??
@@ -260,13 +321,16 @@ class CatalogItem {
             json['cluster_name'] as String? ?? 'Chanderi Handloom Cluster',
         materials: materialsList,
         dimensions: json['dimensions'] as String? ?? '',
+        weight: json['weight'] as String?,
+        netQuantity: json['net_quantity'] as String? ?? '1 unit',
+        laborDays: laborDays,
       ),
       pricing: PricingCorridor(
         floorPrice: floor.round(),
         fairPrice: fair.round(),
         premiumPrice: premium.round(),
-        rawMaterialCost: (floor * 0.4).round(),
-        laborDays: 1,
+        rawMaterialCost: rawCost ?? (floor * 0.4).round(),
+        laborDays: laborDays,
         dailyWageRate: 500,
         overheadPercent: 0.10,
         skillMultiplier: 1.0,

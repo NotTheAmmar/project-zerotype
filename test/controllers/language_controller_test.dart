@@ -45,5 +45,40 @@ void main() {
       expect(ctrl.isLanguageSetupDone, isTrue);
       expect(ctrl.currentLanguage.nativeName, equals('ગુજરાતી'));
     });
+
+    test('includes all 23 Bhashini supported languages', () {
+      expect(LanguageController.supportedLanguages.length, equals(23));
+      final codes = LanguageController.supportedLanguages
+          .map((l) => l.code)
+          .toSet();
+      expect(
+        codes,
+        containsAll(['en', 'hi', 'as', 'bn', 'brx', 'doi', 'gu', 'kn', 'ks', 'kok', 'mai', 'ml', 'mni', 'mr', 'ne', 'or', 'pa', 'sa', 'sat', 'sd', 'ta', 'te', 'ur']),
+      );
+    });
+
+    test('supports single language mode and custom bilingual language pairs', () async {
+      final ctrl = LanguageController(autoLoad: false);
+      await ctrl.setLanguagePreferences(
+        mode: LanguageDisplayMode.single,
+        primaryCode: 'ta',
+      );
+      expect(ctrl.displayMode, equals(LanguageDisplayMode.single));
+      expect(ctrl.isBilingual, isFalse);
+      expect(ctrl.primaryLanguageCode, equals('ta'));
+      expect(ctrl.secondaryLanguageCode, isNull);
+      expect(ctrl.headerBadgeLabel, equals('தமிழ்'));
+
+      await ctrl.setLanguagePreferences(
+        mode: LanguageDisplayMode.bilingual,
+        primaryCode: 'mr',
+        secondaryCode: 'gu',
+      );
+      expect(ctrl.displayMode, equals(LanguageDisplayMode.bilingual));
+      expect(ctrl.isBilingual, isTrue);
+      expect(ctrl.primaryLanguageCode, equals('mr'));
+      expect(ctrl.secondaryLanguageCode, equals('gu'));
+      expect(ctrl.headerBadgeLabel, equals('मराठी + ગુજરાતી'));
+    });
   });
 }

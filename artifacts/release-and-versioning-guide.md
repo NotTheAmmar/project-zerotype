@@ -16,7 +16,7 @@ In professional mobile engineering, daily pull requests and commits to `main` ru
 
 ## 🔐 2. Production Secrets & Environment File Injection (`.env`)
 
-Flutter packages the `.env` asset into the APK at compile time. To ensure release APKs contain real API credentials (`GROQ_API_KEY`, `BHASHINI_*`, `BACKEND_URL`) rather than placeholder `.env.example` values, GitHub Actions injects the repository secret **`APP_ENV`**:
+Flutter packages the `.env` asset into the APK at compile time. To ensure release APKs contain real API credentials (`QWEN_API_KEY`, `BHASHINI_*`, `BACKEND_URL`) rather than placeholder `.env.example` values, GitHub Actions injects the repository secret **`APP_ENV`**:
 
 ### How to set the `APP_ENV` Secret:
 **Option A: 1-Click via GitHub CLI (Recommended)**:

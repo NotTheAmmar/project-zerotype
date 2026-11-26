@@ -5,13 +5,13 @@ class AppConstants {
   AppConstants._();
 
   static String? _customBackendUrl;
-  static String? _customGroqApiKey;
+  static String? _customQwenApiKey;
 
   static Future<void> loadCustomConfig() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _customBackendUrl = prefs.getString('custom_backend_url');
-      _customGroqApiKey = prefs.getString('custom_groq_api_key');
+      _customQwenApiKey = prefs.getString('custom_qwen_api_key');
     } catch (_) {}
   }
 
@@ -26,14 +26,14 @@ class AppConstants {
     }
   }
 
-  static Future<void> setCustomGroqApiKey(String key) async {
+  static Future<void> setCustomQwenApiKey(String key) async {
     final prefs = await SharedPreferences.getInstance();
     final cleanKey = key.trim();
-    _customGroqApiKey = cleanKey.isNotEmpty ? cleanKey : null;
-    if (_customGroqApiKey != null) {
-      await prefs.setString('custom_groq_api_key', _customGroqApiKey!);
+    _customQwenApiKey = cleanKey.isNotEmpty ? cleanKey : null;
+    if (_customQwenApiKey != null) {
+      await prefs.setString('custom_qwen_api_key', _customQwenApiKey!);
     } else {
-      await prefs.remove('custom_groq_api_key');
+      await prefs.remove('custom_qwen_api_key');
     }
   }
 
@@ -54,21 +54,22 @@ class AppConstants {
       (_getEnv('USE_MOCK_DATA') ?? 'false').toLowerCase() == 'true';
   static Duration get apiTimeout => const Duration(seconds: 120);
 
-  // AI Extraction (Qwen / Groq)
+  // AI Extraction (Qwen LLM)
   static String get aiExtractionProvider =>
-      _getEnv('AI_EXTRACTION_PROVIDER')?.toLowerCase() ?? 'groq_qwen';
+      _getEnv('AI_EXTRACTION_PROVIDER')?.toLowerCase() ?? 'qwen';
 
-  static String get groqApiKey {
-    if (_customGroqApiKey != null && _customGroqApiKey!.isNotEmpty) {
-      return _customGroqApiKey!;
+  static String get qwenApiKey {
+    if (_customQwenApiKey != null && _customQwenApiKey!.isNotEmpty) {
+      return _customQwenApiKey!;
     }
-    return _getEnv('GROQ_API_KEY') ?? '';
+    return _getEnv('QWEN_API_KEY') ?? '';
   }
 
-  static String get qwenModel => _getEnv('QWEN_MODEL') ?? 'qwen/qwen3.8-27b';
+  static String get qwenModel =>
+      _getEnv('QWEN_MODEL') ?? 'qwen-2.5-32b-instruct';
   static String get qwenApiUrl =>
       _getEnv('QWEN_API_URL') ??
-      'https://api.groq.com/openai/v1/chat/completions';
+      'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
 
   // Bhashini (Bhashini Cloud)
   static String get bhashiniApiKey => _getEnv('BHASHINI_API_KEY') ?? '';
@@ -79,7 +80,7 @@ class AppConstants {
   static String get bhashiniPipelineId =>
       _getEnv('BHASHINI_PIPELINE_ID') ?? '64392f96daac500b55c543cd';
   static String get voicePipeline =>
-      _getEnv('VOICE_PIPELINE')?.toLowerCase() ?? 'auto';
+      _getEnv('VOICE_PIPELINE')?.toLowerCase() ?? 'bhashini';
 
   // ── BPP Backend (ONDC Beckn Provider Platform) ────────────────────
   static String get bppBackendUrl {

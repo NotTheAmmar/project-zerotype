@@ -22,12 +22,14 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, s
 from app.catalog_store import (
     delete_listing_async,
     get_all_listings,
+    get_all_listings_with_status,
     get_listing_by_id,
     listing_count,
     save_active_listing_async,
+    save_draft_listing_async,
     unlist_listing_async,
 )
-from app.db import upload_image_to_storage
+from app.db import resolve_storage_bucket, upload_image_to_storage
 from app.schemas import ArtisanListingPayload
 
 router = APIRouter(prefix="/api/v1/bpp", tags=["Artisan App"])
@@ -65,14 +67,21 @@ async def upload_image(
     if not safe_type:
         safe_type = "studio"
     filename = f"{cid}_{safe_type}.{ext}"
+    bucket_name = resolve_storage_bucket(image_type=safe_type)
 
-    # 1. Try Supabase Storage CDN
-    public_url = await upload_image_to_storage(content, filename, content_type)
+    # 1. Try Supabase Storage CDN (separate raw vs processed buckets)
+    public_url = await upload_image_to_storage(
+        content,
+        filename,
+        content_type,
+        image_type=safe_type,
+    )
     storage_type = "supabase"
 
-    # 2. Fallback to local /uploads/ directory with strict path sanitization
+    # 2. Fallback to local /uploads/{raw|processed}/ directory with strict path sanitization
     if not public_url:
-        upload_dir = os.path.abspath("uploads")
+        sub_dir = "raw" if safe_type == "raw" else "processed"
+        upload_dir = os.path.abspath(os.path.join("uploads", sub_dir))
         os.makedirs(upload_dir, exist_ok=True)
         safe_basename = os.path.basename(filename)
         local_path = os.path.abspath(os.path.join(upload_dir, safe_basename))
@@ -85,11 +94,11 @@ async def upload_image(
             f.write(content)
 
         base_url = str(request.base_url).rstrip("/")
-        public_url = f"{base_url}/uploads/{safe_basename}"
+        public_url = f"{base_url}/uploads/{sub_dir}/{safe_basename}"
         storage_type = "local"
 
     raw_img = public_url if safe_type == "raw" else None
-    studio_img = public_url if safe_type in ("studio", "marketplace") else None
+    studio_img = public_url if safe_type != "raw" else None
     return {
         "status": "UPLOADED",
         "url": public_url,
@@ -99,6 +108,7 @@ async def upload_image(
         "catalog_id": cid,
         "filename": filename,
         "image_type": image_type,
+        "bucket": bucket_name if storage_type == "supabase" else sub_dir,
         "storage": storage_type,
     }
 
@@ -130,14 +140,59 @@ async def publish_listing(listing: ArtisanListingPayload) -> dict:
     }
 
 
+@router.post("/draft", status_code=status.HTTP_200_OK)
+async def save_draft_listing(listing: ArtisanListingPayload) -> dict:
+    """
+    Persist a draft catalog listing to Supabase / SQLite without exposing it
+    to ONDC ``/beckn/search`` discovery.
+    """
+    await save_draft_listing_async(listing)
+    return {
+        "status": "DRAFT",
+        "catalog_id": listing.catalog_id,
+        "fair_price_inr": listing.fair_price,
+        "raw_image_url": listing.raw_image_url,
+        "studio_image_url": listing.studio_image_url,
+    }
+
+
+@router.put("/listings/{catalog_id}", status_code=status.HTTP_200_OK)
+async def update_listing(
+    catalog_id: str,
+    listing: ArtisanListingPayload,
+    listing_status: str = "PUBLISHED",
+) -> dict:
+    """
+    Update all fields of an existing listing in Supabase / SQLite (and memory
+    cache when status is PUBLISHED).
+    """
+    if listing.catalog_id != catalog_id:
+        listing = listing.model_copy(update={"catalog_id": catalog_id})
+    normalized_status = listing_status.upper()
+    if normalized_status == "PUBLISHED":
+        await save_active_listing_async(listing, status="PUBLISHED")
+    else:
+        await save_draft_listing_async(listing)
+    return {
+        "status": normalized_status,
+        "catalog_id": catalog_id,
+        "fair_price_inr": listing.fair_price,
+        "raw_image_url": listing.raw_image_url,
+        "studio_image_url": listing.studio_image_url,
+    }
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Listings
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 @router.get("/listings", status_code=status.HTTP_200_OK)
-async def fetch_all_listings() -> dict:
-    """Return all currently active listings in the catalog store."""
+async def fetch_all_listings(include_drafts: bool = False) -> dict:
+    """Return active listings (or all listings including drafts when requested)."""
+    if include_drafts:
+        listings = await get_all_listings_with_status(include_drafts=True)
+        return {"count": len(listings), "listings": listings}
     listings = get_all_listings()
     return {
         "count": len(listings),

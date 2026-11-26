@@ -6,7 +6,7 @@ Two model groups:
   2. BecknContext / BecknMessage — minimal Beckn protocol envelope models used
      when parsing inbound Gateway / BAP requests.
 """
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
@@ -87,6 +87,37 @@ class ArtisanListingPayload(BaseModel):
     fair_price: float = Field(..., gt=0, description="Recommended D2C selling price (INR).")
     premium_price: float = Field(
         ..., gt=0, description="B2B / institutional premium price (INR)."
+    )
+    raw_material_cost: float = Field(
+        default=100.0, ge=0, description="Raw material cost input (INR)."
+    )
+    labor_days: int = Field(
+        default=1, ge=0, description="Production effort in artisan days."
+    )
+    weight: Optional[str] = Field(
+        default=None, description="Product weight (e.g. '250g')."
+    )
+    craft_technique: Optional[str] = Field(
+        default=None, description="Crafting technique or heritage style."
+    )
+    net_quantity: str = Field(
+        default="1 unit", description="Net quantity for Legal Metrology."
+    )
+
+    # ── Multilingual Descriptors ──────────────────────────────────
+    primary_language: str = Field(
+        default="en", description="Primary display language code."
+    )
+    secondary_language: Optional[str] = Field(
+        default="hi", description="Secondary display language code (if bilingual)."
+    )
+    localized_titles: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Localized product titles keyed by ISO/Bhashini language code.",
+    )
+    localized_descriptions: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Localized product descriptions keyed by ISO/Bhashini language code.",
     )
 
     # ── Media ─────────────────────────────────────────────────────

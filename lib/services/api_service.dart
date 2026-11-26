@@ -73,7 +73,10 @@ abstract class ApiService {
     StageCallback? onStageComplete,
   });
 
-  Future<String> transcribeAudio(String audioPath);
+  Future<String> transcribeAudio(
+    String audioPath, {
+    String sourceLanguage = 'hi',
+  });
 
   Future<CatalogItem> updateCatalogWithInstruction({
     required CatalogItem currentItem,
@@ -85,6 +88,10 @@ abstract class ApiService {
     required PricingCorridor pricing,
     required int availableQuantity,
   });
+
+  Future<Map<String, dynamic>> saveDraftToBackend(CatalogItem item);
+
+  Future<Map<String, dynamic>> updateListingOnBackend(CatalogItem item);
 
   Future<bool> unlistFromOndc(String catalogId);
 
@@ -130,6 +137,26 @@ class MockApiService implements ApiService {
       'raw_image_url': item.rawImagePath,
       'studio_image_url': item.studioImagePath,
       'message': 'Mock successful publish',
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> saveDraftToBackend(CatalogItem item) async {
+    return {
+      'status': 'DRAFT',
+      'catalog_id': item.id,
+      'raw_image_url': item.rawImagePath,
+      'studio_image_url': item.studioImagePath,
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateListingOnBackend(CatalogItem item) async {
+    return {
+      'status': item.status == CatalogStatus.published ? 'PUBLISHED' : 'DRAFT',
+      'catalog_id': item.id,
+      'raw_image_url': item.rawImagePath,
+      'studio_image_url': item.studioImagePath,
     };
   }
 
@@ -225,7 +252,10 @@ class MockApiService implements ApiService {
   }
 
   @override
-  Future<String> transcribeAudio(String audioPath) async {
+  Future<String> transcribeAudio(
+    String audioPath, {
+    String sourceLanguage = 'hi',
+  }) async {
     await Future.delayed(const Duration(milliseconds: 300));
     return 'कीमत 450 रुपये कर दो और सामग्री में पीतल लिखो';
   }
@@ -258,15 +288,12 @@ class MockApiService implements ApiService {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class LiveApiService implements ApiService {
-  @override
-  Future<Map<String, dynamic>> publishToOndc({
+  Future<Map<String, dynamic>> _prepareAndBuildPayload({
     required CatalogItem item,
     required PricingCorridor pricing,
     required int availableQuantity,
   }) async {
-    final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/publish');
-
-    // 1. Upload raw and studio images to Supabase CDN if stored as local files
+    // 1. Upload raw and studio images to separate Supabase CDN buckets if stored as local files
     String? finalRawImageUrl = item.rawImagePath?.startsWith('http') == true
         ? item.rawImagePath
         : null;
@@ -294,7 +321,8 @@ class LiveApiService implements ApiService {
       }
     }
 
-    if (isLocalPath(item.studioImagePath)) {
+    if (isLocalPath(item.studioImagePath) &&
+        item.studioImagePath != item.rawImagePath) {
       try {
         final uploadedStudio = await uploadImage(
           item.studioImagePath!,
@@ -311,7 +339,6 @@ class LiveApiService implements ApiService {
     final uploadedGalleryUrls = <String>[];
     for (int i = 0; i < item.galleryImages.length; i++) {
       final gPath = item.galleryImages[i];
-      // Skip if this gallery image is identical to the raw image (local path or uploaded URL)
       if (gPath == item.rawImagePath || gPath == finalRawImageUrl) {
         continue;
       }
@@ -339,19 +366,14 @@ class LiveApiService implements ApiService {
       }
     }
 
-    // Discard any dummy saree fallback
+    // Discard any dummy saree fallback or accidental raw duplicate
     if (finalStudioImageUrl != null &&
-        finalStudioImageUrl.contains('photo-1610030469983-98e550d6193c')) {
+        (finalStudioImageUrl.contains('photo-1610030469983-98e550d6193c') ||
+            finalStudioImageUrl == finalRawImageUrl)) {
       finalStudioImageUrl = null;
     }
 
-    // Fallback studio image to raw image or first gallery image, NEVER a hardcoded saree
-    finalStudioImageUrl ??=
-        finalRawImageUrl ??
-        (uploadedGalleryUrls.isNotEmpty ? uploadedGalleryUrls.first : '');
-    finalRawImageUrl ??= finalStudioImageUrl;
-
-    final body = {
+    return {
       'catalog_id': item.id,
       'artisan_name': item.craftAttributes?.artisanName ?? 'BazaarSetu Artisan',
       'cluster_name':
@@ -364,14 +386,35 @@ class LiveApiService implements ApiService {
       'category_id': 'ONDC:RET12',
       'materials': item.craftAttributes?.materials ?? [],
       'dimensions': item.craftAttributes?.dimensions ?? '1 unit',
+      'weight': item.craftAttributes?.weight,
+      'craft_technique': item.craftTechnique,
+      'net_quantity': item.craftAttributes?.netQuantity ?? '1 unit',
       'floor_price': pricing.floorPrice.toDouble(),
       'fair_price': pricing.fairPrice.toDouble(),
       'premium_price': pricing.premiumPrice.toDouble(),
+      'raw_material_cost': pricing.rawMaterialCost.toDouble(),
+      'labor_days': item.craftAttributes?.laborDays ?? pricing.laborDays,
       'raw_image_url': finalRawImageUrl,
-      'studio_image_url': finalStudioImageUrl,
+      'studio_image_url': finalStudioImageUrl ?? '',
       'gallery_images': uploadedGalleryUrls,
       'available_qty': availableQuantity,
+      'localized_titles': item.localizedTitles,
+      'localized_descriptions': item.localizedDescriptions,
     };
+  }
+
+  @override
+  Future<Map<String, dynamic>> publishToOndc({
+    required CatalogItem item,
+    required PricingCorridor pricing,
+    required int availableQuantity,
+  }) async {
+    final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/publish');
+    final body = await _prepareAndBuildPayload(
+      item: item,
+      pricing: pricing,
+      availableQuantity: availableQuantity,
+    );
 
     final response = await http
         .post(
@@ -386,14 +429,78 @@ class LiveApiService implements ApiService {
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final res = jsonDecode(response.body) as Map<String, dynamic>;
-      res['raw_image_url'] ??= finalRawImageUrl;
-      res['studio_image_url'] ??= finalStudioImageUrl;
+      res['raw_image_url'] ??= body['raw_image_url'];
+      res['studio_image_url'] ??= body['studio_image_url'];
       return res;
     } else {
       throw Exception(
         'Publish failed (${response.statusCode}): ${response.body}',
       );
     }
+  }
+
+  @override
+  Future<Map<String, dynamic>> saveDraftToBackend(CatalogItem item) async {
+    final pricing =
+        item.pricing ??
+        PricingCorridor.compute(rawMaterialCost: 100, laborDays: 1);
+    final uri = Uri.parse('${AppConstants.bppBackendUrl}/api/v1/bpp/draft');
+    final body = await _prepareAndBuildPayload(
+      item: item,
+      pricing: pricing,
+      availableQuantity: item.availableQuantity,
+    );
+    final response = await http
+        .post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'bypass-tunnel-reminder': 'true',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(AppConstants.apiTimeout);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    }
+    throw Exception('Draft sync failed (${response.statusCode})');
+  }
+
+  @override
+  Future<Map<String, dynamic>> updateListingOnBackend(CatalogItem item) async {
+    final pricing =
+        item.pricing ??
+        PricingCorridor.compute(rawMaterialCost: 100, laborDays: 1);
+    final statusStr = item.status == CatalogStatus.published
+        ? 'PUBLISHED'
+        : 'DRAFT';
+    final uri = Uri.parse(
+      '${AppConstants.bppBackendUrl}/api/v1/bpp/listings/${item.id}?listing_status=$statusStr',
+    );
+    final body = await _prepareAndBuildPayload(
+      item: item,
+      pricing: pricing,
+      availableQuantity: item.availableQuantity,
+    );
+    final response = await http
+        .put(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'bypass-tunnel-reminder': 'true',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(AppConstants.apiTimeout);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final res = jsonDecode(response.body) as Map<String, dynamic>;
+      res['raw_image_url'] ??= body['raw_image_url'];
+      res['studio_image_url'] ??= body['studio_image_url'];
+      return res;
+    }
+    throw Exception('Listing update failed (${response.statusCode})');
   }
 
   @override
@@ -516,7 +623,7 @@ class LiveApiService implements ApiService {
   Future<List<CatalogItem>> fetchPublishedListings() async {
     try {
       final uri = Uri.parse(
-        '${AppConstants.bppBackendUrl}/api/v1/bpp/listings',
+        '${AppConstants.bppBackendUrl}/api/v1/bpp/listings?include_drafts=true',
       );
       debugPrint('[LiveApiService] Fetching published listings from: $uri');
       final response = await http
@@ -570,35 +677,25 @@ class LiveApiService implements ApiService {
   }
 
   @override
-  Future<String> transcribeAudio(String audioPath) async {
+  Future<String> transcribeAudio(
+    String audioPath, {
+    String sourceLanguage = 'hi',
+  }) async {
     if (audioPath.isEmpty) return '';
     if (!kIsWeb) {
       final f = File(audioPath);
       if (!f.existsSync()) return '';
     }
-    String transcript = '';
-    // Primary: Bhashini Indic STT (Amar's native Indic voice pipeline)
-    if (AppConstants.bhashiniApiKey.isNotEmpty ||
-        AppConstants.voicePipeline == 'bhashini') {
-      try {
-        transcript = await _bhashiniService.transcribe(audioPath);
-        if (transcript.isNotEmpty) return transcript;
-      } catch (e) {
-        debugPrint('[transcribeAudio] Bhashini failed: $e');
-      }
+    try {
+      final transcript = await _bhashiniService.transcribe(
+        audioPath,
+        sourceLanguage: sourceLanguage,
+      );
+      if (transcript.isNotEmpty) return transcript;
+    } catch (e) {
+      debugPrint('[transcribeAudio] Bhashini failed: $e');
     }
-    // Secondary: Groq Whisper if explicitly configured
-    if (AppConstants.groqApiKey.isNotEmpty &&
-        (AppConstants.voicePipeline == 'groq' ||
-            AppConstants.voicePipeline == 'auto')) {
-      try {
-        transcript = await _transcribeWithGroqWhisper(audioPath);
-        if (transcript.isNotEmpty) return transcript;
-      } catch (e) {
-        debugPrint('[transcribeAudio] Whisper failed: $e');
-      }
-    }
-    return transcript;
+    return '';
   }
 
   @override
@@ -606,7 +703,7 @@ class LiveApiService implements ApiService {
     required CatalogItem currentItem,
     required String instruction,
   }) async {
-    if (AppConstants.groqApiKey.isNotEmpty) {
+    if (AppConstants.qwenApiKey.isNotEmpty) {
       try {
         return await _updateWithQwen(currentItem, instruction);
       } catch (e) {
@@ -620,18 +717,9 @@ class LiveApiService implements ApiService {
     CatalogItem currentItem,
     String instruction,
   ) async {
-    final apiKey = AppConstants.groqApiKey;
-    String model = AppConstants.qwenModel;
+    final apiKey = AppConstants.qwenApiKey;
+    final model = AppConstants.qwenModel;
     final uri = Uri.parse(AppConstants.qwenApiUrl);
-
-    if (AppConstants.qwenApiUrl.contains('groq.com')) {
-      if (model.isEmpty ||
-          model == 'qwen-2.5-32b-it' ||
-          model == 'qwen-2.5-7b-instruct' ||
-          model == 'qwen-2.5-32b') {
-        model = 'qwen/qwen3.8-27b';
-      }
-    }
 
     final currentDict = {
       'title_en': currentItem.titleEn ?? '',
@@ -692,16 +780,9 @@ Artisan update instruction:
       'response_format': {'type': 'json_object'},
     };
 
-    http.Response response = await http
+    final response = await http
         .post(uri, headers: headers, body: jsonEncode(payload))
         .timeout(AppConstants.apiTimeout);
-
-    if (response.statusCode == 404 && model != 'qwen/qwen3.8-27b') {
-      payload['model'] = 'qwen/qwen3.8-27b';
-      response = await http
-          .post(uri, headers: headers, body: jsonEncode(payload))
-          .timeout(AppConstants.apiTimeout);
-    }
 
     if (response.statusCode != 200) {
       throw Exception(
@@ -876,18 +957,17 @@ Artisan update instruction:
     // Stage 1: voice transcription done
     onStageComplete?.call(1);
 
-    // Step 2: Extract structured catalog with Qwen or Gemini
+    // Step 2: Extract structured catalog with Qwen
     final useQwen = AppConstants.aiExtractionProvider.contains('qwen');
 
-    if (useQwen && AppConstants.groqApiKey.isNotEmpty) {
+    if (useQwen && AppConstants.qwenApiKey.isNotEmpty) {
       try {
         final extracted = await _extractWithQwen(transcript);
         onStageComplete?.call(2);
         return resultFromQwenExtraction(
           extracted,
           descHiFallback: transcript,
-          studioImagePath:
-              liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null),
+          studioImagePath: liveStudioUrl,
           rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
         );
       } catch (e) {
@@ -917,86 +997,16 @@ Artisan update instruction:
         laborDays: 1,
         sellerProposedPrice: 350,
       ),
-      studioImagePath:
-          liveStudioUrl ?? (imagePath.isNotEmpty ? imagePath : null),
+      studioImagePath: liveStudioUrl,
       rawImagePath: liveRawUrl ?? (imagePath.isNotEmpty ? imagePath : null),
       spokenQuantity: 1,
     );
   }
 
-  Future<String> _transcribeWithGroqWhisper(String audioPath) async {
-    final apiKey = AppConstants.groqApiKey;
-    if (apiKey.isEmpty) return '';
-
-    try {
-      final uri = Uri.parse(
-        'https://api.groq.com/openai/v1/audio/transcriptions',
-      );
-      final request = http.MultipartRequest('POST', uri);
-      request.headers['Authorization'] = 'Bearer $apiKey';
-      request.headers['User-Agent'] = 'BazaarSetu/1.0';
-      request.fields['model'] = 'whisper-large-v3-turbo';
-      request.fields['response_format'] = 'json';
-
-      Uint8List bytes;
-      final now = DateTime.now().millisecondsSinceEpoch;
-      String filename = kIsWeb ? 'audio_$now.webm' : 'audio_$now.wav';
-
-      if (kIsWeb ||
-          audioPath.startsWith('blob:') ||
-          audioPath.startsWith('http')) {
-        final xFile = XFile(audioPath);
-        bytes = await xFile.readAsBytes();
-        if (xFile.name.isNotEmpty && xFile.name.contains('.')) {
-          filename = xFile.name;
-        }
-      } else {
-        final file = File(audioPath);
-        if (!file.existsSync()) return '';
-        bytes = await file.readAsBytes();
-        if (file.uri.pathSegments.isNotEmpty) {
-          filename = file.uri.pathSegments.last;
-        }
-      }
-
-      request.files.add(
-        http.MultipartFile.fromBytes('file', bytes, filename: filename),
-      );
-
-      final streamedResponse = await request.send().timeout(
-        AppConstants.apiTimeout,
-      );
-      final response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final text = data['text'] as String? ?? '';
-        return text.trim();
-      } else {
-        debugPrint(
-          '[GroqWhisper] HTTP ${response.statusCode}: ${response.body}',
-        );
-      }
-    } catch (e) {
-      debugPrint('[GroqWhisper] Transcription error: $e');
-    }
-    return '';
-  }
-
   Future<Map<String, dynamic>> _extractWithQwen(String transcript) async {
-    final apiKey = AppConstants.groqApiKey;
-    String model = AppConstants.qwenModel;
+    final apiKey = AppConstants.qwenApiKey;
+    final model = AppConstants.qwenModel;
     final uri = Uri.parse(AppConstants.qwenApiUrl);
-
-    // Auto-map model if running on Groq
-    if (AppConstants.qwenApiUrl.contains('groq.com')) {
-      if (model.isEmpty ||
-          model == 'qwen-2.5-32b-it' ||
-          model == 'qwen-2.5-7b-instruct' ||
-          model == 'qwen-2.5-32b') {
-        model = 'qwen/qwen3.8-27b';
-      }
-    }
 
     final headers = {
       'Content-Type': 'application/json',
@@ -1016,20 +1026,9 @@ Artisan update instruction:
       'response_format': {'type': 'json_object'},
     };
 
-    http.Response response = await http
+    final response = await http
         .post(uri, headers: headers, body: jsonEncode(payload))
         .timeout(AppConstants.apiTimeout);
-
-    // If requested model was not found (404), fallback to active Groq model
-    if (response.statusCode == 404 && model != 'qwen/qwen3.8-27b') {
-      debugPrint(
-        '[Qwen] Model $model not found, retrying with qwen/qwen3.8-27b',
-      );
-      payload['model'] = 'qwen/qwen3.8-27b';
-      response = await http
-          .post(uri, headers: headers, body: jsonEncode(payload))
-          .timeout(AppConstants.apiTimeout);
-    }
 
     if (response.statusCode != 200) {
       throw Exception(
