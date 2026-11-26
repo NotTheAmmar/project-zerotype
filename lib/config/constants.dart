@@ -77,8 +77,6 @@ class AppConstants {
   static String get bhashiniUserId => _getEnv('BHASHINI_USER_ID') ?? '';
   static String get bhashiniPipelineId =>
       _getEnv('BHASHINI_PIPELINE_ID') ?? '64392f96daac500b55c543cd';
-  static String get voicePipeline =>
-      _getEnv('VOICE_PIPELINE')?.toLowerCase() ?? 'bhashini';
 
   // ── BPP Backend (ONDC Beckn Provider Platform) ────────────────────
   static String get bppBackendUrl {

@@ -6,6 +6,7 @@ import 'package:project_zerotype/models/catalog_item.dart';
 import 'package:project_zerotype/models/pricing_corridor.dart';
 import 'package:project_zerotype/services/api_service.dart';
 import 'package:project_zerotype/services/audio_service.dart';
+import 'package:project_zerotype/services/bhashini_service.dart';
 import 'package:project_zerotype/services/storage_service.dart';
 
 class FakeApiService implements ApiService {
@@ -107,9 +108,27 @@ class FakeApiService implements ApiService {
   );
 }
 
+class FakeBhashiniService extends BhashiniService {
+  @override
+  Future<String> synthesize(
+    String text, {
+    String sourceLanguage = 'hi',
+    String gender = 'female',
+  }) async {
+    return '/tmp/bhashini_mock.wav';
+  }
+}
+
 class FakeAudioService extends AudioService {
   Completer<void>? pendingSpeakCompleter;
   bool stopAllCalled = false;
+
+  @override
+  Future<void> playFile(String path) async {
+    if (pendingSpeakCompleter != null) {
+      await pendingSpeakCompleter!.future;
+    }
+  }
 
   @override
   Future<void> speakText(String hindiText) async {
@@ -162,16 +181,19 @@ void main() {
     late FakeApiService apiService;
     late FakeAudioService audioService;
     late FakeStorageService storageService;
+    late FakeBhashiniService bhashiniService;
     late CatalogController controller;
 
     setUp(() {
       apiService = FakeApiService();
       audioService = FakeAudioService();
       storageService = FakeStorageService();
+      bhashiniService = FakeBhashiniService();
       controller = CatalogController(
         apiService: apiService,
         audioService: audioService,
         storageService: storageService,
+        bhashiniService: bhashiniService,
       );
     });
 

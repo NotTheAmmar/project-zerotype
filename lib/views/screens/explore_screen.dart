@@ -17,6 +17,7 @@ import 'language_selection_screen.dart';
 import '../../models/catalog_item.dart';
 import '../../services/api_service.dart';
 import '../../services/audio_service.dart';
+import '../../services/bhashini_service.dart';
 import '../widgets/bilingual_text.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -29,6 +30,7 @@ class ExploreScreen extends StatefulWidget {
 class _ExploreScreenState extends State<ExploreScreen> {
   int _bottomNavIndex = 0;
   final AudioService _audioService = AudioService();
+  final BhashiniService _bhashiniService = BhashiniService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isVoiceSearching = false;
@@ -49,6 +51,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
     _searchController.dispose();
     _audioService.stopAllAudio();
     _audioService.dispose();
+    _bhashiniService.dispose();
     super.dispose();
   }
 
@@ -1023,7 +1026,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                               ? item.descriptionHi!
                                               : (item.descriptionEn ?? ''));
                                 if (_isPlayingStory) {
-                                  await _audioService.stopTts();
+                                  await _audioService.stopPlayback();
                                   if (modalCtx.mounted) {
                                     setModalState(() => _isPlayingStory = false);
                                   }
@@ -1036,7 +1039,22 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                     setState(() => _isPlayingStory = true);
                                   }
                                   try {
-                                    await _audioService.speakText(textToSpeak);
+                                    final ttsLang =
+                                        (locDesc != null && locDesc.isNotEmpty)
+                                        ? langCtrl.voiceLanguageCode
+                                        : (item.descriptionHi?.trim().isNotEmpty ==
+                                                  true
+                                              ? 'hi'
+                                              : 'en');
+                                    final audioPath = await _bhashiniService
+                                        .synthesize(
+                                          textToSpeak,
+                                          sourceLanguage: ttsLang,
+                                          gender: 'female',
+                                        );
+                                    await _audioService.playFile(audioPath);
+                                  } catch (e) {
+                                    debugPrint('[ExploreScreen] Bhashini TTS error: $e');
                                   } finally {
                                     if (modalCtx.mounted) {
                                       setModalState(

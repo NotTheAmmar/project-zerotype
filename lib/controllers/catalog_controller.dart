@@ -3,7 +3,6 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
-import '../config/constants.dart';
 import '../models/catalog_item.dart';
 import '../models/craft_attributes.dart';
 import '../models/pricing_corridor.dart';
@@ -26,12 +25,14 @@ class CatalogController extends ChangeNotifier {
   final ApiService _apiService;
   final AudioService _audioService;
   final StorageService _storageService;
+  final BhashiniService _bhashiniService;
 
   CatalogController({
     required this._apiService,
     required this._audioService,
     required this._storageService,
-  }) {
+    BhashiniService? bhashiniService,
+  }) : _bhashiniService = bhashiniService ?? BhashiniService() {
     loadSavedCatalogs();
   }
 
@@ -296,8 +297,6 @@ class CatalogController extends ChangeNotifier {
     notifyListeners();
   }
 
-  final BhashiniService _bhashiniService = BhashiniService();
-
   Future<void> speakReadback({
     String languageCode = 'hi',
     String ttsLocale = 'hi-IN',
@@ -322,28 +321,20 @@ class CatalogController extends ChangeNotifier {
                             '')));
 
       if (textToSpeak.isNotEmpty) {
-        final canUseBhashiniTts =
-            AppConstants.bhashiniApiKey.isNotEmpty &&
-            (locDesc.isNotEmpty || descHi.isNotEmpty);
-        if (canUseBhashiniTts) {
-          try {
-            final ttsLang = locDesc.isNotEmpty ? languageCode : 'hi';
-            final audioPath = await _bhashiniService.synthesize(
-              textToSpeak,
-              sourceLanguage: ttsLang,
-              gender: 'female',
-            );
-            if (!_isSpeaking) return;
-            await _audioService.playFile(audioPath);
-            return;
-          } catch (e) {
-            debugPrint('[BhashiniTTS] failed, falling back to device TTS: $e');
-          }
-        }
-
+        final ttsLang = locDesc.isNotEmpty
+            ? languageCode
+            : (descHi.isNotEmpty ? 'hi' : 'en');
+        final audioPath = await _bhashiniService.synthesize(
+          textToSpeak,
+          sourceLanguage: ttsLang,
+          gender: 'female',
+        );
         if (!_isSpeaking) return;
-        await _audioService.speakText(textToSpeak);
+        await _audioService.playFile(audioPath);
       }
+    } catch (e) {
+      debugPrint('[BhashiniTTS] failed: $e');
+      _errorMessage = 'Bhashini TTS failed: $e';
     } finally {
       _isSpeaking = false;
       notifyListeners();
