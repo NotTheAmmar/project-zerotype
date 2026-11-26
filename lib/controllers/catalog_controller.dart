@@ -257,36 +257,38 @@ class CatalogController extends ChangeNotifier {
     _isSpeaking = true;
     notifyListeners();
 
-    final descHi = _currentItem!.descriptionHi?.trim() ?? '';
-    final descEn = _currentItem!.descriptionEn?.trim() ?? '';
-    final textToSpeak = descHi.isNotEmpty
-        ? descHi
-        : (descEn.isNotEmpty
-              ? descEn
-              : (_currentItem!.titleHi ?? _currentItem!.titleEn ?? ''));
+    try {
+      final descHi = _currentItem!.descriptionHi?.trim() ?? '';
+      final descEn = _currentItem!.descriptionEn?.trim() ?? '';
+      final textToSpeak = descHi.isNotEmpty
+          ? descHi
+          : (descEn.isNotEmpty
+                ? descEn
+                : (_currentItem!.titleHi ?? _currentItem!.titleEn ?? ''));
 
-    if (textToSpeak.isNotEmpty) {
-      if (AppConstants.bhashiniApiKey.isNotEmpty && descHi.isNotEmpty) {
-        try {
-          final audioPath = await _bhashiniService.synthesize(
-            textToSpeak,
-            sourceLanguage: 'hi',
-            gender: 'female',
-          );
-          await _audioService.playFile(audioPath);
-          _isSpeaking = false;
-          notifyListeners();
-          return;
-        } catch (e) {
-          debugPrint('[BhashiniTTS] failed, falling back to device TTS: $e');
+      if (textToSpeak.isNotEmpty) {
+        if (AppConstants.bhashiniApiKey.isNotEmpty && descHi.isNotEmpty) {
+          try {
+            final audioPath = await _bhashiniService.synthesize(
+              textToSpeak,
+              sourceLanguage: 'hi',
+              gender: 'female',
+            );
+            if (!_isSpeaking) return;
+            await _audioService.playFile(audioPath);
+            return;
+          } catch (e) {
+            debugPrint('[BhashiniTTS] failed, falling back to device TTS: $e');
+          }
         }
+
+        if (!_isSpeaking) return;
+        await _audioService.speakText(textToSpeak);
       }
-
-      await _audioService.speakText(textToSpeak);
+    } finally {
+      _isSpeaking = false;
+      notifyListeners();
     }
-
-    _isSpeaking = false;
-    notifyListeners();
   }
 
   Future<void> stopReadback() async {

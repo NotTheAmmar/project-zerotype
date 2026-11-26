@@ -50,11 +50,75 @@ class _CatalogScreenState extends State<CatalogScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final item = context.read<CatalogController>().currentItem;
       if (item != null && mounted) {
+        final p = item.pricing;
+        String tier = 'fair';
+        if (p != null) {
+          if (p.fairPrice == p.floorPrice && p.floorPrice != p.premiumPrice) {
+            tier = 'floor';
+          } else if (p.fairPrice == p.premiumPrice &&
+              p.premiumPrice != p.floorPrice) {
+            tier = 'premium';
+          }
+        }
         setState(() {
           _quantity = item.availableQuantity;
+          _selectedTier = tier;
         });
       }
     });
+  }
+
+  Future<void> _setPrice(
+    int newPrice,
+    CatalogItem? item,
+    CatalogController? catalogCtrl, {
+    String? tier,
+  }) async {
+    if (newPrice <= 0) return;
+    setState(() {
+      if (tier != null) _selectedTier = tier;
+      _overridePrice = newPrice;
+    });
+    if (item != null && catalogCtrl != null) {
+      final currentPricing =
+          item.pricing ??
+          PricingCorridor.compute(
+            rawMaterialCost: 100,
+            laborDays: item.craftAttributes?.laborDays ?? 1,
+            sellerProposedPrice: newPrice,
+          );
+      final adjustedFloor = newPrice < currentPricing.floorPrice
+          ? (newPrice * 0.85).round().clamp(1, newPrice)
+          : currentPricing.floorPrice;
+      final updatedPricing = currentPricing.copyWith(
+        fairPrice: newPrice,
+        sellerProposedPrice: newPrice,
+        floorPrice: adjustedFloor,
+      );
+      final updated = item.copyWith(pricing: updatedPricing);
+      await catalogCtrl.updateCurrentItem(updated);
+
+      if (item.status == CatalogStatus.published) {
+        try {
+          await catalogCtrl.publishToOndc(null, _quantity);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Price updated to ₹$newPrice on ONDC • कीमत ₹$newPrice अपडेट हुई',
+                ),
+                backgroundColor: AppColors.primaryTeal,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (e) {
+          debugPrint(
+            '[CatalogScreen] Error updating published price to ONDC BPP: $e',
+          );
+        }
+      }
+    }
   }
 
   Future<void> _setQuantity(
@@ -1154,10 +1218,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _selectedTier = 'floor';
-                      _overridePrice = floorPrice;
-                    });
+                    _setPrice(
+                      floorPrice,
+                      item,
+                      _catalogCtrl,
+                      tier: 'floor',
+                    );
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -1211,10 +1277,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _selectedTier = 'fair';
-                      _overridePrice = baseFairPrice;
-                    });
+                    _setPrice(
+                      baseFairPrice,
+                      item,
+                      _catalogCtrl,
+                      tier: 'fair',
+                    );
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -1280,10 +1348,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    setState(() {
-                      _selectedTier = 'premium';
-                      _overridePrice = premiumPrice;
-                    });
+                    _setPrice(
+                      premiumPrice,
+                      item,
+                      _catalogCtrl,
+                      tier: 'premium',
+                    );
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -1347,7 +1417,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: () => _showCustomPriceDialog(context, activePrice),
+                onPressed: () =>
+                    _showCustomPriceDialog(context, activePrice, item),
                 icon: const Icon(
                   Icons.edit_rounded,
                   size: 14,
@@ -1687,7 +1758,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   // ── Custom Price Dialog ────────────────────────────────────────────────────
-  void _showCustomPriceDialog(BuildContext context, int currentPrice) {
+  void _showCustomPriceDialog(
+    BuildContext context,
+    int currentPrice,
+    CatalogItem item,
+  ) {
     final controller = TextEditingController(text: '$currentPrice');
     showDialog<int>(
       context: context,
@@ -1727,7 +1802,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       ),
     ).then((val) {
       if (val != null && val > 0) {
-        setState(() => _overridePrice = val);
+        _setPrice(val, item, _catalogCtrl);
       }
     });
   }
@@ -2209,7 +2284,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
         children: [
           // Audio Readback Bar
           GestureDetector(
-            onTap: () => catalogCtrl.speakReadback(),
+            onTap: () {
+              if (catalogCtrl.isSpeaking) {
+                catalogCtrl.stopReadback();
+              } else {
+                catalogCtrl.speakReadback();
+              }
+            },
             child: Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -2225,13 +2306,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     height: 28,
                     decoration: BoxDecoration(
                       color: catalogCtrl.isSpeaking
-                          ? AppColors.accentTerracotta
+                          ? AppColors.alertRed
                           : AppColors.primaryTeal,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       catalogCtrl.isSpeaking
-                          ? Icons.volume_up
+                          ? Icons.stop_rounded
                           : Icons.headphones_outlined,
                       size: 16,
                       color: Colors.white,
@@ -2241,7 +2322,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   Expanded(
                     child: Text(
                       catalogCtrl.isSpeaking
-                          ? 'सुनाई दे रहा है... (Playing audio readback)'
+                          ? 'सुनाई दे रहा है... (Tap to stop)'
                           : 'सुनें: ऑडियो पुष्टि • Listen to audio summary',
                       style: AppTextStyles.labelSmall.copyWith(
                         color: AppColors.textPrimary,
@@ -2250,9 +2331,11 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     ),
                   ),
                   Text(
-                    catalogCtrl.isSpeaking ? 'Playing' : 'Play',
+                    catalogCtrl.isSpeaking ? 'Stop' : 'Play',
                     style: AppTextStyles.labelSmall.copyWith(
-                      color: AppColors.primaryTeal,
+                      color: catalogCtrl.isSpeaking
+                          ? AppColors.alertRed
+                          : AppColors.primaryTeal,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -2872,6 +2955,9 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
       );
 
       await widget.catalogCtrl.updateCurrentItem(updated);
+      if (widget.item.status == CatalogStatus.published) {
+        await widget.catalogCtrl.publishToOndc(null, qty);
+      }
 
       if (mounted) {
         Navigator.pop(context);

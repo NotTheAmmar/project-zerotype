@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project_zerotype/controllers/catalog_controller.dart';
 import 'package:project_zerotype/models/catalog_item.dart';
@@ -7,6 +9,8 @@ import 'package:project_zerotype/services/audio_service.dart';
 import 'package:project_zerotype/services/storage_service.dart';
 
 class FakeApiService implements ApiService {
+  PricingCorridor? lastPublishedPricing;
+
   @override
   Future<CatalogProcessResult> processCatalog({
     required String imagePath,
@@ -49,6 +53,7 @@ class FakeApiService implements ApiService {
     required PricingCorridor pricing,
     required int availableQuantity,
   }) async {
+    lastPublishedPricing = pricing;
     return {'status': 'PUBLISHED', 'catalog_id': item.id};
   }
 
@@ -83,8 +88,23 @@ class FakeApiService implements ApiService {
 }
 
 class FakeAudioService extends AudioService {
+  Completer<void>? pendingSpeakCompleter;
+  bool stopAllCalled = false;
+
   @override
-  Future<void> speakText(String hindiText) async {}
+  Future<void> speakText(String hindiText) async {
+    if (pendingSpeakCompleter != null) {
+      await pendingSpeakCompleter!.future;
+    }
+  }
+
+  @override
+  Future<void> stopAllAudio() async {
+    stopAllCalled = true;
+    if (pendingSpeakCompleter != null && !pendingSpeakCompleter!.isCompleted) {
+      pendingSpeakCompleter!.complete();
+    }
+  }
 
   @override
   Future<void> speakCatalogSummary({
@@ -217,6 +237,49 @@ void main() {
         final lastSaved = savedCatalogs.last;
         expect(lastSaved.rawImagePath, isNotNull);
         expect(lastSaved.studioImagePath, isNotNull);
+      },
+    );
+
+    test(
+      'speakReadback stays isSpeaking=true while playing and stops on stopReadback',
+      () async {
+        await controller.createFallbackDraft(imagePath: '/tmp/craft.jpg');
+        audioService.pendingSpeakCompleter = Completer<void>();
+
+        final speakFuture = controller.speakReadback();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(controller.isSpeaking, isTrue);
+
+        await controller.stopReadback();
+        await speakFuture;
+
+        expect(audioService.stopAllCalled, isTrue);
+        expect(controller.isSpeaking, isFalse);
+      },
+    );
+
+    test(
+      'updating price persists to savedCatalogs, storage, and publishToOndc',
+      () async {
+        await controller.createFallbackDraft(imagePath: '/tmp/craft.jpg');
+        final item = controller.currentItem!;
+        final updatedPricing = item.pricing!.copyWith(
+          fairPrice: 999,
+          sellerProposedPrice: 999,
+        );
+        await controller.updateCurrentItem(item.copyWith(pricing: updatedPricing));
+
+        expect(controller.currentItem!.pricing!.fairPrice, equals(999));
+        expect(
+          controller.savedCatalogs.firstWhere((c) => c.id == item.id).pricing!.fairPrice,
+          equals(999),
+        );
+        final saved = await storageService.loadCatalogs();
+        expect(saved.last.pricing!.fairPrice, equals(999));
+
+        await controller.publishToOndc();
+        expect(apiService.lastPublishedPricing?.fairPrice, equals(999));
       },
     );
   });

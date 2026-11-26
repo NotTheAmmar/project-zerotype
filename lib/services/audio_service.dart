@@ -20,6 +20,11 @@ class AudioService {
   FlutterTts get _tts => _ttsInstance ??= FlutterTts();
 
   StreamSubscription<Amplitude>? _amplitudeSub;
+  StreamSubscription<void>? _playerCompleteSub;
+  StreamSubscription<PlayerState>? _playerStateSub;
+  Completer<void>? _playbackCompleter;
+  Completer<void>? _ttsCompleter;
+  bool _ttsInitialized = false;
   bool _isRecording = false;
 
   bool get isRecording => _isRecording;
@@ -32,6 +37,25 @@ class AudioService {
       await _tts.setSpeechRate(0.45);
       await _tts.setVolume(1.0);
       await _tts.setPitch(1.0);
+      await _tts.awaitSpeakCompletion(true);
+      if (!_ttsInitialized) {
+        _ttsInitialized = true;
+        _tts.setCompletionHandler(() {
+          if (_ttsCompleter != null && !_ttsCompleter!.isCompleted) {
+            _ttsCompleter!.complete();
+          }
+        });
+        _tts.setCancelHandler(() {
+          if (_ttsCompleter != null && !_ttsCompleter!.isCompleted) {
+            _ttsCompleter!.complete();
+          }
+        });
+        _tts.setErrorHandler((_) {
+          if (_ttsCompleter != null && !_ttsCompleter!.isCompleted) {
+            _ttsCompleter!.complete();
+          }
+        });
+      }
     } catch (e) {
       debugPrint('[AudioService] TTS init error: $e');
     }
@@ -88,6 +112,7 @@ class AudioService {
   // ── Playback ─────────────────────────────────────────────────────────────
 
   Future<void> playFile(String path) async {
+    await stopPlayback();
     final source =
         (kIsWeb ||
             path.startsWith('http') ||
@@ -95,11 +120,40 @@ class AudioService {
             path.startsWith('data:'))
         ? UrlSource(path)
         : DeviceFileSource(path);
-    await _player.play(source);
+
+    final completer = Completer<void>();
+    _playbackCompleter = completer;
+
+    _playerCompleteSub = _player.onPlayerComplete.listen((_) {
+      if (!completer.isCompleted) completer.complete();
+    });
+    _playerStateSub = _player.onPlayerStateChanged.listen((state) {
+      if (state == PlayerState.stopped ||
+          state == PlayerState.completed ||
+          state == PlayerState.disposed) {
+        if (!completer.isCompleted) completer.complete();
+      }
+    });
+
+    try {
+      await _player.play(source);
+      await completer.future;
+    } finally {
+      await _playerCompleteSub?.cancel();
+      _playerCompleteSub = null;
+      await _playerStateSub?.cancel();
+      _playerStateSub = null;
+      if (identical(_playbackCompleter, completer)) {
+        _playbackCompleter = null;
+      }
+    }
   }
 
   Future<void> stopPlayback() async {
     await _player.stop();
+    if (_playbackCompleter != null && !_playbackCompleter!.isCompleted) {
+      _playbackCompleter!.complete();
+    }
   }
 
   /// Plays a base64-encoded WAV/audio returned by Bhashini TTS.
@@ -128,7 +182,6 @@ class AudioService {
     int? laborDays,
     String? descriptionHi,
   }) async {
-    await initTts();
     final text = _buildReadbackText(
       titleHi: titleHi,
       fairPrice: fairPrice,
@@ -137,11 +190,14 @@ class AudioService {
       laborDays: laborDays,
       descriptionHi: descriptionHi,
     );
-    await _tts.speak(text);
+    await _speakAndWait(text);
   }
 
   Future<void> stopTts() async {
     await _tts.stop();
+    if (_ttsCompleter != null && !_ttsCompleter!.isCompleted) {
+      _ttsCompleter!.complete();
+    }
   }
 
   Future<void> stopAllAudio() async {
@@ -156,8 +212,7 @@ class AudioService {
   /// Speak an error / warning prompt in Hindi
   Future<void> speakText(String hindiText) async {
     try {
-      await initTts();
-      await _tts.speak(hindiText);
+      await _speakAndWait(hindiText);
     } catch (e) {
       debugPrint('[AudioService] TTS speak error: $e');
     }
@@ -166,10 +221,27 @@ class AudioService {
   /// Speak an error / warning prompt in Hindi
   Future<void> speakWarning(String hindiText) async {
     try {
-      await initTts();
-      await _tts.speak(hindiText);
+      await _speakAndWait(hindiText);
     } catch (e) {
       debugPrint('[AudioService] TTS speakWarning error: $e');
+    }
+  }
+
+  Future<void> _speakAndWait(String text) async {
+    await stopTts();
+    await initTts();
+    final completer = Completer<void>();
+    _ttsCompleter = completer;
+    try {
+      final result = await _tts.speak(text);
+      if (result is int && result == 0 && !completer.isCompleted) {
+        completer.complete();
+      }
+      await completer.future;
+    } finally {
+      if (identical(_ttsCompleter, completer)) {
+        _ttsCompleter = null;
+      }
     }
   }
 
@@ -177,6 +249,14 @@ class AudioService {
 
   Future<void> dispose() async {
     await _amplitudeSub?.cancel();
+    await _playerCompleteSub?.cancel();
+    await _playerStateSub?.cancel();
+    if (_playbackCompleter != null && !_playbackCompleter!.isCompleted) {
+      _playbackCompleter!.complete();
+    }
+    if (_ttsCompleter != null && !_ttsCompleter!.isCompleted) {
+      _ttsCompleter!.complete();
+    }
     await _recorderInstance?.dispose();
     await _playerInstance?.dispose();
     await _ttsInstance?.stop();
