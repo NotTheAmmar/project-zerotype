@@ -222,7 +222,6 @@ Render's free tier spins down after 15 minutes of inactivity. Cold starts take 5
 In your local `.env` file on your development machine:
 
 ```properties
-USE_MOCK_DATA=false
 BACKEND_URL=https://project-zerotype-bpp.onrender.com
 BPP_BACKEND_URL=https://project-zerotype-bpp.onrender.com
 ```

@@ -89,7 +89,6 @@ class CatalogProcessResult {
 typedef StageCallback = void Function(int stage);
 
 /// Abstract service contract.
-/// Swap MockApiService → LiveApiService by setting USE_MOCK_DATA=false in .env.
 abstract class ApiService {
   Future<CatalogProcessResult> processCatalog({
     required String imagePath,
@@ -140,12 +139,7 @@ abstract class ApiService {
     String? catalogId,
   });
 
-  factory ApiService() {
-    if (AppConstants.useMockData) {
-      return MockApiService();
-    }
-    return LiveApiService();
-  }
+  factory ApiService() => LiveApiService();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
