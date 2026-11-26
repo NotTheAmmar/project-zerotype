@@ -5,6 +5,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
+import '../config/constants.dart';
 import '../models/catalog_item.dart';
 import '../models/craft_attributes.dart';
 import '../models/pricing_corridor.dart';
@@ -424,11 +425,12 @@ class CatalogController extends ChangeNotifier {
     }
   }
 
-  /// Speaks short status confirmations via Bhashini TTS in the selected [languageCode].
+  /// Speaks short status confirmations via Device TTS (Whisper mode) or Bhashini TTS.
   Future<void> _speakConfirmation({
     required String textEn,
     required String textHi,
     required String languageCode,
+    String ttsLocale = 'hi-IN',
   }) async {
     try {
       String text;
@@ -448,6 +450,15 @@ class CatalogController extends ChangeNotifier {
         }
       }
       if (text.trim().isEmpty) return;
+
+      if (AppConstants.isWhisperMode) {
+        await _audioService.speakText(
+          text,
+          locale: languageCode == 'en' ? 'en-IN' : ttsLocale,
+        );
+        return;
+      }
+
       final audioPath = await _bhashiniService.synthesize(
         text,
         sourceLanguage: languageCode,
@@ -459,10 +470,11 @@ class CatalogController extends ChangeNotifier {
     }
   }
 
-  /// Modifies current item using AI voice command (Bhashini + Qwen).
+  /// Modifies current item using AI voice command (Bhashini/Whisper + Qwen).
   Future<void> applyVoiceUpdate(
     String instruction, {
     String languageCode = 'hi',
+    String ttsLocale = 'hi-IN',
   }) async {
     if (_currentItem == null) return;
     try {
@@ -476,6 +488,7 @@ class CatalogController extends ChangeNotifier {
           textEn: 'Your catalog listing has been updated.',
           textHi: 'कैटलॉग अपडेट कर दिया गया है।',
           languageCode: languageCode,
+          ttsLocale: ttsLocale,
         ),
       );
     } catch (e) {
@@ -517,13 +530,20 @@ class CatalogController extends ChangeNotifier {
         final ttsLang = locDesc.isNotEmpty
             ? languageCode
             : (descHi.isNotEmpty ? 'hi' : 'en');
-        final audioPath = await _bhashiniService.synthesize(
-          textToSpeak,
-          sourceLanguage: ttsLang,
-          gender: 'female',
-        );
-        if (!_isSpeaking) return;
-        await _audioService.playFile(audioPath);
+        if (AppConstants.isWhisperMode) {
+          final resolvedLocale = locDesc.isNotEmpty
+              ? ttsLocale
+              : (descHi.isNotEmpty ? 'hi-IN' : 'en-IN');
+          await _audioService.speakText(textToSpeak, locale: resolvedLocale);
+        } else {
+          final audioPath = await _bhashiniService.synthesize(
+            textToSpeak,
+            sourceLanguage: ttsLang,
+            gender: 'female',
+          );
+          if (!_isSpeaking) return;
+          await _audioService.playFile(audioPath);
+        }
       }
     } catch (e) {
       debugPrint('[BhashiniTTS] failed: $e');
@@ -546,6 +566,7 @@ class CatalogController extends ChangeNotifier {
     int availableQuantity = 1,
     bool silent = false,
     String languageCode = 'hi',
+    String ttsLocale = 'hi-IN',
   ]) async {
     if (_currentItem == null || _isPublishing) return;
     _isPublishing = true;
@@ -601,6 +622,7 @@ class CatalogController extends ChangeNotifier {
               textEn: 'Your craft listing is now published on ONDC.',
               textHi: 'आपका उत्पाद ओएनडीसी पर प्रकाशित हो गया है।',
               languageCode: languageCode,
+              ttsLocale: ttsLocale,
             ),
           );
         }

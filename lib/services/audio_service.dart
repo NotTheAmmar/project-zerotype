@@ -31,10 +31,10 @@ class AudioService {
 
   // ── Initialization ──────────────────────────────────────────────────────
 
-  Future<void> initTts() async {
+  Future<void> initTts({String language = 'hi-IN'}) async {
     try {
-      await _tts.setLanguage('hi-IN');
-      await _tts.setSpeechRate(0.45);
+      await _tts.setLanguage(language);
+      await _tts.setSpeechRate(0.50);
       await _tts.setVolume(1.0);
       await _tts.setPitch(1.0);
       await _tts.awaitSpeakCompletion(true);
@@ -209,10 +209,13 @@ class AudioService {
     } catch (_) {}
   }
 
-  /// Speak an error / warning prompt in Hindi
-  Future<void> speakText(String hindiText) async {
+  /// Speak text in any specified BCP-47 locale using Android/device TTS
+  Future<void> speakText(
+    String text, {
+    String locale = 'hi-IN',
+  }) async {
     try {
-      await _speakAndWait(hindiText);
+      await _speakAndWait(text, locale: locale);
     } catch (e) {
       debugPrint('[AudioService] TTS speak error: $e');
     }
@@ -221,15 +224,18 @@ class AudioService {
   /// Speak an error / warning prompt in Hindi
   Future<void> speakWarning(String hindiText) async {
     try {
-      await _speakAndWait(hindiText);
+      await _speakAndWait(hindiText, locale: 'hi-IN');
     } catch (e) {
       debugPrint('[AudioService] TTS speakWarning error: $e');
     }
   }
 
-  Future<void> _speakAndWait(String text) async {
+  Future<void> _speakAndWait(
+    String text, {
+    String locale = 'hi-IN',
+  }) async {
     await stopTts();
-    await initTts();
+    await initTts(language: locale);
     final completer = Completer<void>();
     _ttsCompleter = completer;
     try {

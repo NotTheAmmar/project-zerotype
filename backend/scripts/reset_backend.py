@@ -112,10 +112,40 @@ async def reset_storage(supabase_url: str, supabase_key: str, buckets: list[str]
         print(f"✓ Cleared local uploads directory at {uploads_dir}")
 
 
+async def clear_remote_memory_cache(bpp_base_url: str) -> None:
+    """Delete any cached listings via the live Render BPP API so memory cache matches DB."""
+    base = bpp_base_url.rstrip("/")
+    if not base or "localhost" in base or "127.0.0.1" in base:
+        return
+
+    try:
+        async with httpx.AsyncClient(timeout=25.0) as client:
+            res = await client.get(f"{base}/api/v1/bpp/listings?include_drafts=true")
+            if res.status_code != 200:
+                print(f"- Could not reach {base} to clear in-memory cache (HTTP {res.status_code})")
+                return
+            listings = res.json().get("listings", [])
+            removed = 0
+            for item in listings:
+                cid = item.get("catalog_id")
+                if cid:
+                    d = await client.delete(f"{base}/api/v1/bpp/listings/{cid}")
+                    if d.status_code == 200:
+                        removed += 1
+            print(f"✓ Cleared {removed} cached listing(s) on live BPP server ({base})")
+    except Exception as exc:
+        print(f"- Live BPP cache cleanup skipped ({base}): {exc}")
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Reset BazaarSetu Supabase & backend test state.")
     parser.add_argument("--db-only", action="store_true", help="Only reset database tables.")
     parser.add_argument("--storage-only", action="store_true", help="Only clear storage buckets and uploads.")
+    parser.add_argument(
+        "--bpp-url",
+        default=None,
+        help="Live BPP base URL (defaults to BPP_PUBLIC_URI without /beckn) to also clear in-memory listings.",
+    )
     parser.add_argument("-y", "--yes", action="store_true", help="Skip confirmation prompt.")
     args = parser.parse_args()
 
@@ -132,6 +162,9 @@ async def main() -> None:
     do_storage = not args.db_only
 
     if do_db:
+        bpp_base = args.bpp_url or settings.bpp_public_uri.removesuffix("/beckn")
+        await clear_remote_memory_cache(bpp_base)
+
         db_url = (settings.database_url or "").strip()
         if db_url.startswith("postgres://") or db_url.startswith("postgresql"):
             await reset_postgres(db_url)
@@ -144,7 +177,7 @@ async def main() -> None:
         ]
         await reset_storage(settings.supabase_url, settings.supabase_key, buckets)
 
-    print("Done. Note: Restart uvicorn if running so the in-memory catalog cache reloads.")
+    print("Done.")
 
 
 if __name__ == "__main__":

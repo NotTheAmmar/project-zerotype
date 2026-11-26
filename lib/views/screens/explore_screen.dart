@@ -150,7 +150,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       // ── Search & Mic Bar ──────────────────────────────────
                       SliverToBoxAdapter(child: _buildSearchBar(context)),
 
-                      const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                      // ── Compact Voice Pipeline Test Toggle (Bhashini / Whisper) ──
+                      SliverToBoxAdapter(child: _buildVoiceEngineToggle(context)),
+
+                      const SliverToBoxAdapter(child: SizedBox(height: 6)),
 
                       // ── Section Header ────────────────────────────────────
                       SliverToBoxAdapter(
@@ -397,6 +400,114 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Voice Pipeline Test Toggle (Bhashini vs Whisper — Zero AppBar clutter) ─
+  Widget _buildVoiceEngineToggle(BuildContext context) {
+    final isWhisper = AppConstants.isWhisperMode;
+
+    Widget buildChip({
+      required String label,
+      required bool selected,
+      required VoicePipelineMode mode,
+    }) {
+      return GestureDetector(
+        onTap: () async {
+          if (AppConstants.voicePipelineMode == mode) return;
+          final messenger = ScaffoldMessenger.of(context);
+          await AppConstants.setVoicePipelineMode(mode);
+          if (!mounted) return;
+          setState(() {});
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(
+                mode == VoicePipelineMode.whisper
+                    ? 'Voice Test: Whisper STT + Device Voice active'
+                    : 'Voice Test: Bhashini ASR + Bhashini TTS active',
+              ),
+              backgroundColor: AppColors.primaryTeal,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primaryTeal : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Text(
+            label,
+            style: AppTextStyles.labelSmall.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: selected ? Colors.white : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.record_voice_over_outlined,
+              size: 14,
+              color: AppColors.secondaryTerracotta,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                AppStrings.pair(
+                  context,
+                  en: 'Voice Mode (Test)',
+                  hi: 'आवाज़ इंजन (टेस्ट)',
+                ),
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  buildChip(
+                    label: 'Bhashini',
+                    selected: !isWhisper,
+                    mode: VoicePipelineMode.bhashini,
+                  ),
+                  buildChip(
+                    label: 'Whisper',
+                    selected: isWhisper,
+                    mode: VoicePipelineMode.whisper,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1189,7 +1300,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                               ? item.descriptionHi!
                                               : (item.descriptionEn ?? ''));
                                 if (_isPlayingStory) {
-                                  await _audioService.stopPlayback();
+                                  await _audioService.stopAllAudio();
                                   if (modalCtx.mounted) {
                                     setModalState(() => _isPlayingStory = false);
                                   }
@@ -1209,15 +1320,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
                                                   true
                                               ? 'hi'
                                               : 'en');
-                                    final audioPath = await _bhashiniService
-                                        .synthesize(
-                                          textToSpeak,
-                                          sourceLanguage: ttsLang,
-                                          gender: 'female',
-                                        );
-                                    await _audioService.playFile(audioPath);
+                                    if (AppConstants.isWhisperMode) {
+                                      final locale = langCtrl
+                                          .languageByCode(ttsLang)
+                                          .ttsLocale;
+                                      await _audioService.speakText(
+                                        textToSpeak,
+                                        locale: locale,
+                                      );
+                                    } else {
+                                      final audioPath = await _bhashiniService
+                                          .synthesize(
+                                            textToSpeak,
+                                            sourceLanguage: ttsLang,
+                                            gender: 'female',
+                                          );
+                                      await _audioService.playFile(audioPath);
+                                    }
                                   } catch (e) {
-                                    debugPrint('[ExploreScreen] Bhashini TTS error: $e');
+                                    debugPrint('[ExploreScreen] Story TTS error: $e');
                                   } finally {
                                     if (modalCtx.mounted) {
                                       setModalState(

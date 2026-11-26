@@ -1,6 +1,6 @@
 # BazaarSetu: Voice Pipeline Architecture (Project ZeroType)
 
-This document details the voice-to-catalog pipeline in **BazaarSetu** (Project ZeroType). It specifies how open-ended spoken artisan narratives are anchored by visual category detection and structured by **Qwen** into valid ONDC Beckn catalog schemas.
+This document details the voice-to-catalog pipeline in **BazaarSetu** (Project ZeroType). It specifies how open-ended spoken artisan narratives across 23 supported languages are transcribed, translated, structured by **Qwen** into ONDC Beckn catalog schemas, and read back cleanly.
 
 ---
 
@@ -9,75 +9,54 @@ This document details the voice-to-catalog pipeline in **BazaarSetu** (Project Z
 ```mermaid
 sequenceDiagram
     participant Artisan as Artisan (Mobile App)
-    participant Vision as Vision/Category Detector
-    participant Audio as AudioService
-    participant Bhashini as Bhashini Cloud / Local ASR
-    participant Qwen as Qwen Engine
-    
-    Vision->>Audio: Category Detected (e.g. Pottery RET16)
-    Audio->>Artisan: 1. Guided 4-Step Voice Interview
-    Note over Artisan,Audio: Step 1: Craft & Material<br/>Step 2: Dimensions & Weight<br/>Step 3: Price & Labor Effort<br/>Step 4: Artisan Story & Heritage
-    
-    Artisan->>Audio: 2. Speaks Open-Ended Description per Step
-    Audio-->>Artisan: 16kHz WAV Stream (Dynamic 30-bar waveform visualizer)
-    
-    Audio->>Bhashini: 3. ASR (Speech-to-Text per segment)
-    Bhashini-->>Audio: Indic Transcripts
-    
-    Audio->>Qwen: 4. Extract & Structure via Qwen-2.5 / 3.8
-    Note over Qwen: Enforces strict ONDC Beckn schema,<br/>bilingual English + Hindi titles & descriptions,<br/>extracts price, batch stock, materials
-    Qwen-->>Audio: Structured JSON Catalog Result
-    
-    Audio->>Artisan: 5. Statutory Spoken Readback (TTS)
-    Note over Audio,Artisan: "आपका कैटलॉग तैयार है: मिट्टी का दीया, कीमत ₹350। क्या यह सही है?"
+    participant Audio as AudioService (16kHz WAV)
+    participant STT as Bhashini ASR / Whisper Test
+    participant NMT as Bhashini NMT
+    participant Qwen as Qwen LLM
+    participant TTS as Bhashini TTS / Device Voice
+
+    Artisan->>Audio: 1. Guided 4-Step Voice Interview
+    Note over Artisan,Audio: Step 1: Craft Name<br/>Step 2: Materials & Craft<br/>Step 3: Price & Labor Effort<br/>Step 4: Dimensions & Weight
+
+    Artisan->>Audio: 2. Speaks Open-Ended Description
+    Audio->>STT: 3. Transcribe Audio (Bhashini ITN or Whisper Turbo)
+    STT-->>NMT: 4. Regional Script Transcript
+
+    NMT->>Qwen: 5. Translate to English (when using Bhashini ASR) + Original Context
+    Note over Qwen: Extracts English + Hindi schema,<br/>spoken_price, spoken_quantity, materials
+    Qwen-->>NMT: Structured JSON Catalog Result
+
+    NMT-->>Artisan: 6. Localize to Chosen UI Language(s) (Single or Bilingual)
+    Artisan->>TTS: 7. Spoken Readback & Non-Blocking Publish Confirmation
 ```
 
 ---
 
-## 2. Modality Details
+## 2. Pipeline Modes (`VoicePipelineMode`)
 
-### A. Guided 4-Step Voice Interview
-Rather than an unstructured single voice dump, the flow breaks down cataloging into 4 intuitive, natural steps:
-1. **Product & Craft Details**: Category, materials, and crafting technique.
-2. **Dimensions & Weight**: Length, width, height, weight (with optional manual dimensions fallback dialog for precision).
-3. **Pricing & Labor Effort**: Stated selling price, raw material expense, and labor days.
-4. **Story & Heritage**: Generational tradition, occasion, and artisanal uniqueness.
+A compact **Voice Mode (Test)** toggle on `ExploreScreen` lets teams compare two pipelines side by side without altering the AppBar layout:
 
-### B. Open-Ended Voice Capture with Audio Safety Lifecycle
-- **No 15-Second Limit**: The artisan may speak as long as necessary. The UI provides an open-ended count-up timer (`MM:SS`) with a live 30-bar amplitude waveform.
-- **Audio Specification**: 16 kHz Mono WAV format (`AudioEncoder.wav`).
-- **Silence & Under-run Protection**: If speech amplitude drops or duration is insufficient, the artisan is gently prompted to speak naturally.
-- **Audio Interruption Lifecycle**: Both Flutter TTS synthesis and Bhashini `AudioPlayer` playback halt immediately when navigating away, popping screens, or dismissing quick-view modals, preventing overlapping audio playback.
+1. **`Bhashini` Mode (Default)**:
+   - **ASR**: Per-language ULCA model lookup (`_taskConfigs` keyed by `taskType:sourceLanguage:targetLanguage`) with `postProcessors: ['itn', 'punctuation']` (converting spoken numbers into digits like `₹350`).
+   - **NMT**: Translates non-English ASR transcripts into English before Qwen extraction, and translates `title_en` / `description_en` into the user's selected regional language(s).
+   - **TTS**: Bhashini Dhruva TTS requested at **22,050 Hz** and converted from 32-bit IEEE Float WAV (`wFormatTag == 3`) into standard **16-bit PCM WAV (`wFormatTag == 1`)** with ~1.4 dB headroom via `BhashiniService.normalizeWavToPcm16` for crisp Android playback.
+2. **`Whisper` Mode (Hybrid Testing)**:
+   - **STT**: Groq `whisper-large-v3-turbo` (`POST /openai/v1/audio/transcriptions` using `QWEN_API_KEY`) for language-agnostic and mixed Hinglish/code-switched speech recognition.
+   - **NMT**: Still uses Bhashini NMT for localizing catalog text into any of the 23 supported Indic languages.
+   - **TTS**: Device-native `FlutterTts` using the Android Speech Services neural voice for `ttsLocale` (e.g., `hi-IN`, `en-IN`, `ta-IN`).
 
-### C. Qwen Catalog Extraction (`api_service.dart`)
-- **Default Model**: `qwen-2.5-32b-instruct` (via OpenAI-compatible Qwen API or custom inference server).
-- **Temperature**: `0.1` for maximum schema reliability and determinism.
-- **System Prompt**:
-```text
-You are an expert Indian artisan product cataloguer for the ONDC (Open Network for Digital Commerce) e-commerce network.
-You convert spoken artisan descriptions (Hindi, Hinglish, or English) into structured ONDC Beckn catalog JSON.
+---
 
-Return ONLY a valid JSON object matching the target schema:
-{
-  "title_en": "Product title in English",
-  "title_hi": "उत्पाद का हिंदी नाम",
-  "category": "apparel|pottery|metalcraft|woodwork|food|jewelry|decor|handicrafts",
-  "materials": ["primary material", "secondary material"],
-  "dimensions": "length x width x height or size",
-  "care_instructions": "Care instructions in English",
-  "craft_technique": "Name of craft technique",
-  "lead_time": "Production lead time",
-  "origin_cluster": "Artisan cluster / village / region",
-  "fair_price": 350,
-  "available_quantity": 5,
-  "description_en": "Rich evocative artisan story in English",
-  "description_hi": "हिंदी में विवरण"
-}
-```
+## 3. Language Display vs. Storage & ONDC Contract
 
-### D. Spoken Price & Quantity Routing
-If the artisan explicitly mentions price (e.g. *"मैं इसे साढ़े तीन सौ में बेचता हूँ"*) or quantity (*"मेरे पास पांच पीस तैयार हैं"*), Qwen extracts `fair_price: 350` and `available_quantity: 5`. These values automatically pre-populate the **Fair-Price Corridor** card and **Tactile Quantity Stepper** on the catalog screen.
+- **In-App Display**: Respects the artisan's onboarding choice — **Single Language** (displays 1 selected language across headings, labels, dialogs, and cards via `AppStrings` & `BilingualText`) or **Bilingual** (displays their chosen 2 languages).
+- **Supabase & ONDC Storage**: Always persists `title_en` + `description_en` (mandatory ONDC RET12 descriptors) and `title_hi` + `description_hi` in Supabase PostgreSQL columns, while preserving any extra regional translations in `localized_titles` and `localized_descriptions` JSONB fields.
 
-### E. Readback & Verification
-Before publishing, the artisan hears the readback summary:
-> *"आपका कैटलॉग तैयार है: [श्रेणी] [शीर्षक], कीमत ₹[कीमत]। क्या यह सही है?"*
+---
+
+## 4. Open-Ended Capture & Audio Safety Lifecycle
+
+- **Guided 4-Step Voice Interview**: (1) Craft Name, (2) Materials & Technique, (3) Selling Price, Raw Cost & Labor Days, (4) Dimensions & Weight (paired with optional manual input).
+- **Audio Format**: 16 kHz Mono WAV (`AudioEncoder.wav` on mobile, `AudioEncoder.opus` on web), no 15-second duration cap.
+- **Audio Interruption Safety**: All TTS playback and recording sessions stop immediately when tapping the mic, switching steps, closing modals, or navigating away.
+- **Non-Blocking Publish Confirmation**: Publishing to ONDC immediately updates UI state and shows the confirmation dialog while confirmation TTS plays asynchronously in the user's selected language.

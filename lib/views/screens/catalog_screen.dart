@@ -2238,9 +2238,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                           catalogCtrl.stopReadback();
                         } else {
                           final langCtrl = context.read<LanguageController>();
+                          final voiceLang = langCtrl.voiceLanguageCode;
                           catalogCtrl.speakReadback(
-                            languageCode: langCtrl.voiceLanguageCode,
-                            ttsLocale: langCtrl.primaryLanguage.ttsLocale,
+                            languageCode: voiceLang,
+                            ttsLocale: langCtrl.languageByCode(voiceLang).ttsLocale,
                           );
                         }
                       },
@@ -2669,9 +2670,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 catalogCtrl.stopReadback();
               } else {
                 final langCtrl = context.read<LanguageController>();
+                final voiceLang = langCtrl.voiceLanguageCode;
                 catalogCtrl.speakReadback(
-                  languageCode: langCtrl.voiceLanguageCode,
-                  ttsLocale: langCtrl.primaryLanguage.ttsLocale,
+                  languageCode: voiceLang,
+                  ttsLocale: langCtrl.languageByCode(voiceLang).ttsLocale,
                 );
               }
             },
@@ -2830,14 +2832,14 @@ class _CatalogScreenState extends State<CatalogScreen> {
                     : () async {
                         setState(() => _isPublishing = true);
                         try {
-                          final publishLang = context
-                              .read<LanguageController>()
-                              .primaryLanguageCode;
+                          final langCtrl = context.read<LanguageController>();
+                          final publishLang = langCtrl.primaryLanguageCode;
                           await catalogCtrl.publishToOndc(
                             null,
                             _quantity,
                             false,
                             publishLang,
+                            langCtrl.primaryLanguage.ttsLocale,
                           );
                           if (!context.mounted) return;
                           if (!catalogCtrl.publishSuccess) {
@@ -2856,7 +2858,6 @@ class _CatalogScreenState extends State<CatalogScreen> {
                             );
                             return;
                           }
-                          final langCtrl = context.read<LanguageController>();
                           final pubTitle = AppStrings.pairFromController(
                             langCtrl,
                             en: 'Published to ONDC!',
@@ -3079,10 +3080,12 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
 
     setState(() => _isApplying = true);
     try {
-      final langCode = context.read<LanguageController>().primaryLanguageCode;
+      final langCtrl = context.read<LanguageController>();
+      final langCode = langCtrl.primaryLanguageCode;
       await widget.catalogCtrl.applyVoiceUpdate(
         instruction,
         languageCode: langCode,
+        ttsLocale: langCtrl.primaryLanguage.ttsLocale,
       );
       if (mounted) {
         Navigator.pop(context);

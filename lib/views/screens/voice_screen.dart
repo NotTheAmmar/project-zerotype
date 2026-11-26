@@ -47,7 +47,6 @@ class _VoiceScreenState extends State<VoiceScreen> {
   }
 
   Future<void> _speakQuestionForStep(GuidedVoiceStep step) async {
-    if (AppConstants.bhashiniApiKey.isEmpty) return;
     final langCtrl = context.read<LanguageController>();
     final langCode = langCtrl.primaryLanguageCode;
     String question;
@@ -62,7 +61,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
       );
       if (cached != null && cached.isNotEmpty) {
         question = cached;
-      } else {
+      } else if (AppConstants.bhashiniApiKey.isNotEmpty) {
         try {
           question = await _bhashiniService.translate(
             step.questionEn,
@@ -72,11 +71,22 @@ class _VoiceScreenState extends State<VoiceScreen> {
         } catch (_) {
           question = step.questionEn;
         }
+      } else {
+        question = step.questionEn;
       }
     }
 
     try {
-      await _questionAudio.stopPlayback();
+      await _questionAudio.stopAllAudio();
+      if (!mounted) return;
+      if (AppConstants.isWhisperMode) {
+        await _questionAudio.speakText(
+          question,
+          locale: langCtrl.primaryLanguage.ttsLocale,
+        );
+        return;
+      }
+      if (AppConstants.bhashiniApiKey.isEmpty) return;
       final ttsLang = langCtrl.primaryLanguage.supportsTts ? langCode : 'en';
       final audioPath = await _bhashiniService.synthesize(
         question,
@@ -86,7 +96,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
       if (!mounted) return;
       await _questionAudio.playFile(audioPath);
     } catch (e) {
-      debugPrint('[VoiceScreen] Bhashini question TTS error: $e');
+      debugPrint('[VoiceScreen] Question TTS error: $e');
     }
   }
 
@@ -97,6 +107,7 @@ class _VoiceScreenState extends State<VoiceScreen> {
 
   @override
   void dispose() {
+    _questionAudio.stopAllAudio();
     _questionAudio.dispose();
     _bhashiniService.dispose();
     super.dispose();

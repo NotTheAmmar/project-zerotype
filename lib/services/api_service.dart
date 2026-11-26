@@ -811,9 +811,17 @@ class LiveApiService implements ApiService {
     String sourceLanguage = 'hi',
   }) async {
     if (audioPath.isEmpty) return '';
-    if (!kIsWeb) {
+    if (!kIsWeb && !audioPath.startsWith('http') && !audioPath.startsWith('blob:')) {
       final f = File(audioPath);
       if (!f.existsSync()) return '';
+    }
+    if (AppConstants.isWhisperMode && AppConstants.qwenApiKey.isNotEmpty) {
+      try {
+        final whisperText = await _transcribeWithGroqWhisper(audioPath);
+        if (whisperText.isNotEmpty) return whisperText;
+      } catch (e) {
+        debugPrint('[transcribeAudio] Whisper failed, trying Bhashini: $e');
+      }
     }
     try {
       final transcript = await _bhashiniService.transcribe(
@@ -825,6 +833,59 @@ class LiveApiService implements ApiService {
       debugPrint('[transcribeAudio] Bhashini failed: $e');
     }
     return '';
+  }
+
+  Future<String> _transcribeWithGroqWhisper(String audioPath) async {
+    final apiKey = AppConstants.qwenApiKey;
+    if (apiKey.isEmpty) return '';
+
+    final uri = Uri.parse(
+      'https://api.groq.com/openai/v1/audio/transcriptions',
+    );
+    final request = http.MultipartRequest('POST', uri);
+    request.headers['Authorization'] = 'Bearer $apiKey';
+    request.headers['User-Agent'] = 'BazaarSetu/1.0';
+    request.fields['model'] = 'whisper-large-v3-turbo';
+    request.fields['response_format'] = 'json';
+
+    Uint8List bytes;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    String filename = kIsWeb ? 'audio_$now.webm' : 'audio_$now.wav';
+
+    if (kIsWeb || audioPath.startsWith('blob:') || audioPath.startsWith('http')) {
+      final xFile = XFile(audioPath);
+      bytes = await xFile.readAsBytes();
+      if (xFile.name.isNotEmpty && xFile.name.contains('.')) {
+        filename = xFile.name;
+      }
+    } else {
+      final file = File(audioPath);
+      if (!file.existsSync()) return '';
+      bytes = await file.readAsBytes();
+      if (file.uri.pathSegments.isNotEmpty) {
+        filename = file.uri.pathSegments.last;
+      }
+    }
+
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: filename),
+    );
+
+    final streamedResponse = await request.send().timeout(
+      AppConstants.apiTimeout,
+    );
+    final response = await http.Response.fromStream(streamedResponse);
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final text = data['text'] as String? ?? '';
+      return text.trim();
+    } else {
+      debugPrint(
+        '[GroqWhisper] HTTP ${response.statusCode}: ${response.body}',
+      );
+      return '';
+    }
   }
 
   @override
@@ -1111,9 +1172,11 @@ Artisan update instruction:
     String transcriptForQwen = segments.join('. ').trim();
     final nativeTranscript = nativeSegments.join('. ').trim();
 
-    // Translate non-English artisan speech to English via Bhashini NMT so Qwen
-    // extracts attributes, prices, and craft names with high accuracy across all 23 languages.
-    if (transcriptForQwen.isNotEmpty &&
+    // In Bhashini mode, translate non-English ASR transcripts to English via NMT
+    // for accurate Qwen extraction. In Whisper mode, Whisper already outputs clean
+    // multilingual/code-switched transcripts that Qwen parses directly.
+    if (!AppConstants.isWhisperMode &&
+        transcriptForQwen.isNotEmpty &&
         voiceLanguage != 'en' &&
         AppConstants.bhashiniApiKey.isNotEmpty) {
       try {

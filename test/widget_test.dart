@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:project_zerotype/app.dart';
+import 'package:project_zerotype/config/constants.dart';
 import 'package:project_zerotype/controllers/capture_controller.dart';
 import 'package:project_zerotype/controllers/catalog_controller.dart';
 import 'package:project_zerotype/controllers/language_controller.dart';
@@ -53,9 +54,19 @@ void main() {
 
     await tester.pump();
 
-    // Verify BazaarSetu branding and Karigar Hub are rendered
+    // Verify BazaarSetu branding, Karigar Hub, and Voice Mode toggle are rendered
     expect(find.text('BazaarSetu'), findsOneWidget);
     expect(find.text('Karigar Hub • कारीगर केंद्र'), findsOneWidget);
+    expect(find.text('Bhashini'), findsOneWidget);
+    expect(find.text('Whisper'), findsOneWidget);
+
+    await tester.tap(find.text('Whisper'));
+    await tester.pump();
+    expect(AppConstants.voicePipelineMode, equals(VoicePipelineMode.whisper));
+
+    await tester.tap(find.text('Bhashini'));
+    await tester.pump();
+    expect(AppConstants.voicePipelineMode, equals(VoicePipelineMode.bhashini));
   });
 
   testWidgets('BazaarSetu first launch opens language selection screen', (

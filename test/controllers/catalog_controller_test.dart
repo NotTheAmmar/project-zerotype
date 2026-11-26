@@ -148,7 +148,10 @@ class FakeAudioService extends AudioService {
   }
 
   @override
-  Future<void> speakText(String hindiText) async {
+  Future<void> speakText(
+    String text, {
+    String locale = 'hi-IN',
+  }) async {
     if (pendingSpeakCompleter != null) {
       await pendingSpeakCompleter!.future;
     }

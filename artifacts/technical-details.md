@@ -2,137 +2,68 @@
 
 > **Project Name:** Project ZeroType  
 > **Brand Name:** BazaarSetu / बाज़ारसेतु  
-> **Target Network:** Open Network for Digital Commerce (ONDC) v1.2.0  
-> **Framework:** Flutter 3.x (Dart 3.x)  
+> **Target Network:** Open Network for Digital Commerce (ONDC) v1.2.0 (`ONDC:RET12`)  
+> **Framework:** Flutter 3.x (Dart 3.x) + FastAPI (Python 3.12)  
 > **Pattern:** MVC (Model–View–Controller) with Provider State Management  
 
 ---
 
 ## 1. System Philosophy: Strict Modality Partitioning
 
-Project ZeroType addresses the fundamental barrier preventing rural Indian artisans from listing their craft on digital commerce: **literacy and complex text-entry forms**. By establishing a **Strict Modality Partitioning Architecture**, the application never forces the artisan to write text or type numerals.
+Project ZeroType removes typing and literacy barriers for rural Indian artisans by partitioning catalog creation into Camera, Voice, and Tactile Touch steps while keeping backend Supabase + ONDC persistence independent of temporary GPU hardware.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Screen Architecture                        │
-│                                                                 │
-│  WelcomeScreen   ──>  ExploreScreen  ──>  CaptureScreen        │
-│  (6 Indic Langs)      (Craft Hub)         (Vision + Slots)      │
-│                                                   │             │
-│                                                   ▼             │
-│  CatalogScreen   <──  ProcessingScreen <── VoiceScreen         │
-│  (Tactile Zero-Typing) (BiRefNet + Qwen)  (Adaptive Anchor)    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 2. Screen & Interaction Specifications
-
-### 2.1 WelcomeScreen (`/welcome`)
-- **Purpose**: Welcoming first-time artisans with zero literacy hurdles.
-- **Components**:
-  - 23 Bhashini-supported languages with onboarding choice of **Single Language** or **Bilingual (any 2 languages)** display.
-  - Spoken audio greeting button playing native welcome instructions via TTS.
-  - Tactile continue button: *"आगे बढ़ें • Continue"*.
-
-### 2.2 ExploreScreen (`/`)
-- **Purpose**: Home dashboard for craft discovery, quick view, and catalog launching.
-- **Components**:
-  - Horizontal Category Filter Pills (`All Crafts`, `Pottery & Clay`, `Clothing & Weaves`, `Home Decor`, `Tribal Metalcraft`, `Festive Special`).
-  - Search & Mic action bar.
-  - Direct Karigar Fair Pledge Prototype Banner.
-  - Responsive Grid of Artisan listings with handmade and status badges.
-  - Interactive **Product Quick View Modal**:
-    - Image preview, cluster provenance, GI origin.
-    - **Karigar Story Audio Snippet**: Native spoken artisan narrative with play/pause controls.
-    - Action buttons: *"Add to Guild Basket"* and *"View Catalog / ONDC Node"*.
-
-### 2.3 CaptureScreen (`/capture`)
-- **Purpose**: Visual modality capture with real-time heuristic category detection.
-- **Components**:
-  - 4:3 Camera Viewfinder with golden artisan corner brackets and center crosshairs.
-  - Audio Tips interactive guidance pill (*"दीया बीच में रखें और अच्छी रोशनी रखें"* with TTS playback).
-  - Detection Status Chip: Real-time visual categorization (`Apparel & Weaves RET12`, `Pottery & Terracotta RET16`, `Tribal Metalcraft RET16`, `Packaged Food RET10`).
-  - 4-Slot Multi-Angle Progress Bar: Tracks Front, Side, Back, and Detail shots.
-  - Shutter button with animated glow ring + Flash & Grid toggles.
-  - Continue CTA requiring at least 1 captured photo.
-
-### 2.4 VoiceScreen (`/voice`)
-- **Purpose**: Audio modality capture with category-adaptive spoken anchors.
-- **Components**:
-  - **Category-Adaptive Audio Anchor**: Automatically plays a 5–8s spoken dialect prompt before recording opens:
-    - *Pottery*: *"यह दीया किस मिट्टी से बना है और इसपर क्या नक्काशी है?"*
-    - *Apparel*: *"यह कपड़ा किस धागे से बुना गया है और इसपर क्या कढ़ाई की गई है?"*
-    - *Food*: *"यह खाद्य सामग्री कैसे तैयार की गई है और इसमें कौन से मसाले हैं?"*
-    - *Wood/Metal*: *"यह हस्तशिल्प किस धातु या लकड़ी से गढ़ा गया है?"*
-  - **Open-Ended Voice Capture**: No 15-second cap. An open-ended count-up timer (`MM:SS`) is displayed.
-  - Live 30-bar amplitude waveform visualizer.
-  - Silence warning with auto-recovery prompt.
-
-### 2.5 ProcessingScreen (`/processing`)
-- **Purpose**: Asynchronous execution of multimodal AI pipelines.
-- **Pipelines**:
-  1. *Studio Image Compositing*: Background isolation via BiRefNet backend with subtle shadow and warm neutral canvas.
-  2. *ASR & NMT*: Speech-to-Text via Bhashini Cloud / Whisper.
-  3. *Qwen Extraction*: LLM structuring of spoken transcript into ONDC Beckn JSON.
-  4. *TTS Generation*: Hindi catalog confirmation readback synthesis.
-
-### 2.6 CatalogScreen (`/catalog`)
-- **Purpose**: Tactile Zero-Typing verification and 1-tap ONDC broadcasting.
-- **Components**:
-  - Raw vs. Studio image toggle with multi-thumbnail strip.
-  - Provenance & GI Cluster Origin badge.
-  - **3 Fair-Price Corridor Cards**:
-    - Floor Price ($P_{\text{floor}}$) — Non-negotiable statutory wage floor.
-    - Fair Price ($P_{\text{fair}}$) — Recommended D2C market price.
-    - Premium Price ($P_{\text{prem}}$) — Gifted / Institutional price tier.
-  - **Tactile Adjustment Controls**:
-    - `[- ₹50]` and `[+ ₹50]` nudge buttons (clamped above floor).
-    - Stock preset pills: `[1]`, `[2]`, `[5]`, `[10]` + tactile stepper.
-  - Voice Edit Drawer with real-time spoken price/detail override.
-  - **Statutory Spoken Readback Bar**: *"सुनें: ऑडियो पुष्टि • Listen to audio summary"* triggers TTS readback (*"आपका कैटलॉग तैयार है: $cat $title, कीमत ₹$price। क्या यह सही है?"*).
-  - ONDC Statutory KYC prefill badges (`Origin: IND`, `Ship: PT24H`, `Return: P7D`, `Cancellable: Yes`).
-  - Action Bar: *"Save Draft"* and *"Publish Product"*.
-
----
-
-## 3. Qwen Extraction Architecture
-
-### 3.1 Endpoint Configuration (`constants.dart`)
-```dart
-static const String aiExtractionProvider = 'qwen'; // or 'custom_qwen'
-static const String qwenModel = 'qwen-2.5-32b-instruct';
-static const String qwenApiUrl = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
-```
-
-### 3.2 Target Beckn Extraction Schema
-```json
-{
-  "title_en": "Product title in English",
-  "title_hi": "उत्पाद का हिंदी नाम",
-  "category": "apparel|pottery|metalcraft|woodwork|food|jewelry|decor|handicrafts",
-  "materials": ["primary material", "secondary material"],
-  "dimensions": "length x width x height or size",
-  "care_instructions": "Care instructions",
-  "craft_technique": "Name of technique",
-  "lead_time": "Production lead time",
-  "origin_cluster": "Craft cluster / village",
-  "fair_price": 350,
-  "available_quantity": 5,
-  "description_en": "Evocative English story",
-  "description_hi": "विस्तृत हिंदी विवरण"
-}
+┌──────────────────────────────────────────────────────────────────────┐
+│                         Screen Architecture                          │
+│                                                                      │
+│  LanguageSelection ──> ExploreScreen ──> CaptureScreen               │
+│  (23 Langs / 1 or 2)   (Hub + Sync)      (Open-ended + Auto-Flash Off)│
+│                                                    │                 │
+│                                                    ▼                 │
+│  CatalogScreen     <── ProcessingScreen <── VoiceScreen              │
+│  (Tactile Corridor)    (Render + Kaggle)    (4-Step Guided Interview)│
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 4. ONDC Statutory KYC & Regulatory Defaults
+## 2. Backend Separation, Dual Buckets & Offline Resilience
 
-To ensure zero typing for statutory compliance under Indian e-commerce regulations, BazaarSetu automatically injects merchant defaults:
-- `country_of_origin`: `"IND"`
-- `time_to_ship`: `"PT24H"` (Standard next-day handoff)
-- `return_window`: `"P7D"` (7 days)
-- `is_cancellable`: `true`
-- `is_returnable`: `true`
-- `contact_details_consumer_care`: Pre-filled from artisan guild federation profile.
+| Component | URL Source (`AppConstants`) | Role |
+| :--- | :--- | :--- |
+| **Persistent BPP Server** | `bppBackendUrl` (`BPP_BACKEND_URL` -> Render) | Always-on ONDC `/beckn/*` webhooks, Supabase Postgres catalog storage, and raw/processed image storage (`/api/v1/bpp/*`). Never overridden by temporary Kaggle URLs. |
+| **Optional GPU Server** | `kaggleUrl` (`KAGGLE_URL` / in-app GPU modal) | Temporary Kaggle Dual-T4 BiRefNet-HR server for studio background removal. Status indicated by the green/red `Icons.sensors_rounded` button on ExploreScreen. |
+
+- **Dual Supabase Storage Buckets**:
+  - `raw-craft-images`: Stores `<catalog_id>_raw.<ext>` (always uploaded directly via Render when online; displayed in-app only, **never** included in ONDC `on_search`).
+  - `processed-craft-images`: Stores `<catalog_id>_studio.<ext>` and processed gallery angles (`gallery_*`), which are exposed in `ondc_mapper.py`.
+- **Offline Kaggle Fallback & Deferred Background Sync**:
+  - When Kaggle is offline, `isKaggleHealthy()` fails fast (4s timeout) and catalog creation/publish proceeds cleanly via Render with `studioImagePath = null`.
+  - When Kaggle later comes online, `CatalogController.syncPendingWithBackendAndKaggle()` automatically processes pending raw and gallery photos in the background, saves permanent URLs to `processed-craft-images`, and updates Supabase + ONDC.
+- **Storage Cleanup on Delete & Test Reset**:
+  - `DELETE /api/v1/bpp/listings/{catalog_id}` deletes the PostgreSQL/SQLite row **and** removes associated objects from both `raw-craft-images` and `processed-craft-images` buckets (plus local `uploads/`).
+  - `backend/scripts/reset_backend.py` clears remote Render in-memory cache, Supabase PostgreSQL tables, SQLite, and both Supabase Storage buckets.
+
+---
+
+## 3. Key Screens & Controls
+
+1. **`LanguageSelectionScreen` (`/language-selection`)**:
+   - All 23 Bhashini languages (`hi`, `en`, `mr`, `gu`, `bn`, `ta`, `te`, `kn`, `ml`, `or`, `pa`, `as`, `ur`, `brx`, `doi`, `ks`, `kok`, `mai`, `mni`, `ne`, `sa`, `sat`, `sd`).
+   - User picks **Single Language** or **Bilingual (2 languages)**.
+2. **`ExploreScreen` (`/explore`)**:
+   - Compact AppBar (`BazaarSetu`, green/red GPU settings icon, selected-language pill, `Add` button).
+   - Search bar with voice search + compact `Voice Mode (Test)` (`Bhashini` / `Whisper`) segmented toggle below search.
+   - Craft grid, Quick View modal with localized Craft Story TTS playback, and pull-to-refresh / network sync.
+3. **`CaptureScreen` (`/capture`)**:
+   - Open-ended multi-photo tray (`Main #1`, `#2`, ...) at `ResolutionPreset.medium` with downscaled (200px width) isolate quality checks.
+   - Strict shutter/quality timeouts and `try/finally` state cleanup so shutter never hangs; hardware flash automatically turns off on Next, Back, Pop, Retake, Dispose, or App background.
+4. **`VoiceScreen` (`/voice`)**:
+   - 4-step guided voice interview + Step 4 optional manual dimensions/weight form.
+   - Spoken questions in the user's selected language via Bhashini TTS (`22050 Hz` PCM16) or Device Neural TTS (in Whisper test mode).
+5. **`ProcessingScreen` (`/processing`)**:
+   - Fully localized progress headlines, rotating tips, and draft fallback controls; generates deterministic `catalogId` before Stage 0 upload.
+6. **`CatalogScreen` (`/catalog`)**:
+   - Localized UI respecting `AppStrings` & `BilingualText` in Single/Bilingual mode.
+   - **3 Fair-Price Corridor Cards** (Floor, Recommended Fair, Premium) + Custom Price dialog + Tactile Stock chips + Custom Stock dialog.
+   - Manual Edit form, AI Voice Edit sheet, Unlist/Delete dialogs, Network Info modal, and 1-tap `Publish to ONDC` with immediate confirmation dialog.
