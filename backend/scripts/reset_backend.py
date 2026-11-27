@@ -27,12 +27,47 @@ from app.config import get_settings  # noqa: E402
 from app.db import _clean_postgres_url  # noqa: E402
 
 
-async def reset_postgres(database_url: str) -> None:
+async def reset_postgres_via_rest(supabase_url: str, supabase_key: str) -> bool:
+    """Fallback cleanup over IPv4 HTTPS (Supabase PostgREST) when direct PG/IPv6 is unreachable."""
+    if not supabase_url or not supabase_key:
+        return False
+    base = supabase_url.rstrip("/")
+    headers = {
+        "Authorization": f"Bearer {supabase_key}",
+        "apiKey": supabase_key,
+        "Prefer": "return=minimal",
+    }
+    ok = True
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        for table, col in (("artisan_listings", "catalog_id"), ("sellers", "seller_id")):
+            url = f"{base}/rest/v1/{table}?{col}=not.is.null"
+            res = await client.delete(url, headers=headers)
+            if res.status_code not in (200, 204):
+                ok = False
+                print(f"- PostgREST cleanup for '{table}' returned HTTP {res.status_code}: {res.text}")
+    if ok:
+        print("✓ Cleared PostgreSQL tables via Supabase REST API (artisan_listings, sellers)")
+    return ok
+
+
+async def reset_postgres(
+    database_url: str,
+    supabase_url: str = "",
+    supabase_key: str = "",
+) -> None:
     """Truncate artisan_listings and sellers in PostgreSQL (Supabase)."""
     import asyncpg
 
     clean_url = _clean_postgres_url(database_url)
-    conn = await asyncpg.connect(clean_url, statement_cache_size=0)
+    try:
+        conn = await asyncpg.connect(clean_url, statement_cache_size=0, timeout=8.0)
+    except OSError as exc:
+        print(f"- Direct PostgreSQL connection failed ({exc}); trying Supabase REST API over IPv4...")
+        if await reset_postgres_via_rest(supabase_url, supabase_key):
+            return
+        print("- Skipped direct PostgreSQL table truncate (use Supabase IPv4 pooler URI or ensure Render cleanup succeeded)")
+        return
+
     try:
         await conn.execute("DELETE FROM artisan_listings;")
         await conn.execute("DELETE FROM sellers;")
@@ -167,7 +202,9 @@ async def main() -> None:
 
         db_url = (settings.database_url or "").strip()
         if db_url.startswith("postgres://") or db_url.startswith("postgresql"):
-            await reset_postgres(db_url)
+            await reset_postgres(db_url, settings.supabase_url, settings.supabase_key)
+        elif settings.supabase_url and settings.supabase_key:
+            await reset_postgres_via_rest(settings.supabase_url, settings.supabase_key)
         reset_sqlite(BACKEND_DIR / "bazaarsetu.db")
 
     if do_storage:
