@@ -79,8 +79,9 @@ async def upload_image(
     storage_type = "supabase"
 
     # 2. Fallback to local /uploads/{raw|processed}/ directory with strict path sanitization
+    is_raw = safe_type == "raw" or safe_type.startswith("raw_")
     if not public_url:
-        sub_dir = "raw" if safe_type == "raw" else "processed"
+        sub_dir = "raw" if is_raw else "processed"
         upload_dir = os.path.abspath(os.path.join("uploads", sub_dir))
         os.makedirs(upload_dir, exist_ok=True)
         safe_basename = os.path.basename(filename)
@@ -97,8 +98,8 @@ async def upload_image(
         public_url = f"{base_url}/uploads/{sub_dir}/{safe_basename}"
         storage_type = "local"
 
-    raw_img = public_url if safe_type == "raw" else None
-    studio_img = public_url if safe_type != "raw" else None
+    raw_img = public_url if is_raw else None
+    studio_img = public_url if not is_raw else None
     return {
         "status": "UPLOADED",
         "url": public_url,
@@ -137,6 +138,8 @@ async def publish_listing(listing: ArtisanListingPayload) -> dict:
         "fair_price_inr": listing.fair_price,
         "raw_image_url": listing.raw_image_url,
         "studio_image_url": listing.studio_image_url,
+        "raw_gallery_images": listing.raw_gallery_images,
+        "gallery_images": listing.gallery_images,
     }
 
 
@@ -153,6 +156,8 @@ async def save_draft_listing(listing: ArtisanListingPayload) -> dict:
         "fair_price_inr": listing.fair_price,
         "raw_image_url": listing.raw_image_url,
         "studio_image_url": listing.studio_image_url,
+        "raw_gallery_images": listing.raw_gallery_images,
+        "gallery_images": listing.gallery_images,
     }
 
 
@@ -179,6 +184,8 @@ async def update_listing(
         "fair_price_inr": listing.fair_price,
         "raw_image_url": listing.raw_image_url,
         "studio_image_url": listing.studio_image_url,
+        "raw_gallery_images": listing.raw_gallery_images,
+        "gallery_images": listing.gallery_images,
     }
 
 

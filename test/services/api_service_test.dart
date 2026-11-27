@@ -120,5 +120,26 @@ void main() {
       expect(result.craftAttributes?.countryOfOrigin, equals('IND'));
       expect(result.pricing, isNotNull);
     });
+
+    test('CatalogItem.fromBppListing separates raw_gallery_images and rejects raw URLs in studioImagePath', () {
+      final restored = CatalogItem.fromBppListing({
+        'catalog_id': 'c_media_1',
+        'title_en': 'Clay Jar',
+        'raw_image_url': 'https://example.supabase.co/storage/v1/object/public/raw-craft-images/c_media_1_raw.jpg',
+        'studio_image_url': 'https://example.supabase.co/storage/v1/object/public/raw-craft-images/c_media_1_raw.jpg',
+        'raw_gallery_images': [
+          'https://example.supabase.co/storage/v1/object/public/raw-craft-images/c_media_1_raw_gallery_0.jpg',
+        ],
+        'gallery_images': [
+          'https://example.supabase.co/storage/v1/object/public/raw-craft-images/c_media_1_raw_gallery_1.jpg',
+          'https://example.supabase.co/storage/v1/object/public/processed-craft-images/c_media_1_gallery_0.jpg',
+        ],
+      });
+
+      expect(restored.studioImagePath, isNull);
+      expect(restored.rawGalleryImages.length, equals(2));
+      expect(restored.galleryImages.length, equals(1));
+      expect(restored.galleryImages.first, contains('/processed-craft-images/'));
+    });
   });
 }

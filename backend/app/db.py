@@ -503,6 +503,7 @@ async def delete_listing_storage_objects(
         urls = [
             media.get("raw_image_url"),
             media.get("studio_image_url"),
+            *(media.get("raw_gallery_images") or []),
             *(media.get("gallery_images") or []),
         ]
         for u in urls:
@@ -624,7 +625,8 @@ def resolve_storage_bucket(image_type: str = "studio", bucket: Optional[str] = N
     if bucket:
         return bucket
     settings = get_settings()
-    if image_type == "raw":
+    normalized = (image_type or "").strip().lower()
+    if normalized == "raw" or normalized.startswith("raw_"):
         return settings.supabase_raw_bucket
     return settings.supabase_processed_bucket
 

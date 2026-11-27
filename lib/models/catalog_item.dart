@@ -11,6 +11,7 @@ class CatalogItem {
   final String? rawImagePath;
   final String? studioImagePath; // teammate's model output will go here
   final String? audioPath;
+  final List<String> rawGalleryImages;
   final List<String> galleryImages;
 
   // Bilingual / Multilingual descriptors
@@ -51,6 +52,7 @@ class CatalogItem {
     this.rawImagePath,
     this.studioImagePath,
     this.audioPath,
+    this.rawGalleryImages = const [],
     this.galleryImages = const [],
     this.titleEn,
     this.titleHi,
@@ -78,6 +80,7 @@ class CatalogItem {
     String? rawImagePath,
     String? studioImagePath,
     String? audioPath,
+    List<String>? rawGalleryImages,
     List<String>? galleryImages,
     String? titleEn,
     String? titleHi,
@@ -104,6 +107,7 @@ class CatalogItem {
       rawImagePath: rawImagePath ?? this.rawImagePath,
       studioImagePath: studioImagePath ?? this.studioImagePath,
       audioPath: audioPath ?? this.audioPath,
+      rawGalleryImages: rawGalleryImages ?? this.rawGalleryImages,
       galleryImages: galleryImages ?? this.galleryImages,
       titleEn: titleEn ?? this.titleEn,
       titleHi: titleHi ?? this.titleHi,
@@ -149,6 +153,7 @@ class CatalogItem {
     'rawImagePath': rawImagePath,
     'studioImagePath': studioImagePath,
     'audioPath': audioPath,
+    'rawGalleryImages': rawGalleryImages,
     'galleryImages': galleryImages,
     'titleEn': titleEn,
     'titleHi': titleHi,
@@ -176,6 +181,11 @@ class CatalogItem {
     rawImagePath: json['rawImagePath'] as String?,
     studioImagePath: json['studioImagePath'] as String?,
     audioPath: json['audioPath'] as String?,
+    rawGalleryImages:
+        (json['rawGalleryImages'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList() ??
+        const [],
     galleryImages:
         (json['galleryImages'] as List<dynamic>?)
             ?.map((e) => e.toString())
@@ -245,12 +255,29 @@ class CatalogItem {
     String? studioImg =
         json['studio_image_url'] as String? ??
         json['studioImagePath'] as String?;
-    // Discard any legacy dummy saree fallback image or accidental raw duplicate
+    // Discard any legacy dummy saree fallback image, raw bucket URL, or raw duplicate
     if (studioImg != null &&
         (studioImg.isEmpty ||
             studioImg.contains('photo-1610030469983-98e550d6193c') ||
+            studioImg.contains('/raw-craft-images/') ||
             studioImg == rawImg)) {
       studioImg = null;
+    }
+
+    final rawGalleryList = <String>[];
+    final rawGallerySrc =
+        json['raw_gallery_images'] ?? json['rawGalleryImages'];
+    if (rawGallerySrc is List) {
+      for (final g in rawGallerySrc) {
+        if (g != null && g.toString().isNotEmpty) {
+          final s = g.toString();
+          if (!s.contains('photo-1610030469983-98e550d6193c') &&
+              s != rawImg &&
+              !rawGalleryList.contains(s)) {
+            rawGalleryList.add(s);
+          }
+        }
+      }
     }
 
     final galleryList = <String>[];
@@ -259,10 +286,17 @@ class CatalogItem {
       for (final g in rawGallery) {
         if (g != null && g.toString().isNotEmpty) {
           final s = g.toString();
-          // Filter out dummy saree and primary rawImg duplicate
-          if (!s.contains('photo-1610030469983-98e550d6193c') &&
-              s != rawImg &&
-              !galleryList.contains(s)) {
+          if (s.contains('photo-1610030469983-98e550d6193c') || s == rawImg) {
+            continue;
+          }
+          final looksLikeRaw =
+              s.contains('/raw-craft-images/') ||
+              s.contains('_raw.') ||
+              s.contains('_raw_') ||
+              !s.startsWith('http');
+          if (looksLikeRaw) {
+            if (!rawGalleryList.contains(s)) rawGalleryList.add(s);
+          } else if (!galleryList.contains(s)) {
             galleryList.add(s);
           }
         }
@@ -303,6 +337,7 @@ class CatalogItem {
       localizedDescriptions: locDescs,
       rawImagePath: rawImg,
       studioImagePath: studioImg,
+      rawGalleryImages: rawGalleryList,
       galleryImages: galleryList,
       availableQuantity:
           (json['available_qty'] as num?)?.toInt() ??

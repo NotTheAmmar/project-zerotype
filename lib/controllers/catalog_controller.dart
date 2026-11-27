@@ -87,6 +87,9 @@ class CatalogController extends ChangeNotifier {
               studioImagePath: (remote.studioImagePath?.isNotEmpty == true)
                   ? remote.studioImagePath
                   : localItem.studioImagePath,
+              rawGalleryImages: remote.rawGalleryImages.isNotEmpty
+                  ? remote.rawGalleryImages
+                  : localItem.rawGalleryImages,
               galleryImages: remote.galleryImages.isNotEmpty
                   ? remote.galleryImages
                   : localItem.galleryImages,
@@ -129,20 +132,25 @@ class CatalogController extends ChangeNotifier {
         CatalogItem working = item;
 
         final hasLocalRaw =
-            working.rawImagePath != null &&
-            working.rawImagePath!.isNotEmpty &&
-            !working.rawImagePath!.startsWith('http');
+            (working.rawImagePath != null &&
+                working.rawImagePath!.isNotEmpty &&
+                !working.rawImagePath!.startsWith('http')) ||
+            working.rawGalleryImages.any(
+              (p) => p.isNotEmpty && !p.startsWith('http'),
+            );
         final notSyncedRemotely =
             knownRemoteIds != null && !knownRemoteIds.contains(working.id);
 
-        // 1. Ensure draft/published item & raw image are synced to Supabase via Render
+        // 1. Ensure draft/published item & all raw images are synced to Supabase via Render
         if (hasLocalRaw || notSyncedRemotely) {
           await _syncToBackend(working);
           final refreshed = _savedCatalogs.firstWhere(
             (c) => c.id == working.id,
             orElse: () => working,
           );
-          if (refreshed.rawImagePath != working.rawImagePath) {
+          if (refreshed.rawImagePath != working.rawImagePath ||
+              refreshed.rawGalleryImages.length !=
+                  working.rawGalleryImages.length) {
             working = refreshed;
             changed = true;
           }
@@ -153,7 +161,8 @@ class CatalogController extends ChangeNotifier {
           final needsStudio =
               (working.studioImagePath == null ||
                   working.studioImagePath!.isEmpty ||
-                  working.studioImagePath == working.rawImagePath) &&
+                  working.studioImagePath == working.rawImagePath ||
+                  working.studioImagePath!.contains('/raw-craft-images/')) &&
               working.rawImagePath != null &&
               working.rawImagePath!.isNotEmpty;
 
@@ -165,6 +174,10 @@ class CatalogController extends ChangeNotifier {
                 catalogId: working.id,
                 imageType: 'studio',
               );
+              if (newStudioUrl != null &&
+                  newStudioUrl.contains('/raw-craft-images/')) {
+                newStudioUrl = null;
+              }
             } catch (e) {
               debugPrint(
                 '[CatalogController] Deferred Kaggle studio failed for ${working.id}: $e',
@@ -172,30 +185,41 @@ class CatalogController extends ChangeNotifier {
             }
           }
 
-          // Also process any local gallery photos not yet turned into remote URLs
+          // Also process any raw gallery photos missing from processed `galleryImages`
           bool galleryChanged = false;
-          final updatedGallery = <String>[];
-          for (int i = 0; i < working.galleryImages.length; i++) {
-            final g = working.galleryImages[i];
-            if (g.startsWith('http://') || g.startsWith('https://')) {
-              updatedGallery.add(g);
-            } else if (g.isNotEmpty) {
-              try {
-                final proc = await _apiService.processImageWithKaggle(
-                  g,
-                  catalogId: working.id,
-                  imageType: 'gallery_$i',
-                );
-                if (proc != null && proc.isNotEmpty) {
-                  updatedGallery.add(proc);
-                  galleryChanged = true;
-                } else {
-                  updatedGallery.add(g);
-                }
-              } catch (_) {
-                updatedGallery.add(g);
+          final rawAngleSources = <String>[
+            for (final r in working.rawGalleryImages)
+              if (r.isNotEmpty && r != working.rawImagePath) r,
+            for (final g in working.galleryImages)
+              if (g.isNotEmpty &&
+                  !g.startsWith('http') &&
+                  g != working.rawImagePath &&
+                  !working.rawGalleryImages.contains(g))
+                g,
+          ];
+          final updatedGallery = <String>[
+            for (final g in working.galleryImages)
+              if (g.startsWith('http') &&
+                  !g.contains('/raw-craft-images/') &&
+                  g != working.rawImagePath)
+                g,
+          ];
+          for (int i = updatedGallery.length; i < rawAngleSources.length; i++) {
+            final src = rawAngleSources[i];
+            try {
+              final proc = await _apiService.processImageWithKaggle(
+                src,
+                catalogId: working.id,
+                imageType: 'gallery_$i',
+              );
+              if (proc != null &&
+                  proc.isNotEmpty &&
+                  !proc.contains('/raw-craft-images/') &&
+                  !updatedGallery.contains(proc)) {
+                updatedGallery.add(proc);
+                galleryChanged = true;
               }
-            }
+            } catch (_) {}
           }
 
           if ((newStudioUrl != null && newStudioUrl.isNotEmpty) ||
@@ -205,6 +229,9 @@ class CatalogController extends ChangeNotifier {
                   (newStudioUrl != null && newStudioUrl.isNotEmpty)
                   ? newStudioUrl
                   : working.studioImagePath,
+              rawGalleryImages: rawAngleSources.isNotEmpty
+                  ? rawAngleSources
+                  : working.rawGalleryImages,
               galleryImages: galleryChanged
                   ? updatedGallery
                   : working.galleryImages,
@@ -262,6 +289,7 @@ class CatalogController extends ChangeNotifier {
         imagePath: imagePath,
         audioPath: audioPath,
         audioPaths: audioPaths,
+        galleryImagePaths: galleryImagePaths,
         manualDimensions: manualDimensions,
         catalogId: catalogId,
         voiceLanguage: voiceLanguage,
@@ -280,13 +308,18 @@ class CatalogController extends ChangeNotifier {
         },
       );
 
+      final resolvedRawGallery = result.rawGalleryImages.isNotEmpty
+          ? result.rawGalleryImages
+          : (galleryImagePaths ?? const <String>[]);
+
       _currentItem = CatalogItem(
         id: catalogId,
         createdAt: DateTime.now(),
         rawImagePath: result.rawImagePath ?? imagePath,
         studioImagePath: result.studioImagePath,
         audioPath: audioPath,
-        galleryImages: galleryImagePaths ?? const [],
+        rawGalleryImages: resolvedRawGallery,
+        galleryImages: result.galleryImages,
         titleEn: result.titleEn,
         titleHi: result.titleHi,
         descriptionEn: result.descriptionEn,
@@ -336,9 +369,10 @@ class CatalogController extends ChangeNotifier {
     final finalStudio =
         (existingStudio != null &&
             existingStudio.isNotEmpty &&
-            existingStudio != imagePath)
+            existingStudio != imagePath &&
+            !existingStudio.contains('/raw-craft-images/'))
         ? existingStudio
-        : imagePath;
+        : null;
 
     _currentItem = CatalogItem(
       id: const Uuid().v4(),
@@ -346,7 +380,8 @@ class CatalogController extends ChangeNotifier {
       rawImagePath: imagePath,
       studioImagePath: finalStudio,
       audioPath: audioPath,
-      galleryImages: galleryImagePaths ?? const [],
+      rawGalleryImages: galleryImagePaths ?? const [],
+      galleryImages: const [],
       titleEn: 'Handcrafted Artisan Item',
       titleHi: 'हस्तनिर्मित शिल्प उत्पाद',
       descriptionEn: 'Authentic handmade craft directly from generational artisan creators.',
@@ -399,12 +434,22 @@ class CatalogController extends ChangeNotifier {
       }
       final returnedRaw = res['raw_image_url'] as String?;
       final returnedStudio = res['studio_image_url'] as String?;
+      final returnedRawGallery = (res['raw_gallery_images'] as List?)
+          ?.map((e) => e.toString())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      final returnedGallery = (res['gallery_images'] as List?)
+          ?.map((e) => e.toString())
+          .where((s) => s.isNotEmpty)
+          .toList();
       if ((returnedRaw != null &&
               returnedRaw.isNotEmpty &&
               returnedRaw != item.rawImagePath) ||
           (returnedStudio != null &&
               returnedStudio.isNotEmpty &&
-              returnedStudio != item.studioImagePath)) {
+              returnedStudio != item.studioImagePath) ||
+          (returnedRawGallery != null && returnedRawGallery.isNotEmpty) ||
+          (returnedGallery != null && returnedGallery.isNotEmpty)) {
         final synced = item.copyWith(
           rawImagePath: (returnedRaw != null && returnedRaw.isNotEmpty)
               ? returnedRaw
@@ -412,6 +457,13 @@ class CatalogController extends ChangeNotifier {
           studioImagePath: (returnedStudio != null && returnedStudio.isNotEmpty)
               ? returnedStudio
               : item.studioImagePath,
+          rawGalleryImages:
+              (returnedRawGallery != null && returnedRawGallery.isNotEmpty)
+              ? returnedRawGallery
+              : item.rawGalleryImages,
+          galleryImages: (returnedGallery != null && returnedGallery.isNotEmpty)
+              ? returnedGallery
+              : item.galleryImages,
         );
         if (_currentItem?.id == item.id) {
           _currentItem = synced;
@@ -575,6 +627,14 @@ class CatalogController extends ChangeNotifier {
       if (response['status'] == 'PUBLISHED') {
         final returnedRaw = response['raw_image_url'] as String?;
         final returnedStudio = response['studio_image_url'] as String?;
+        final returnedRawGallery = (response['raw_gallery_images'] as List?)
+            ?.map((e) => e.toString())
+            .where((s) => s.isNotEmpty)
+            .toList();
+        final returnedGallery = (response['gallery_images'] as List?)
+            ?.map((e) => e.toString())
+            .where((s) => s.isNotEmpty)
+            .toList();
         _currentItem = _currentItem!.copyWith(
           status: CatalogStatus.published,
           rawImagePath: (returnedRaw != null && returnedRaw.isNotEmpty)
@@ -583,6 +643,13 @@ class CatalogController extends ChangeNotifier {
           studioImagePath: (returnedStudio != null && returnedStudio.isNotEmpty)
               ? returnedStudio
               : _currentItem!.studioImagePath,
+          rawGalleryImages:
+              (returnedRawGallery != null && returnedRawGallery.isNotEmpty)
+              ? returnedRawGallery
+              : _currentItem!.rawGalleryImages,
+          galleryImages: (returnedGallery != null && returnedGallery.isNotEmpty)
+              ? returnedGallery
+              : _currentItem!.galleryImages,
         );
         await _storageService.saveCatalog(_currentItem!);
         _updateSavedList(_currentItem!);
@@ -619,10 +686,10 @@ class CatalogController extends ChangeNotifier {
   /// Warms the Flutter image cache for [url] in the background.
   /// Uses [NetworkImage] directly — no BuildContext needed.
   void _precacheStudioImage(String url) {
-    final provider = NetworkImage(
-      url,
-      headers: const {'ngrok-skip-browser-warning': 'true'},
-    );
+    final headers = url.contains('supabase.co')
+        ? null
+        : const {'ngrok-skip-browser-warning': 'true'};
+    final provider = NetworkImage(url, headers: headers);
     provider
         .resolve(ImageConfiguration.empty)
         .addListener(

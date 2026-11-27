@@ -146,6 +146,25 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
   }
 
+  bool _isRawImagePath(String? path, CatalogItem item) {
+    if (path == null || path.isEmpty) return false;
+    if (path == item.rawImagePath) return true;
+    if (item.rawGalleryImages.contains(path)) return true;
+    if (path.contains('/raw-craft-images/') ||
+        path.contains('_raw.') ||
+        path.contains('_raw_')) {
+      return true;
+    }
+    // Un-processed local files on device (except explicit studio mock/local outputs)
+    if (!path.startsWith('http://') &&
+        !path.startsWith('https://') &&
+        path != item.studioImagePath &&
+        !item.galleryImages.contains(path)) {
+      return true;
+    }
+    return false;
+  }
+
   List<String> _getGalleryImages(CatalogItem item) {
     final list = <String>[];
 
@@ -158,18 +177,31 @@ class _CatalogScreenState extends State<CatalogScreen> {
       }
     }
 
-    // 1. Studio image (if present and distinct from raw image)
+    // 1. Studio processed primary image (only if genuinely processed and not raw)
     if (item.studioImagePath != null &&
-        item.studioImagePath != item.rawImagePath) {
+        item.studioImagePath!.isNotEmpty &&
+        !_isRawImagePath(item.studioImagePath, item)) {
       addUnique(item.studioImagePath);
     }
 
-    // 2. Primary raw image
+    // 2. Processed gallery angles (sorted after primary studio)
+    for (final g in item.galleryImages) {
+      if (!_isRawImagePath(g, item)) {
+        addUnique(g);
+      }
+    }
+
+    // 3. Primary raw photo
     addUnique(item.rawImagePath);
 
-    // 3. Additional gallery photos
+    // 4. Additional raw gallery photos (plus any un-processed legacy gallery paths)
+    for (final rg in item.rawGalleryImages) {
+      addUnique(rg);
+    }
     for (final g in item.galleryImages) {
-      addUnique(g);
+      if (_isRawImagePath(g, item)) {
+        addUnique(g);
+      }
     }
 
     return list;
@@ -925,12 +957,18 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final String? activeImagePath = images.isNotEmpty
         ? images[_selectedThumb % images.length]
         : (item.studioImagePath ?? item.rawImagePath);
-    final bool isShowingRaw =
-        activeImagePath != null && activeImagePath == item.rawImagePath;
+    final bool isShowingRaw = _isRawImagePath(activeImagePath, item);
     final bool isShowingStudio =
         activeImagePath != null &&
         activeImagePath == item.studioImagePath &&
         !isShowingRaw;
+
+    Map<String, String>? headersForUrl(String url) => url.contains('supabase.co')
+        ? null
+        : const {
+            'bypass-tunnel-reminder': 'true',
+            'ngrok-skip-browser-warning': 'true',
+          };
 
     Widget buildImageWidget(String? path) {
       if (path != null && path.isNotEmpty) {
@@ -938,10 +976,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           return Image.network(
             path,
             fit: BoxFit.cover,
-            headers: const {
-              'bypass-tunnel-reminder': 'true',
-              'ngrok-skip-browser-warning': 'true',
-            },
+            headers: headersForUrl(path),
             errorBuilder: (context, error, stackTrace) =>
                 _buildFallbackImagePlaceholder(),
           );
@@ -949,10 +984,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
           return Image.network(
             path,
             fit: BoxFit.cover,
-            headers: const {
-              'bypass-tunnel-reminder': 'true',
-              'ngrok-skip-browser-warning': 'true',
-            },
+            headers: headersForUrl(path),
             errorBuilder: (context, error, stackTrace) =>
                 _buildFallbackImagePlaceholder(),
           );
@@ -1136,111 +1168,109 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Thumbnail Row
-          Row(
-            children: [
-              ...List.generate(
-                images.isNotEmpty ? images.length.clamp(0, 4) : 1,
-                (i) {
-                  final isSelected = _selectedThumb == i;
-                  final thumbPath = images.isNotEmpty ? images[i] : null;
-                  final isLocalThumb =
-                      thumbPath != null &&
-                      !thumbPath.startsWith('http') &&
-                      !kIsWeb &&
-                      File(thumbPath).existsSync();
+          // Thumbnail Row (scrollable to show all raw + studio photos with no 4-image cap)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ...List.generate(
+                  images.isNotEmpty ? images.length : 1,
+                  (i) {
+                    final isSelected = _selectedThumb == i;
+                    final thumbPath = images.isNotEmpty ? images[i] : null;
+                    final isLocalThumb =
+                        thumbPath != null &&
+                        !thumbPath.startsWith('http') &&
+                        !kIsWeb &&
+                        File(thumbPath).existsSync();
 
-                  final isRawThumb =
-                      thumbPath != null && thumbPath == item.rawImagePath;
-                  final thumbLabel = isRawThumb
-                      ? 'Raw'
-                      : (thumbPath != null && thumbPath == item.studioImagePath
-                            ? 'Studio'
-                            : 'Angle');
+                    final isRawThumb = _isRawImagePath(thumbPath, item);
+                    final thumbLabel = isRawThumb
+                        ? 'Raw'
+                        : (thumbPath != null && thumbPath == item.studioImagePath
+                              ? 'Studio'
+                              : 'Angle');
 
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedThumb = i),
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isSelected
-                              ? (isRawThumb
-                                    ? AppColors.secondaryTerracotta
-                                    : AppColors.primaryTeal)
-                              : AppColors.cardBorder,
-                          width: isSelected ? 2 : 1,
+                    return GestureDetector(
+                      onTap: () => setState(() => _selectedThumb = i),
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isSelected
+                                ? (isRawThumb
+                                      ? AppColors.secondaryTerracotta
+                                      : AppColors.primaryTeal)
+                                : AppColors.cardBorder,
+                            width: isSelected ? 2 : 1,
+                          ),
                         ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          thumbPath != null
-                              ? (thumbPath.startsWith('http')
-                                    ? Image.network(
-                                        thumbPath,
-                                        fit: BoxFit.cover,
-                                        headers: const {
-                                          'bypass-tunnel-reminder': 'true',
-                                          'ngrok-skip-browser-warning': 'true',
-                                        },
-                                        errorBuilder: (ctx, err, stack) =>
-                                            _buildFallbackImagePlaceholder(),
-                                      )
-                                    : (kIsWeb || thumbPath.startsWith('blob:')
-                                          ? Image.network(
-                                              thumbPath,
-                                              fit: BoxFit.cover,
-                                              headers: const {
-                                                'bypass-tunnel-reminder': 'true',
-                                                'ngrok-skip-browser-warning':
-                                                    'true',
-                                              },
-                                              errorBuilder: (ctx, err, stack) =>
-                                                  _buildFallbackImagePlaceholder(),
-                                            )
-                                          : (isLocalThumb
-                                                ? Image.file(
-                                                    File(thumbPath),
-                                                    fit: BoxFit.cover,
-                                                  )
-                                                : _buildFallbackImagePlaceholder())))
-                              : _buildFallbackImagePlaceholder(),
-                          if (thumbPath != null)
-                            Positioned(
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              child: Container(
-                                color: (isRawThumb
-                                        ? AppColors.secondaryTerracotta
-                                        : AppColors.primaryTeal)
-                                    .withValues(alpha: 0.85),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 1.5,
-                                ),
-                                child: Text(
-                                  thumbLabel,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w700,
+                        clipBehavior: Clip.antiAlias,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            thumbPath != null
+                                ? (thumbPath.startsWith('http')
+                                      ? Image.network(
+                                          thumbPath,
+                                          fit: BoxFit.cover,
+                                          headers: headersForUrl(thumbPath),
+                                          errorBuilder: (ctx, err, stack) =>
+                                              _buildFallbackImagePlaceholder(),
+                                        )
+                                      : (kIsWeb || thumbPath.startsWith('blob:')
+                                            ? Image.network(
+                                                thumbPath,
+                                                fit: BoxFit.cover,
+                                                headers: headersForUrl(
+                                                  thumbPath,
+                                                ),
+                                                errorBuilder:
+                                                    (ctx, err, stack) =>
+                                                        _buildFallbackImagePlaceholder(),
+                                              )
+                                            : (isLocalThumb
+                                                  ? Image.file(
+                                                      File(thumbPath),
+                                                      fit: BoxFit.cover,
+                                                    )
+                                                  : _buildFallbackImagePlaceholder())))
+                                : _buildFallbackImagePlaceholder(),
+                            if (thumbPath != null)
+                              Positioned(
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                child: Container(
+                                  color: (isRawThumb
+                                          ? AppColors.secondaryTerracotta
+                                          : AppColors.primaryTeal)
+                                      .withValues(alpha: 0.85),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 1.5,
+                                  ),
+                                  child: Text(
+                                    thumbLabel,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),

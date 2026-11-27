@@ -1337,9 +1337,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _buildProductImage(CatalogItem item) {
-    final imagePath = item.studioImagePath ?? item.rawImagePath;
+    final candidates = <String>[];
+    void addCandidate(String? path) {
+      final p = path?.trim();
+      if (p != null &&
+          p.isNotEmpty &&
+          !p.contains('photo-1610030469983-98e550d6193c') &&
+          !candidates.contains(p)) {
+        candidates.add(p);
+      }
+    }
 
-    if (imagePath == null || imagePath.isEmpty) {
+    addCandidate(item.studioImagePath);
+    for (final g in item.galleryImages) {
+      addCandidate(g);
+    }
+    addCandidate(item.rawImagePath);
+    for (final rg in item.rawGalleryImages) {
+      addCandidate(rg);
+    }
+
+    if (candidates.isEmpty) {
       return Container(
         color: AppColors.surfaceContainer,
         child: const Center(
@@ -1352,16 +1370,28 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
     }
 
+    return _buildCandidateImage(candidates, 0);
+  }
+
+  Widget _buildCandidateImage(List<String> candidates, int index) {
+    if (index >= candidates.length) {
+      return _buildFallbackImage();
+    }
+    final imagePath = candidates[index];
+    final headers = imagePath.contains('supabase.co')
+        ? null
+        : const {
+            'bypass-tunnel-reminder': 'true',
+            'ngrok-skip-browser-warning': 'true',
+          };
+
     if (imagePath.startsWith('http') ||
         kIsWeb ||
         imagePath.startsWith('blob:')) {
       return Image.network(
         imagePath,
         fit: BoxFit.cover,
-        headers: const {
-          'bypass-tunnel-reminder': 'true',
-          'ngrok-skip-browser-warning': 'true',
-        },
+        headers: headers,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Container(
@@ -1378,7 +1408,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           );
         },
-        errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
+        errorBuilder: (context, error, stackTrace) =>
+            _buildCandidateImage(candidates, index + 1),
       );
     }
 
@@ -1388,12 +1419,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
         return Image.file(
           file,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => _buildFallbackImage(),
+          errorBuilder: (context, error, stackTrace) =>
+              _buildCandidateImage(candidates, index + 1),
         );
       }
     }
 
-    return _buildFallbackImage();
+    return _buildCandidateImage(candidates, index + 1);
   }
 
   Widget _buildFallbackImage() {

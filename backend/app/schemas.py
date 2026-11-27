@@ -129,9 +129,13 @@ class ArtisanListingPayload(BaseModel):
         default="",
         description="URL of the studio-processed / AI-enhanced product image.",
     )
+    raw_gallery_images: List[str] = Field(
+        default_factory=list,
+        description="Public URLs of additional raw angle photos in raw-craft-images.",
+    )
     gallery_images: List[str] = Field(
         default_factory=list,
-        description="Optional list of additional multi-angle craft photos.",
+        description="Optional list of additional AI-processed multi-angle craft photos.",
     )
 
     # ── Inventory ─────────────────────────────────────────────────

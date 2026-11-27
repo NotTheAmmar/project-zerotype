@@ -41,6 +41,8 @@ class CatalogProcessResult {
   final PricingCorridor? pricing;
   final String? studioImagePath;
   final String? rawImagePath;
+  final List<String> rawGalleryImages;
+  final List<String> galleryImages;
   final String? audioReadbackPath;
   final int? spokenPrice;
   final int? spokenQuantity;
@@ -56,6 +58,8 @@ class CatalogProcessResult {
     this.pricing,
     this.studioImagePath,
     this.rawImagePath,
+    this.rawGalleryImages = const [],
+    this.galleryImages = const [],
     this.audioReadbackPath,
     this.spokenPrice,
     this.spokenQuantity,
@@ -64,6 +68,8 @@ class CatalogProcessResult {
   CatalogProcessResult copyWith({
     Map<String, String>? localizedTitles,
     Map<String, String>? localizedDescriptions,
+    List<String>? rawGalleryImages,
+    List<String>? galleryImages,
   }) {
     return CatalogProcessResult(
       titleEn: titleEn,
@@ -77,6 +83,8 @@ class CatalogProcessResult {
       pricing: pricing,
       studioImagePath: studioImagePath,
       rawImagePath: rawImagePath,
+      rawGalleryImages: rawGalleryImages ?? this.rawGalleryImages,
+      galleryImages: galleryImages ?? this.galleryImages,
       audioReadbackPath: audioReadbackPath,
       spokenPrice: spokenPrice,
       spokenQuantity: spokenQuantity,
@@ -94,6 +102,7 @@ abstract class ApiService {
     required String imagePath,
     required String audioPath,
     List<String>? audioPaths,
+    List<String>? galleryImagePaths,
     String? manualDimensions,
     String? catalogId,
     String voiceLanguage = 'hi',
@@ -255,6 +264,7 @@ class MockApiService implements ApiService {
     required String imagePath,
     required String audioPath,
     List<String>? audioPaths,
+    List<String>? galleryImagePaths,
     String? manualDimensions,
     String? catalogId,
     String voiceLanguage = 'hi',
@@ -299,6 +309,7 @@ class MockApiService implements ApiService {
       ),
       studioImagePath: imagePath.isNotEmpty ? imagePath : null,
       rawImagePath: imagePath.isNotEmpty ? imagePath : null,
+      rawGalleryImages: galleryImagePaths ?? const [],
       audioReadbackPath: null,
       spokenQuantity: 1,
     );
@@ -347,64 +358,116 @@ class LiveApiService implements ApiService {
     required PricingCorridor pricing,
     required int availableQuantity,
   }) async {
-    // 1. Upload raw and studio images to separate Supabase CDN buckets if stored as local files
-    String? finalRawImageUrl = item.rawImagePath?.startsWith('http') == true
-        ? item.rawImagePath
-        : null;
-    String? finalStudioImageUrl =
-        item.studioImagePath?.startsWith('http') == true
-        ? item.studioImagePath
-        : null;
-
+    // 1. Upload primary & additional raw images strictly to `raw-craft-images`
     bool isLocalPath(String? p) =>
         p != null &&
         p.isNotEmpty &&
         !p.startsWith('http://') &&
         !p.startsWith('https://');
 
+    bool looksLikeRaw(String p) =>
+        p.contains('/raw-craft-images/') ||
+        p.contains('_raw.') ||
+        p.contains('_raw_') ||
+        isLocalPath(p);
+
+    String? finalRawImageUrl = item.rawImagePath?.startsWith('http') == true
+        ? item.rawImagePath
+        : null;
+    String? finalStudioImageUrl =
+        (item.studioImagePath?.startsWith('http') == true &&
+            !looksLikeRaw(item.studioImagePath!))
+        ? item.studioImagePath
+        : null;
+
     if (isLocalPath(item.rawImagePath)) {
       try {
-        final uploadedRaw = await uploadImage(
+        final rawUpload = await uploadImageWithDetails(
           item.rawImagePath!,
           imageType: 'raw',
           catalogId: item.id,
+          baseUrl: AppConstants.bppBackendUrl,
         );
-        if (uploadedRaw != null) finalRawImageUrl = uploadedRaw;
+        final uploadedRaw = rawUpload?.rawImageUrl ?? rawUpload?.url;
+        if (uploadedRaw != null && uploadedRaw.isNotEmpty) {
+          finalRawImageUrl = uploadedRaw;
+        }
       } catch (e) {
         debugPrint('[LiveApiService] Raw image upload skipped: $e');
       }
     }
 
+    // Collect all additional raw angle photos (including legacy local gallery entries)
+    final rawGallerySources = <String>[
+      for (final r in item.rawGalleryImages)
+        if (r.isNotEmpty && r != item.rawImagePath && r != finalRawImageUrl) r,
+      for (final g in item.galleryImages)
+        if (g.isNotEmpty &&
+            g != item.rawImagePath &&
+            g != finalRawImageUrl &&
+            looksLikeRaw(g) &&
+            !item.rawGalleryImages.contains(g))
+          g,
+    ];
+
+    final uploadedRawGalleryUrls = <String>[];
+    for (int i = 0; i < rawGallerySources.length; i++) {
+      final src = rawGallerySources[i];
+      if (src.startsWith('http://') || src.startsWith('https://')) {
+        if (!uploadedRawGalleryUrls.contains(src)) {
+          uploadedRawGalleryUrls.add(src);
+        }
+      } else if (isLocalPath(src)) {
+        try {
+          final rawUpload = await uploadImageWithDetails(
+            src,
+            imageType: 'raw_gallery_$i',
+            catalogId: item.id,
+            baseUrl: AppConstants.bppBackendUrl,
+          );
+          final rawUrl = rawUpload?.rawImageUrl ?? rawUpload?.url;
+          if (rawUrl != null &&
+              rawUrl.isNotEmpty &&
+              !uploadedRawGalleryUrls.contains(rawUrl)) {
+            uploadedRawGalleryUrls.add(rawUrl);
+          }
+        } catch (e) {
+          debugPrint('[LiveApiService] Raw gallery $i upload skipped: $e');
+        }
+      }
+    }
+
     if (isLocalPath(item.studioImagePath) &&
-        item.studioImagePath != item.rawImagePath) {
+        item.studioImagePath != item.rawImagePath &&
+        !looksLikeRaw(item.studioImagePath!)) {
       try {
         final uploadedStudio = await uploadImage(
           item.studioImagePath!,
           imageType: 'studio',
           catalogId: item.id,
         );
-        if (uploadedStudio != null) finalStudioImageUrl = uploadedStudio;
+        if (uploadedStudio != null && !looksLikeRaw(uploadedStudio)) {
+          finalStudioImageUrl = uploadedStudio;
+        }
       } catch (e) {
         debugPrint('[LiveApiService] Studio image upload skipped: $e');
       }
     }
 
-    // Upload ADDITIONAL gallery photos ONLY if Kaggle GPU processed them or they are
-    // already remote HTTP URLs; raw local gallery files stay on-device until Kaggle
-    // processes them so raw un-processed images are never sent to ONDC.
+    // 2. Processed gallery photos (Kaggle BiRefNet -> `processed-craft-images` ONLY)
     final kaggleOnline = await isKaggleHealthy();
-    final uploadedGalleryUrls = <String>[];
-    for (int i = 0; i < item.galleryImages.length; i++) {
-      final gPath = item.galleryImages[i];
-      if (gPath == item.rawImagePath || gPath == finalRawImageUrl) {
-        continue;
-      }
-      if (gPath.startsWith('http://') || gPath.startsWith('https://')) {
-        if (!gPath.contains('photo-1610030469983-98e550d6193c') &&
-            !uploadedGalleryUrls.contains(gPath)) {
-          uploadedGalleryUrls.add(gPath);
-        }
-      } else if (isLocalPath(gPath) && kaggleOnline) {
+    final uploadedGalleryUrls = <String>[
+      for (final g in item.galleryImages)
+        if (g.startsWith('http') &&
+            !g.contains('photo-1610030469983-98e550d6193c') &&
+            !looksLikeRaw(g) &&
+            g != finalRawImageUrl &&
+            !uploadedRawGalleryUrls.contains(g))
+          g,
+    ];
+    if (kaggleOnline) {
+      for (int i = uploadedGalleryUrls.length; i < rawGallerySources.length; i++) {
+        final gPath = rawGallerySources[i];
         try {
           final processedGalleryUrl = await processImageWithKaggle(
             gPath,
@@ -413,6 +476,7 @@ class LiveApiService implements ApiService {
           );
           if (processedGalleryUrl != null &&
               processedGalleryUrl.isNotEmpty &&
+              !looksLikeRaw(processedGalleryUrl) &&
               processedGalleryUrl != finalRawImageUrl &&
               !uploadedGalleryUrls.contains(processedGalleryUrl)) {
             uploadedGalleryUrls.add(processedGalleryUrl);
@@ -426,7 +490,8 @@ class LiveApiService implements ApiService {
     // Discard any dummy saree fallback or accidental raw duplicate
     if (finalStudioImageUrl != null &&
         (finalStudioImageUrl.contains('photo-1610030469983-98e550d6193c') ||
-            finalStudioImageUrl == finalRawImageUrl)) {
+            finalStudioImageUrl == finalRawImageUrl ||
+            looksLikeRaw(finalStudioImageUrl))) {
       finalStudioImageUrl = null;
     }
 
@@ -453,6 +518,7 @@ class LiveApiService implements ApiService {
       'labor_days': item.craftAttributes?.laborDays ?? pricing.laborDays,
       'raw_image_url': finalRawImageUrl,
       'studio_image_url': finalStudioImageUrl ?? '',
+      'raw_gallery_images': uploadedRawGalleryUrls,
       'gallery_images': uploadedGalleryUrls,
       'available_qty': availableQuantity,
       'localized_titles': item.localizedTitles,
@@ -488,6 +554,8 @@ class LiveApiService implements ApiService {
       final res = jsonDecode(response.body) as Map<String, dynamic>;
       res['raw_image_url'] ??= body['raw_image_url'];
       res['studio_image_url'] ??= body['studio_image_url'];
+      res['raw_gallery_images'] ??= body['raw_gallery_images'];
+      res['gallery_images'] ??= body['gallery_images'];
       return res;
     } else {
       throw Exception(
@@ -519,7 +587,12 @@ class LiveApiService implements ApiService {
         .timeout(AppConstants.apiTimeout);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
-      return jsonDecode(response.body) as Map<String, dynamic>;
+      final res = jsonDecode(response.body) as Map<String, dynamic>;
+      res['raw_image_url'] ??= body['raw_image_url'];
+      res['studio_image_url'] ??= body['studio_image_url'];
+      res['raw_gallery_images'] ??= body['raw_gallery_images'];
+      res['gallery_images'] ??= body['gallery_images'];
+      return res;
     }
     throw Exception('Draft sync failed (${response.statusCode})');
   }
@@ -555,6 +628,8 @@ class LiveApiService implements ApiService {
       final res = jsonDecode(response.body) as Map<String, dynamic>;
       res['raw_image_url'] ??= body['raw_image_url'];
       res['studio_image_url'] ??= body['studio_image_url'];
+      res['raw_gallery_images'] ??= body['raw_gallery_images'];
+      res['gallery_images'] ??= body['gallery_images'];
       return res;
     }
     throw Exception('Listing update failed (${response.statusCode})');
@@ -593,10 +668,15 @@ class LiveApiService implements ApiService {
       baseUrl: kUrl,
     );
     final studioUrl = kaggleRes?.studioImageUrl ?? kaggleRes?.url;
-    if (studioUrl == null || studioUrl.isEmpty) return null;
+    if (studioUrl == null ||
+        studioUrl.isEmpty ||
+        studioUrl.contains('/raw-craft-images/')) {
+      return null;
+    }
 
-    // If Kaggle already uploaded to Supabase CDN, return it directly.
-    if (studioUrl.contains('supabase.co')) {
+    // If Kaggle already uploaded to Supabase processed CDN, return it directly.
+    if (studioUrl.contains('supabase.co') &&
+        studioUrl.contains('/processed-craft-images/')) {
       return studioUrl;
     }
 
@@ -608,7 +688,13 @@ class LiveApiService implements ApiService {
       catalogId: catalogId,
       baseUrl: AppConstants.bppBackendUrl,
     );
-    return persisted?.studioImageUrl ?? persisted?.url ?? studioUrl;
+    final persistedUrl = persisted?.studioImageUrl ?? persisted?.url;
+    if (persistedUrl != null &&
+        persistedUrl.isNotEmpty &&
+        !persistedUrl.contains('/raw-craft-images/')) {
+      return persistedUrl;
+    }
+    return studioUrl;
   }
 
   @override
@@ -787,6 +873,7 @@ class LiveApiService implements ApiService {
     required String imagePath,
     required String audioPath,
     List<String>? audioPaths,
+    List<String>? galleryImagePaths,
     String? manualDimensions,
     String? catalogId,
     String voiceLanguage = 'hi',
@@ -798,6 +885,7 @@ class LiveApiService implements ApiService {
       imagePath: imagePath,
       audioPath: audioPath,
       audioPaths: audioPaths,
+      galleryImagePaths: galleryImagePaths,
       manualDimensions: manualDimensions,
       catalogId: catalogId,
       voiceLanguage: voiceLanguage,
@@ -1230,6 +1318,7 @@ Artisan update instruction:
     required String imagePath,
     required String audioPath,
     List<String>? audioPaths,
+    List<String>? galleryImagePaths,
     String? manualDimensions,
     String? catalogId,
     String voiceLanguage = 'hi',
@@ -1237,13 +1326,22 @@ Artisan update instruction:
     String? secondaryLanguage = 'hi',
     StageCallback? onStageComplete,
   }) async {
-    // Stage 0: Raw upload to Render Supabase bucket (always attempted), plus optional
-    // BiRefNet-HR studio processing via Kaggle GPU when online.
+    // Stage 0: Raw upload to Render Supabase `raw-craft-images` bucket for ALL photos
+    // (primary + gallery), plus optional BiRefNet-HR studio processing via Kaggle GPU.
     onStageComplete?.call(0);
     String? liveStudioUrl;
     String? liveRawUrl;
+    final liveRawGalleryUrls = <String>[];
+    final liveProcessedGalleryUrls = <String>[];
+    final extraGallery = (galleryImagePaths ?? const <String>[])
+        .where((p) => p.isNotEmpty && p != imagePath)
+        .toList();
+    final kaggleOnline =
+        (imagePath.isNotEmpty || extraGallery.isNotEmpty) &&
+        await isKaggleHealthy();
+
     if (imagePath.isNotEmpty) {
-      // 1. Upload raw camera photo directly to persistent BPP raw-craft-images bucket.
+      // 1. Upload raw camera photo #1 directly to persistent BPP raw-craft-images bucket.
       try {
         final rawUpload = await uploadImageWithDetails(
           imagePath,
@@ -1258,8 +1356,8 @@ Artisan update instruction:
       }
 
       // 2. Only call Kaggle BiRefNet if configured and responsive on /health (4s cap).
-      try {
-        if (await isKaggleHealthy()) {
+      if (kaggleOnline) {
+        try {
           debugPrint(
             '[LiveApiService] Invoking Kaggle BiRefNet for image: $imagePath',
           );
@@ -1268,16 +1366,61 @@ Artisan update instruction:
             catalogId: catalogId,
             imageType: 'studio',
           );
+          if (liveStudioUrl == liveRawUrl ||
+              (liveStudioUrl?.contains('/raw-craft-images/') ?? false)) {
+            liveStudioUrl = null;
+          }
           debugPrint(
             '[LiveApiService] Kaggle BiRefNet studio: $liveStudioUrl',
           );
-        } else {
-          debugPrint(
-            '[LiveApiService] Kaggle GPU offline; skipping studio image for background sync later.',
-          );
+        } catch (e) {
+          debugPrint('[LiveApiService] BiRefNet processing error: $e');
+        }
+      } else {
+        debugPrint(
+          '[LiveApiService] Kaggle GPU offline; skipping studio image for background sync later.',
+        );
+      }
+    }
+
+    // 3. Batch-upload every additional raw photo to `raw-craft-images`, and process via
+    // Kaggle into `processed-craft-images` ONLY when Kaggle GPU is online.
+    for (int i = 0; i < extraGallery.length; i++) {
+      final gPath = extraGallery[i];
+      String rawSaved = gPath;
+      try {
+        final rawUpload = await uploadImageWithDetails(
+          gPath,
+          imageType: 'raw_gallery_$i',
+          catalogId: catalogId,
+          baseUrl: AppConstants.bppBackendUrl,
+        );
+        final rawUrl = rawUpload?.rawImageUrl ?? rawUpload?.url;
+        if (rawUrl != null && rawUrl.isNotEmpty) {
+          rawSaved = rawUrl;
         }
       } catch (e) {
-        debugPrint('[LiveApiService] BiRefNet processing error: $e');
+        debugPrint('[LiveApiService] Raw gallery $i upload error: $e');
+      }
+      liveRawGalleryUrls.add(rawSaved);
+
+      if (kaggleOnline) {
+        try {
+          final processedUrl = await processImageWithKaggle(
+            gPath,
+            catalogId: catalogId,
+            imageType: 'gallery_$i',
+          );
+          if (processedUrl != null &&
+              processedUrl.isNotEmpty &&
+              processedUrl != rawSaved &&
+              !processedUrl.contains('/raw-craft-images/') &&
+              !liveProcessedGalleryUrls.contains(processedUrl)) {
+            liveProcessedGalleryUrls.add(processedUrl);
+          }
+        } catch (e) {
+          debugPrint('[LiveApiService] Gallery $i BiRefNet error: $e');
+        }
       }
     }
 
@@ -1412,6 +1555,8 @@ Artisan update instruction:
     return result.copyWith(
       localizedTitles: locTitles,
       localizedDescriptions: locDescs,
+      rawGalleryImages: liveRawGalleryUrls,
+      galleryImages: liveProcessedGalleryUrls,
     );
   }
 

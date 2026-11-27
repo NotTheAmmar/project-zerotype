@@ -21,6 +21,7 @@ class FakeApiService implements ApiService {
     required String imagePath,
     required String audioPath,
     List<String>? audioPaths,
+    List<String>? galleryImagePaths,
     String? manualDimensions,
     String? catalogId,
     String voiceLanguage = 'hi',
@@ -34,6 +35,20 @@ class FakeApiService implements ApiService {
       descriptionEn: 'Pure Chanderi silk with zari work',
       descriptionHi: 'शुद्ध चंदेरी रेशम ज़री कार्य सहित',
       pricing: PricingCorridor.compute(rawMaterialCost: 500, laborDays: 3),
+      rawImagePath: 'https://example.com/raw-craft-images/${catalogId}_raw.jpg',
+      rawGalleryImages: [
+        for (int i = 0; i < (galleryImagePaths?.length ?? 0); i++)
+          'https://example.com/raw-craft-images/${catalogId}_raw_gallery_$i.jpg',
+      ],
+      studioImagePath: kaggleHealthy
+          ? 'https://example.com/processed-craft-images/${catalogId}_studio.jpg'
+          : null,
+      galleryImages: kaggleHealthy
+          ? [
+              for (int i = 0; i < (galleryImagePaths?.length ?? 0); i++)
+                'https://example.com/processed-craft-images/${catalogId}_gallery_$i.jpg',
+            ]
+          : const [],
     );
   }
 
@@ -246,6 +261,7 @@ void main() {
         controller.currentItem!.rawImagePath,
         equals('/tmp/artisan_craft.jpg'),
       );
+      expect(controller.currentItem!.studioImagePath, isNull);
       expect(controller.currentItem!.titleHi, contains('हस्तनिर्मित'));
       expect(
         controller.currentItem!.craftAttributes?.category,
@@ -305,7 +321,7 @@ void main() {
         expect(savedCatalogs.isNotEmpty, isTrue);
         final lastSaved = savedCatalogs.last;
         expect(lastSaved.rawImagePath, isNotNull);
-        expect(lastSaved.studioImagePath, isNotNull);
+        expect(lastSaved.studioImagePath, isNull);
       },
     );
 
@@ -389,7 +405,7 @@ void main() {
         apiService.kaggleHealthy = false;
         await controller.createFallbackDraft(imagePath: '/tmp/raw_pottery.jpg');
         final offlineItem = controller.currentItem!;
-        expect(offlineItem.studioImagePath, equals('/tmp/raw_pottery.jpg'));
+        expect(offlineItem.studioImagePath, isNull);
 
         // Save to simulate a draft with null studioImagePath & raw Supabase URL
         final withoutStudio = CatalogItem(
@@ -489,6 +505,45 @@ void main() {
           equals('अपडेटेड पीतल शिल्प'),
         );
         expect(controller.currentItem?.pricing?.fairPrice, equals(650));
+      },
+    );
+
+    test(
+      '3-image batch upload stores all 3 raw images cleanly and separates Kaggle processed outputs',
+      () async {
+        // Case 1: Kaggle offline during creation -> all 3 raw images stay in raw bucket only
+        apiService.kaggleHealthy = false;
+        await controller.processCatalog(
+          imagePath: '/tmp/p1.jpg',
+          audioPath: '/tmp/v.wav',
+          galleryImagePaths: const ['/tmp/p2.jpg', '/tmp/p3.jpg'],
+        );
+
+        final offlineItem = controller.currentItem!;
+        expect(offlineItem.rawImagePath, contains('/raw-craft-images/'));
+        expect(offlineItem.rawGalleryImages.length, equals(2));
+        expect(
+          offlineItem.rawGalleryImages.every((u) => u.contains('/raw-craft-images/')),
+          isTrue,
+        );
+        expect(offlineItem.studioImagePath, isNull);
+        expect(offlineItem.galleryImages, isEmpty);
+
+        // Case 2: Kaggle comes online -> background sync sends 3 separate requests to processed bucket
+        apiService.kaggleHealthy = true;
+        final syncedCount = await controller.syncPendingWithBackendAndKaggle();
+        expect(syncedCount, equals(1));
+        expect(
+          controller.currentItem?.studioImagePath,
+          contains('/processed-craft-images/'),
+        );
+        expect(controller.currentItem?.galleryImages.length, equals(2));
+        expect(
+          controller.currentItem!.galleryImages.every(
+            (u) => u.contains('/processed-craft-images/'),
+          ),
+          isTrue,
+        );
       },
     );
   });

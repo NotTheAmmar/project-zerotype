@@ -94,14 +94,17 @@ class ImageService {
     }
   }
 
-  /// Pick an image from the gallery
-  Future<String?> pickFromGallery() async {
+  /// Pick one or more images from the gallery.
+  Future<List<String>> pickMultipleFromGallery() async {
     final picker = ImagePicker();
-    final xFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 90,
-    );
-    return xFile?.path;
+    final xFiles = await picker.pickMultiImage(imageQuality: 90);
+    return xFiles.map((f) => f.path).where((p) => p.isNotEmpty).toList();
+  }
+
+  /// Pick a single image from the gallery (convenience wrapper).
+  Future<String?> pickFromGallery() async {
+    final paths = await pickMultipleFromGallery();
+    return paths.isNotEmpty ? paths.first : null;
   }
 
   /// Quick quality check: blur + low-light detection (runs in a background isolate)

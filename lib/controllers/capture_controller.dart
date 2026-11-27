@@ -155,10 +155,18 @@ class CaptureController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final path = await _imageService.pickFromGallery();
-      if (path != null) {
-        await _handleImagePath(path);
+      final paths = await _imageService.pickMultipleFromGallery();
+      bool anyBlurry = false;
+      bool anyLowLight = false;
+      for (final path in paths) {
+        if (path.isNotEmpty && !_capturedPhotos.contains(path)) {
+          await _handleImagePath(path);
+          anyBlurry = anyBlurry || _isQualityWarningBlur;
+          anyLowLight = anyLowLight || _isQualityWarningLight;
+        }
       }
+      _isQualityWarningBlur = anyBlurry;
+      _isQualityWarningLight = anyLowLight;
     } catch (e) {
       debugPrint('[CaptureController] pickFromGallery error: $e');
     } finally {
