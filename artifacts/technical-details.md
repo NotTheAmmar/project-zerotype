@@ -53,17 +53,17 @@ Project ZeroType removes typing and literacy barriers for rural Indian artisans 
    - User picks **Single Language** or **Bilingual (2 languages)**.
 2. **`ExploreScreen` (`/explore`)**:
    - Compact AppBar (`BazaarSetu`, green/red GPU settings icon, selected-language pill, `Add` button).
-   - Search bar with voice search + compact `Voice Mode (Test)` (`Bhashini` / `Whisper`) segmented toggle below search.
-   - Craft grid, Quick View modal with localized Craft Story TTS playback, and pull-to-refresh / network sync.
+   - Search bar with Whisper voice search.
+   - Craft grid, Quick View modal with localized Craft Story Device Neural TTS playback, and pull-to-refresh / network sync.
 3. **`CaptureScreen` (`/capture`)**:
    - Open-ended multi-photo tray (`Main #1`, `#2`, ...) at `ResolutionPreset.medium` with downscaled (200px width) isolate quality checks.
    - Strict shutter/quality timeouts and `try/finally` state cleanup so shutter never hangs; hardware flash automatically turns off on Next, Back, Pop, Retake, Dispose, or App background.
 4. **`VoiceScreen` (`/voice`)**:
    - 4-step guided voice interview + Step 4 optional manual dimensions/weight form.
-   - Spoken questions in the user's selected language via Bhashini TTS (`22050 Hz` PCM16) or Device Neural TTS (in Whisper test mode).
+   - Spoken questions in the user's selected language via Bhashini NMT + Device Neural TTS (`FlutterTts`), transcribed via Groq `whisper-large-v3-turbo`.
 5. **`ProcessingScreen` (`/processing`)**:
    - Fully localized progress headlines, rotating tips, and draft fallback controls; generates deterministic `catalogId` before Stage 0 upload.
 6. **`CatalogScreen` (`/catalog`)**:
    - Localized UI respecting `AppStrings` & `BilingualText` in Single/Bilingual mode.
    - **3 Fair-Price Corridor Cards** (Floor, Recommended Fair, Premium) + Custom Price dialog + Tactile Stock chips + Custom Stock dialog.
-   - Manual Edit form, AI Voice Edit sheet, Unlist/Delete dialogs, Network Info modal, and 1-tap `Publish to ONDC` with immediate confirmation dialog.
+   - Manual Edit form, AI Voice Edit sheet (synchronizing `localizedTitles` & `localizedDescriptions` across edited fields and active languages), Unlist/Delete dialogs, Network Info modal, and 1-tap `Publish to ONDC` with immediate confirmation dialog.

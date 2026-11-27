@@ -110,6 +110,7 @@ abstract class ApiService {
   Future<CatalogItem> updateCatalogWithInstruction({
     required CatalogItem currentItem,
     required String instruction,
+    List<String> targetLanguages = const [],
   });
 
   Future<Map<String, dynamic>> publishToOndc({
@@ -316,6 +317,7 @@ class MockApiService implements ApiService {
   Future<CatalogItem> updateCatalogWithInstruction({
     required CatalogItem currentItem,
     required String instruction,
+    List<String> targetLanguages = const [],
   }) async {
     await Future.delayed(const Duration(milliseconds: 500));
     final numMatch = RegExp(r'\d+').firstMatch(instruction);
@@ -815,24 +817,18 @@ class LiveApiService implements ApiService {
       final f = File(audioPath);
       if (!f.existsSync()) return '';
     }
-    if (AppConstants.isWhisperMode && AppConstants.qwenApiKey.isNotEmpty) {
-      try {
-        final whisperText = await _transcribeWithGroqWhisper(audioPath);
-        if (whisperText.isNotEmpty) return whisperText;
-      } catch (e) {
-        debugPrint('[transcribeAudio] Whisper failed, trying Bhashini: $e');
-      }
+    if (AppConstants.qwenApiKey.isEmpty) {
+      debugPrint(
+        '[transcribeAudio] QWEN_API_KEY missing; cannot run Whisper STT.',
+      );
+      return '';
     }
     try {
-      final transcript = await _bhashiniService.transcribe(
-        audioPath,
-        sourceLanguage: sourceLanguage,
-      );
-      if (transcript.isNotEmpty) return transcript;
+      return await _transcribeWithGroqWhisper(audioPath);
     } catch (e) {
-      debugPrint('[transcribeAudio] Bhashini failed: $e');
+      debugPrint('[transcribeAudio] Whisper failed: $e');
+      return '';
     }
-    return '';
   }
 
   Future<String> _transcribeWithGroqWhisper(String audioPath) async {
@@ -888,14 +884,130 @@ class LiveApiService implements ApiService {
     }
   }
 
+  /// Rebuilds `localizedTitles` & `localizedDescriptions` whenever English/Hindi
+  /// or regional fields change (e.g. Manual Edit or AI Voice Edit) so UI text
+  /// rendered by `BilingualText` updates immediately across all languages.
+  static Future<
+    ({Map<String, String> titles, Map<String, String> descriptions})
+  >
+  buildUpdatedLocalizedMaps({
+    required CatalogItem oldItem,
+    required String newTitleEn,
+    required String newTitleHi,
+    required String newDescEn,
+    required String newDescHi,
+    List<String> targetLanguages = const [],
+    Map<String, String> titleOverrides = const {},
+    Map<String, String> descriptionOverrides = const {},
+    BhashiniService? bhashiniService,
+  }) async {
+    final locTitles = Map<String, String>.from(oldItem.localizedTitles);
+    final locDescs = Map<String, String>.from(oldItem.localizedDescriptions);
+
+    if (newTitleEn.isNotEmpty) {
+      locTitles['en'] = newTitleEn;
+    } else {
+      locTitles.remove('en');
+    }
+    if (newTitleHi.isNotEmpty) {
+      locTitles['hi'] = newTitleHi;
+    } else {
+      locTitles.remove('hi');
+    }
+    if (newDescEn.isNotEmpty) {
+      locDescs['en'] = newDescEn;
+    } else {
+      locDescs.remove('en');
+    }
+    if (newDescHi.isNotEmpty) {
+      locDescs['hi'] = newDescHi;
+    } else {
+      locDescs.remove('hi');
+    }
+
+    final titleChanged =
+        newTitleEn != (oldItem.titleEn ?? '').trim() ||
+        newTitleHi != (oldItem.titleHi ?? '').trim();
+    final descChanged =
+        newDescEn != (oldItem.descriptionEn ?? '').trim() ||
+        newDescHi != (oldItem.descriptionHi ?? '').trim();
+
+    final regionalLangs = <String>{
+      ...locTitles.keys,
+      ...locDescs.keys,
+      ...targetLanguages,
+      ...titleOverrides.keys,
+      ...descriptionOverrides.keys,
+    }..removeWhere((c) => c.isEmpty || c == 'en' || c == 'hi');
+
+    for (final lang in regionalLangs) {
+      if (titleOverrides.containsKey(lang)) {
+        final v = titleOverrides[lang]!.trim();
+        if (v.isNotEmpty) {
+          locTitles[lang] = v;
+        } else {
+          locTitles.remove(lang);
+        }
+      } else if (titleChanged || !locTitles.containsKey(lang)) {
+        if (bhashiniService != null &&
+            AppConstants.bhashiniApiKey.isNotEmpty &&
+            newTitleEn.isNotEmpty) {
+          try {
+            locTitles[lang] = await bhashiniService.translate(
+              newTitleEn,
+              sourceLanguage: 'en',
+              targetLanguage: lang,
+            );
+          } catch (_) {
+            if (titleChanged) locTitles.remove(lang);
+          }
+        } else if (titleChanged) {
+          locTitles.remove(lang);
+        }
+      }
+
+      if (descriptionOverrides.containsKey(lang)) {
+        final v = descriptionOverrides[lang]!.trim();
+        if (v.isNotEmpty) {
+          locDescs[lang] = v;
+        } else {
+          locDescs.remove(lang);
+        }
+      } else if (descChanged || !locDescs.containsKey(lang)) {
+        if (bhashiniService != null &&
+            AppConstants.bhashiniApiKey.isNotEmpty &&
+            newDescEn.isNotEmpty) {
+          try {
+            locDescs[lang] = await bhashiniService.translate(
+              newDescEn,
+              sourceLanguage: 'en',
+              targetLanguage: lang,
+            );
+          } catch (_) {
+            if (descChanged) locDescs.remove(lang);
+          }
+        } else if (descChanged) {
+          locDescs.remove(lang);
+        }
+      }
+    }
+
+    return (titles: locTitles, descriptions: locDescs);
+  }
+
   @override
   Future<CatalogItem> updateCatalogWithInstruction({
     required CatalogItem currentItem,
     required String instruction,
+    List<String> targetLanguages = const [],
   }) async {
     if (AppConstants.qwenApiKey.isNotEmpty) {
       try {
-        return await _updateWithQwen(currentItem, instruction);
+        return await _updateWithQwen(
+          currentItem,
+          instruction,
+          targetLanguages: targetLanguages,
+        );
       } catch (e) {
         debugPrint('[LiveApiService] Qwen voice update failed: $e');
       }
@@ -905,8 +1017,9 @@ class LiveApiService implements ApiService {
 
   Future<CatalogItem> _updateWithQwen(
     CatalogItem currentItem,
-    String instruction,
-  ) async {
+    String instruction, {
+    List<String> targetLanguages = const [],
+  }) async {
     final apiKey = AppConstants.qwenApiKey;
     final model = AppConstants.qwenModel;
     final uri = Uri.parse(AppConstants.qwenApiUrl);
@@ -1021,13 +1134,40 @@ Artisan update instruction:
       sellerProposedPrice: updatedSellingPrice,
     );
 
+    final newTitleEn =
+        (j['title_en']?.toString().trim().isNotEmpty == true)
+            ? j['title_en'].toString().trim()
+            : (currentItem.titleEn ?? '').trim();
+    final newTitleHi =
+        (j['title_hi']?.toString().trim().isNotEmpty == true)
+            ? j['title_hi'].toString().trim()
+            : (currentItem.titleHi ?? '').trim();
+    final newDescEn =
+        (j['description_en']?.toString().trim().isNotEmpty == true)
+            ? j['description_en'].toString().trim()
+            : (currentItem.descriptionEn ?? '').trim();
+    final newDescHi =
+        (j['description_hi']?.toString().trim().isNotEmpty == true)
+            ? j['description_hi'].toString().trim()
+            : (currentItem.descriptionHi ?? '').trim();
+
+    final locMaps = await buildUpdatedLocalizedMaps(
+      oldItem: currentItem,
+      newTitleEn: newTitleEn,
+      newTitleHi: newTitleHi,
+      newDescEn: newDescEn,
+      newDescHi: newDescHi,
+      targetLanguages: targetLanguages,
+      bhashiniService: _bhashiniService,
+    );
+
     return currentItem.copyWith(
-      titleEn: j['title_en']?.toString() ?? currentItem.titleEn,
-      titleHi: j['title_hi']?.toString() ?? currentItem.titleHi,
-      descriptionEn:
-          j['description_en']?.toString() ?? currentItem.descriptionEn,
-      descriptionHi:
-          j['description_hi']?.toString() ?? currentItem.descriptionHi,
+      titleEn: newTitleEn,
+      titleHi: newTitleHi,
+      descriptionEn: newDescEn,
+      descriptionHi: newDescHi,
+      localizedTitles: locMaps.titles,
+      localizedDescriptions: locMaps.descriptions,
       craftAttributes: (currentItem.craftAttributes ?? const CraftAttributes())
           .copyWith(
             category:
@@ -1066,14 +1206,17 @@ Artisan update instruction:
       newPrice = int.tryParse(numMatch.group(0)!);
     }
 
-    PricingCorridor? newPricing = currentItem.pricing;
-    if (newPrice != null && newPrice > 0) {
-      newPricing = PricingCorridor.compute(
-        rawMaterialCost: currentItem.pricing?.rawMaterialCost ?? 100,
-        laborDays: currentItem.pricing?.laborDays ?? 1,
-        sellerProposedPrice: newPrice,
+    if (newPrice == null || newPrice <= 0) {
+      throw Exception(
+        'Could not apply update automatically. Please check QWEN_API_KEY or use the Edit Form.',
       );
     }
+
+    final newPricing = PricingCorridor.compute(
+      rawMaterialCost: currentItem.pricing?.rawMaterialCost ?? 100,
+      laborDays: currentItem.pricing?.laborDays ?? 1,
+      sellerProposedPrice: newPrice,
+    );
 
     return currentItem.copyWith(pricing: newPricing);
   }
@@ -1140,7 +1283,7 @@ Artisan update instruction:
     final List<String> segments = [];
     final List<String> nativeSegments = [];
 
-    // Step 1: Transcribe multi-step audios or single audioPath via Bhashini ASR
+    // Step 1: Transcribe multi-step audios or single audioPath via Groq Whisper STT
     final audiosToTranscribe = (audioPaths != null && audioPaths.isNotEmpty)
         ? audioPaths
         : (audioPath.isNotEmpty ? [audioPath] : <String>[]);
@@ -1171,28 +1314,6 @@ Artisan update instruction:
 
     String transcriptForQwen = segments.join('. ').trim();
     final nativeTranscript = nativeSegments.join('. ').trim();
-
-    // In Bhashini mode, translate non-English ASR transcripts to English via NMT
-    // for accurate Qwen extraction. In Whisper mode, Whisper already outputs clean
-    // multilingual/code-switched transcripts that Qwen parses directly.
-    if (!AppConstants.isWhisperMode &&
-        transcriptForQwen.isNotEmpty &&
-        voiceLanguage != 'en' &&
-        AppConstants.bhashiniApiKey.isNotEmpty) {
-      try {
-        final translatedEn = await _bhashiniService.translate(
-          transcriptForQwen,
-          sourceLanguage: voiceLanguage,
-          targetLanguage: 'en',
-        );
-        if (translatedEn.isNotEmpty) {
-          transcriptForQwen =
-              '$translatedEn\n(Original artisan speech in $voiceLanguage: $transcriptForQwen)';
-        }
-      } catch (e) {
-        debugPrint('[LiveApiService] Bhashini NMT ($voiceLanguage->en) skipped: $e');
-      }
-    }
 
     if (transcriptForQwen.isEmpty) {
       transcriptForQwen =

@@ -79,22 +79,10 @@ class _VoiceScreenState extends State<VoiceScreen> {
     try {
       await _questionAudio.stopAllAudio();
       if (!mounted) return;
-      if (AppConstants.isWhisperMode) {
-        await _questionAudio.speakText(
-          question,
-          locale: langCtrl.primaryLanguage.ttsLocale,
-        );
-        return;
-      }
-      if (AppConstants.bhashiniApiKey.isEmpty) return;
-      final ttsLang = langCtrl.primaryLanguage.supportsTts ? langCode : 'en';
-      final audioPath = await _bhashiniService.synthesize(
+      await _questionAudio.speakText(
         question,
-        sourceLanguage: ttsLang,
-        gender: 'female',
+        locale: langCtrl.primaryLanguage.ttsLocale,
       );
-      if (!mounted) return;
-      await _questionAudio.playFile(audioPath);
     } catch (e) {
       debugPrint('[VoiceScreen] Question TTS error: $e');
     }

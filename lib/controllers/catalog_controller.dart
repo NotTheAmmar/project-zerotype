@@ -5,7 +5,6 @@ import 'package:flutter/painting.dart';
 import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
-import '../config/constants.dart';
 import '../models/catalog_item.dart';
 import '../models/craft_attributes.dart';
 import '../models/pricing_corridor.dart';
@@ -425,7 +424,7 @@ class CatalogController extends ChangeNotifier {
     }
   }
 
-  /// Speaks short status confirmations via Device TTS (Whisper mode) or Bhashini TTS.
+  /// Speaks short status confirmations via Device Neural TTS (translated via Bhashini NMT).
   Future<void> _speakConfirmation({
     required String textEn,
     required String textHi,
@@ -451,29 +450,20 @@ class CatalogController extends ChangeNotifier {
       }
       if (text.trim().isEmpty) return;
 
-      if (AppConstants.isWhisperMode) {
-        await _audioService.speakText(
-          text,
-          locale: languageCode == 'en' ? 'en-IN' : ttsLocale,
-        );
-        return;
-      }
-
-      final audioPath = await _bhashiniService.synthesize(
+      await _audioService.speakText(
         text,
-        sourceLanguage: languageCode,
-        gender: 'female',
+        locale: languageCode == 'en' ? 'en-IN' : ttsLocale,
       );
-      await _audioService.playFile(audioPath);
     } catch (e) {
       debugPrint('[CatalogController] Confirmation TTS skipped ($languageCode): $e');
     }
   }
 
-  /// Modifies current item using AI voice command (Bhashini/Whisper + Qwen).
+  /// Modifies current item using AI voice command (Whisper STT + Qwen).
   Future<void> applyVoiceUpdate(
     String instruction, {
     String languageCode = 'hi',
+    String? secondaryLanguageCode,
     String ttsLocale = 'hi-IN',
   }) async {
     if (_currentItem == null) return;
@@ -481,6 +471,7 @@ class CatalogController extends ChangeNotifier {
       final updated = await _apiService.updateCatalogWithInstruction(
         currentItem: _currentItem!,
         instruction: instruction,
+        targetLanguages: [languageCode, ?secondaryLanguageCode],
       );
       await updateCurrentItem(updated);
       unawaited(
@@ -527,27 +518,14 @@ class CatalogController extends ChangeNotifier {
                             '')));
 
       if (textToSpeak.isNotEmpty) {
-        final ttsLang = locDesc.isNotEmpty
-            ? languageCode
-            : (descHi.isNotEmpty ? 'hi' : 'en');
-        if (AppConstants.isWhisperMode) {
-          final resolvedLocale = locDesc.isNotEmpty
-              ? ttsLocale
-              : (descHi.isNotEmpty ? 'hi-IN' : 'en-IN');
-          await _audioService.speakText(textToSpeak, locale: resolvedLocale);
-        } else {
-          final audioPath = await _bhashiniService.synthesize(
-            textToSpeak,
-            sourceLanguage: ttsLang,
-            gender: 'female',
-          );
-          if (!_isSpeaking) return;
-          await _audioService.playFile(audioPath);
-        }
+        final resolvedLocale = locDesc.isNotEmpty
+            ? ttsLocale
+            : (descHi.isNotEmpty ? 'hi-IN' : 'en-IN');
+        await _audioService.speakText(textToSpeak, locale: resolvedLocale);
       }
     } catch (e) {
-      debugPrint('[BhashiniTTS] failed: $e');
-      _errorMessage = 'Bhashini TTS failed: $e';
+      debugPrint('[DeviceTTS] failed: $e');
+      _errorMessage = 'Voice readback failed: $e';
     } finally {
       _isSpeaking = false;
       notifyListeners();

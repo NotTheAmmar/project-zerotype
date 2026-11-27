@@ -49,8 +49,15 @@ class FakeApiService implements ApiService {
   Future<CatalogItem> updateCatalogWithInstruction({
     required CatalogItem currentItem,
     required String instruction,
+    List<String> targetLanguages = const [],
   }) async {
     return currentItem.copyWith(
+      titleEn: 'Updated Brass Craft',
+      titleHi: 'अपडेटेड पीतल शिल्प',
+      localizedTitles: const {
+        'en': 'Updated Brass Craft',
+        'hi': 'अपडेटेड पीतल शिल्प',
+      },
       pricing: PricingCorridor.compute(
         rawMaterialCost: currentItem.pricing?.rawMaterialCost ?? 100,
         laborDays: currentItem.pricing?.laborDays ?? 1,
@@ -127,12 +134,12 @@ class FakeApiService implements ApiService {
 
 class FakeBhashiniService extends BhashiniService {
   @override
-  Future<String> synthesize(
+  Future<String> translate(
     String text, {
-    String sourceLanguage = 'hi',
-    String gender = 'female',
+    required String sourceLanguage,
+    required String targetLanguage,
   }) async {
-    return '/tmp/bhashini_mock.wav';
+    return '[$targetLanguage] $text';
   }
 }
 
@@ -408,6 +415,80 @@ void main() {
           contains('processed-craft-images'),
         );
         expect(apiService.updateSyncCalls, greaterThanOrEqualTo(updatesBefore));
+      },
+    );
+
+    test(
+      'buildUpdatedLocalizedMaps keeps localizedTitles & localizedDescriptions in sync on edit (Issue #40)',
+      () async {
+        final original = CatalogItem(
+          id: 'craft_issue40',
+          createdAt: DateTime.now(),
+          titleEn: 'Old Clay Pot',
+          titleHi: 'पुराना मिट्टी का घड़ा',
+          descriptionEn: 'Old clay description',
+          descriptionHi: 'पुराना विवरण',
+          localizedTitles: const {
+            'en': 'Old Clay Pot',
+            'hi': 'पुराना मिट्टी का घड़ा',
+            'ta': 'பழைய மண் பானை',
+          },
+          localizedDescriptions: const {
+            'en': 'Old clay description',
+            'hi': 'पुराना विवरण',
+            'ta': 'பழைய விளக்கம்',
+          },
+        );
+
+        final updatedMaps = await LiveApiService.buildUpdatedLocalizedMaps(
+          oldItem: original,
+          newTitleEn: 'Painted Terracotta Vase',
+          newTitleHi: 'रंगीन टेराकोटा फूलदान',
+          newDescEn: 'Hand-painted vase with natural pigments',
+          newDescHi: 'प्राकृतिक रंगों से हाथ से चित्रित फूलदान',
+          targetLanguages: const ['ta', 'mr'],
+          titleOverrides: const {'mr': 'हाताने रंगवलेली कुंडी'},
+          descriptionOverrides: const {},
+          bhashiniService: bhashiniService,
+        );
+
+        expect(updatedMaps.titles['en'], equals('Painted Terracotta Vase'));
+        expect(updatedMaps.titles['hi'], equals('रंगीन टेराकोटा फूलदान'));
+        expect(updatedMaps.titles['mr'], equals('हाताने रंगवलेली कुंडी'));
+        // Stale Tamil value must not persist after English/Hindi changed without Bhashini API key in test env
+        expect(updatedMaps.titles.containsKey('ta'), isFalse);
+
+        expect(
+          updatedMaps.descriptions['en'],
+          equals('Hand-painted vase with natural pigments'),
+        );
+        expect(
+          updatedMaps.descriptions['hi'],
+          equals('प्राकृतिक रंगों से हाथ से चित्रित फूलदान'),
+        );
+        expect(updatedMaps.descriptions.containsKey('ta'), isFalse);
+      },
+    );
+
+    test(
+      'applyVoiceUpdate updates currentItem titleFor & localizedTitles immediately (Issue #40)',
+      () async {
+        await controller.createFallbackDraft(imagePath: '/tmp/craft.jpg');
+        await controller.applyVoiceUpdate(
+          'Change title to Updated Brass Craft',
+          languageCode: 'en',
+        );
+
+        expect(controller.currentItem?.titleEn, equals('Updated Brass Craft'));
+        expect(
+          controller.currentItem?.titleFor('en'),
+          equals('Updated Brass Craft'),
+        );
+        expect(
+          controller.currentItem?.titleFor('hi'),
+          equals('अपडेटेड पीतल शिल्प'),
+        );
+        expect(controller.currentItem?.pricing?.fairPrice, equals(650));
       },
     );
   });

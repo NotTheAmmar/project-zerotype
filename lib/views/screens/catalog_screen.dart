@@ -17,6 +17,7 @@ import '../../models/craft_attributes.dart';
 import '../../models/pricing_corridor.dart';
 import '../../services/api_service.dart';
 import '../../services/audio_service.dart';
+import '../../services/bhashini_service.dart';
 import '../widgets/bilingual_text.dart';
 
 class CatalogScreen extends StatefulWidget {
@@ -3085,6 +3086,7 @@ class _VoiceEditBottomSheetState extends State<_VoiceEditBottomSheet> {
       await widget.catalogCtrl.applyVoiceUpdate(
         instruction,
         languageCode: langCode,
+        secondaryLanguageCode: langCtrl.secondaryLanguageCode,
         ttsLocale: langCtrl.primaryLanguage.ttsLocale,
       );
       if (mounted) {
@@ -3358,6 +3360,8 @@ class _ManualEditBottomSheet extends StatefulWidget {
 }
 
 class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
+  final BhashiniService _bhashiniService = BhashiniService();
+
   late final TextEditingController _titleHiCtrl;
   late final TextEditingController _titleEnCtrl;
   late final TextEditingController _categoryCtrl;
@@ -3370,12 +3374,40 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
   late final TextEditingController _descHiCtrl;
   late final TextEditingController _descEnCtrl;
 
+  String? _regionalLangCode;
+  String? _regionalLangName;
+  TextEditingController? _regionalTitleCtrl;
+  TextEditingController? _regionalDescCtrl;
+  String _initialRegionalTitle = '';
+  String _initialRegionalDesc = '';
+
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
     final item = widget.item;
+    final langCtrl = context.read<LanguageController>();
+    final activeRegional =
+        (langCtrl.primaryLanguageCode != 'en' &&
+                langCtrl.primaryLanguageCode != 'hi')
+            ? langCtrl.primaryLanguage
+            : (langCtrl.secondaryLanguage != null &&
+                  langCtrl.secondaryLanguageCode != 'en' &&
+                  langCtrl.secondaryLanguageCode != 'hi')
+            ? langCtrl.secondaryLanguage
+            : null;
+    if (activeRegional != null) {
+      _regionalLangCode = activeRegional.code;
+      _regionalLangName = activeRegional.nativeName;
+      _initialRegionalTitle =
+          (item.titleFor(activeRegional.code) ?? '').trim();
+      _initialRegionalDesc =
+          (item.descriptionFor(activeRegional.code) ?? '').trim();
+      _regionalTitleCtrl = TextEditingController(text: _initialRegionalTitle);
+      _regionalDescCtrl = TextEditingController(text: _initialRegionalDesc);
+    }
+
     _titleHiCtrl = TextEditingController(text: item.titleHi ?? '');
     _titleEnCtrl = TextEditingController(text: item.titleEn ?? '');
     _categoryCtrl = TextEditingController(
@@ -3403,6 +3435,9 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
 
   @override
   void dispose() {
+    _bhashiniService.dispose();
+    _regionalTitleCtrl?.dispose();
+    _regionalDescCtrl?.dispose();
     _titleHiCtrl.dispose();
     _titleEnCtrl.dispose();
     _categoryCtrl.dispose();
@@ -3432,11 +3467,49 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
           .where((e) => e.isNotEmpty)
           .toList();
 
+      final newTitleHi = _titleHiCtrl.text.trim();
+      final newTitleEn = _titleEnCtrl.text.trim();
+      final newDescHi = _descHiCtrl.text.trim();
+      final newDescEn = _descEnCtrl.text.trim();
+
+      final langCtrl = context.read<LanguageController>();
+      final titleOverrides = <String, String>{};
+      final descOverrides = <String, String>{};
+      if (_regionalLangCode != null && _regionalTitleCtrl != null) {
+        final editedRegTitle = _regionalTitleCtrl!.text.trim();
+        if (editedRegTitle != _initialRegionalTitle) {
+          titleOverrides[_regionalLangCode!] = editedRegTitle;
+        }
+      }
+      if (_regionalLangCode != null && _regionalDescCtrl != null) {
+        final editedRegDesc = _regionalDescCtrl!.text.trim();
+        if (editedRegDesc != _initialRegionalDesc) {
+          descOverrides[_regionalLangCode!] = editedRegDesc;
+        }
+      }
+
+      final locMaps = await LiveApiService.buildUpdatedLocalizedMaps(
+        oldItem: widget.item,
+        newTitleEn: newTitleEn,
+        newTitleHi: newTitleHi,
+        newDescEn: newDescEn,
+        newDescHi: newDescHi,
+        targetLanguages: [
+          langCtrl.primaryLanguageCode,
+          ?langCtrl.secondaryLanguageCode,
+        ],
+        titleOverrides: titleOverrides,
+        descriptionOverrides: descOverrides,
+        bhashiniService: _bhashiniService,
+      );
+
       final updated = widget.item.copyWith(
-        titleHi: _titleHiCtrl.text.trim(),
-        titleEn: _titleEnCtrl.text.trim(),
-        descriptionHi: _descHiCtrl.text.trim(),
-        descriptionEn: _descEnCtrl.text.trim(),
+        titleHi: newTitleHi,
+        titleEn: newTitleEn,
+        descriptionHi: newDescHi,
+        descriptionEn: newDescEn,
+        localizedTitles: locMaps.titles,
+        localizedDescriptions: locMaps.descriptions,
         availableQuantity: qty,
         craftAttributes:
             (widget.item.craftAttributes ?? const CraftAttributes()).copyWith(
@@ -3566,6 +3639,16 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
             child: SingleChildScrollView(
               child: Column(
                 children: [
+                  if (_regionalLangName != null && _regionalTitleCtrl != null) ...[
+                    TextFormField(
+                      controller: _regionalTitleCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Product Name ($_regionalLangName)',
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   TextFormField(
                     controller: _titleHiCtrl,
                     decoration: InputDecoration(
@@ -3696,6 +3779,17 @@ class _ManualEditBottomSheetState extends State<_ManualEditBottomSheet> {
                     ],
                   ),
                   const SizedBox(height: 10),
+                  if (_regionalLangName != null && _regionalDescCtrl != null) ...[
+                    TextFormField(
+                      controller: _regionalDescCtrl,
+                      maxLines: 3,
+                      decoration: InputDecoration(
+                        labelText: 'Description ($_regionalLangName)',
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   TextFormField(
                     controller: _descHiCtrl,
                     maxLines: 3,

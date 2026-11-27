@@ -15,7 +15,7 @@ Rather than overloading a single unconstrained voice prompt, BazaarSetu strictly
 └─────────────────┘       └────────────────────────┘       └────────────────────────┘
         │                             │                                 │
         ▼                             ▼                                 ▼
-Raw + Optional Kaggle        Bhashini / Whisper STT            Fair-Price Corridor
+Raw + Optional Kaggle        Groq Whisper Turbo STT            Fair-Price Corridor
 BiRefNet Studio Cutout       + Bhashini NMT -> Qwen            Floor/Fair/Premium
 + Deferred BG Sync           (23 Languages Supported)          Tactile Pill [1][2][5][10]
 ```
@@ -30,7 +30,7 @@ BiRefNet Studio Cutout       + Bhashini NMT -> Qwen            Floor/Fair/Premiu
 3. **Guided 4-Step Voice Interview (Speech Input)**:
    - Structured 4-stage guided prompts: (1) Craft Name, (2) Materials & Craft Technique, (3) Selling Price, Raw Cost & Labor Days, (4) Dimensions & Weight (with optional manual dimensions entry).
    - Open-ended recording (16 kHz Mono WAV, no 15-second limit).
-   - Supports **Bhashini Cloud ASR + Bhashini NMT + Bhashini TTS** (22.05 kHz 16-bit PCM WAV) and an A/B **Voice Mode (Test)** toggle on the Explore screen for **Groq `whisper-large-v3-turbo` STT + Bhashini NMT + Device Neural TTS**.
+   - Uses **Groq `whisper-large-v3-turbo` STT + Bhashini NMT (Translation Only) + Device Neural TTS (`FlutterTts`)** across all 23 supported languages.
 4. **Decoupled Cloud Persistence & Deferred Kaggle Studio Sync**:
    - **24/7 BPP + Supabase Backend (Render)**: Hosts ONDC Beckn webhooks (`/beckn/*`), catalog CRUD (`/api/v1/bpp/draft`, `/publish`, `/listings`), and dual Supabase Storage buckets:
      - `raw-craft-images` — Original camera photos (displayed in-app only with an `Original Raw` badge; **never** sent to ONDC).
@@ -46,7 +46,7 @@ BiRefNet Studio Cutout       + Bhashini NMT -> Qwen            Floor/Fair/Premiu
 ## 2. Tech Stack
 
 - **Frontend**: Flutter (Cross-platform Android / iOS / Web) with Provider state management
-- **Speech Pipeline**: Bhashini Cloud ASR (`itn` + `punctuation`) / NMT / TTS (22.05 kHz PCM16) + testing toggle for Groq `whisper-large-v3-turbo` STT & Device Neural TTS
+- **Speech Pipeline**: Groq `whisper-large-v3-turbo` STT + Bhashini NMT (Text-to-Text Translation Only) + Device Neural TTS (`FlutterTts`)
 - **Catalog Structuring LLM**: **Qwen** (`qwen/qwen3.8-27b` / `qwen-2.5-32b-instruct` via OpenAI-compatible `QWEN_API_URL`)
 - **Backend & Storage**: FastAPI BPP on Render (`https://project-zerotype-bpp.onrender.com`), Supabase PostgreSQL + Dual Storage Buckets (`raw-craft-images`, `processed-craft-images`), and standalone `backend/scripts/reset_backend.py` CLI
 - **Studio Image Matting**: Optional Kaggle Dual-T4 BiRefNet-HR server with automatic offline fallback and deferred sync

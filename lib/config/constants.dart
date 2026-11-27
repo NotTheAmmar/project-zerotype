@@ -1,8 +1,6 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-enum VoicePipelineMode { bhashini, whisper }
-
 class AppConstants {
   AppConstants._();
 
@@ -11,22 +9,6 @@ class AppConstants {
 
   static String? _customKaggleUrl;
   static String? _customQwenApiKey;
-  static VoicePipelineMode _voicePipelineMode = VoicePipelineMode.bhashini;
-
-  static VoicePipelineMode get voicePipelineMode => _voicePipelineMode;
-  static bool get isWhisperMode =>
-      _voicePipelineMode == VoicePipelineMode.whisper;
-
-  static Future<void> setVoicePipelineMode(VoicePipelineMode mode) async {
-    _voicePipelineMode = mode;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        'voice_pipeline_mode',
-        mode == VoicePipelineMode.whisper ? 'whisper' : 'bhashini',
-      );
-    } catch (_) {}
-  }
 
   static Future<void> loadCustomConfig() async {
     try {
@@ -44,10 +26,6 @@ class AppConstants {
         _customKaggleUrl = null;
       }
       _customQwenApiKey = prefs.getString('custom_qwen_api_key');
-      final savedVoiceMode = prefs.getString('voice_pipeline_mode');
-      _voicePipelineMode = savedVoiceMode == 'whisper'
-          ? VoicePipelineMode.whisper
-          : VoicePipelineMode.bhashini;
     } catch (_) {}
   }
 
