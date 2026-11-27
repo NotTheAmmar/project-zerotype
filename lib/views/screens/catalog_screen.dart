@@ -178,29 +178,33 @@ class _CatalogScreenState extends State<CatalogScreen> {
   Widget _buildFallbackImagePlaceholder() {
     return Container(
       color: AppColors.surfaceContainer,
+      padding: const EdgeInsets.all(6),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.palette_outlined,
-              size: 44,
-              color: AppColors.secondaryTerracotta,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              AppStrings.pair(
-                context,
-                en: 'Artisan Craft Photo',
-                hi: 'शिल्प छायाचित्र',
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.palette_outlined,
+                size: 44,
+                color: AppColors.secondaryTerracotta,
               ),
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w600,
+              const SizedBox(height: 6),
+              Text(
+                AppStrings.pair(
+                  context,
+                  en: 'Artisan Craft Photo',
+                  hi: 'शिल्प छायाचित्र',
+                ),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1276,20 +1280,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   ),
                 ),
               ),
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () => _showVoiceEditSheet(
-                  context,
-                  context.read<CatalogController>(),
+              if (item.status != CatalogStatus.published)
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _showVoiceEditSheet(
+                    context,
+                    context.read<CatalogController>(),
+                  ),
+                  icon: const Icon(
+                    Icons.edit_outlined,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                  tooltip: 'Edit by voice or values',
                 ),
-                icon: const Icon(
-                  Icons.edit_outlined,
-                  size: 18,
-                  color: AppColors.textSecondary,
-                ),
-                tooltip: 'Edit by voice or values',
-              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -2113,6 +2118,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     BuildContext context,
     CatalogController catalogCtrl,
   ) {
+    if (catalogCtrl.item?.status == CatalogStatus.published) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2126,6 +2132,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     CatalogItem item,
     CatalogController catalogCtrl,
   ) {
+    if (item.status == CatalogStatus.published) return;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2167,34 +2174,36 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () {
-                  _showVoiceEditSheet(context, catalogCtrl);
-                },
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.mic_outlined,
-                      size: 14,
-                      color: AppColors.secondaryTerracotta,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      AppStrings.pair(
-                        context,
-                        en: 'Voice Edit',
-                        hi: 'बोलकर सुधारें',
-                      ),
-                      style: AppTextStyles.labelSmall.copyWith(
+              if (item.status != CatalogStatus.published) ...[
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () {
+                    _showVoiceEditSheet(context, catalogCtrl);
+                  },
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.mic_outlined,
+                        size: 14,
                         color: AppColors.secondaryTerracotta,
-                        fontWeight: FontWeight.bold,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Text(
+                        AppStrings.pair(
+                          context,
+                          en: 'Voice Edit',
+                          hi: 'बोलकर सुधारें',
+                        ),
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: AppColors.secondaryTerracotta,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 10),
@@ -2540,6 +2549,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
     final dimensions = attrs?.dimensions;
     final weight = attrs?.weight;
     final technique = item.craftTechnique;
+    final laborDays = attrs?.laborDays ?? item.pricing?.laborDays;
     final category = attrs?.category ?? item.craftAttributes?.genericName;
 
     // Combine weight + dimensions if both present, otherwise show whichever exists
@@ -2590,6 +2600,20 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 hi: 'शिल्प तकनीक',
               ),
               technique,
+              rowIndex++ % 2 == 0,
+            ),
+          if (laborDays != null && laborDays > 0)
+            _buildSpecRow(
+              AppStrings.pair(
+                context,
+                en: 'Crafting Time',
+                hi: 'बनाने का समय',
+              ),
+              AppStrings.pair(
+                context,
+                en: '$laborDays ${laborDays == 1 ? 'day' : 'days'}',
+                hi: '$laborDays दिन',
+              ),
               rowIndex++ % 2 == 0,
             ),
           if (guild != null && guild.isNotEmpty)

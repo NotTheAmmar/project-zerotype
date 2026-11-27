@@ -1052,7 +1052,7 @@ class LiveApiService implements ApiService {
           'content': '''You are an expert assistant for Indian artisans updating their craft catalog on BazaarSetu (ONDC network).
 The artisan provides instructions in Hindi, Hinglish, or English to update their product listing.
 You are given the current listing data as JSON and the artisan's update command.
-Update ONLY the fields mentioned or implied by the artisan. Keep all other fields unchanged.
+Update the structured fields mentioned or implied by the artisan (such as price, labor_days, materials, dimensions, weight, category, title). Whenever the artisan adds or changes craft effort (e.g. crafting days / labor_days), materials, technique, dimensions, or weight, naturally incorporate those updated details into description_en and description_hi so the artisan clearly sees the update reflected in the listing. Keep unrelated fields unchanged.
 Always output pure valid JSON with these keys:
 {
   "title_en": "string",
@@ -1104,6 +1104,7 @@ Artisan update instruction:
     }
 
     final cleanJson = content
+        .replaceAll(RegExp(r'<think>[\s\S]*?</think>', caseSensitive: false), '')
         .replaceAll(RegExp(r'^```json\s*', multiLine: true), '')
         .replaceAll(RegExp(r'^```\s*', multiLine: true), '')
         .trim();
@@ -1490,6 +1491,7 @@ Artisan update instruction:
     }
 
     final cleanJson = content
+        .replaceAll(RegExp(r'<think>[\s\S]*?</think>', caseSensitive: false), '')
         .replaceAll(RegExp(r'^```json\s*', multiLine: true), '')
         .replaceAll(RegExp(r'^```\s*', multiLine: true), '')
         .trim();

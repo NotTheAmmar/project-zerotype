@@ -8,10 +8,14 @@ import 'package:project_zerotype/controllers/catalog_controller.dart';
 import 'package:project_zerotype/controllers/language_controller.dart';
 import 'package:project_zerotype/controllers/pricing_controller.dart';
 import 'package:project_zerotype/controllers/voice_controller.dart';
+import 'package:project_zerotype/models/catalog_item.dart';
+import 'package:project_zerotype/models/craft_attributes.dart';
+import 'package:project_zerotype/models/pricing_corridor.dart';
 import 'package:project_zerotype/services/api_service.dart';
 import 'package:project_zerotype/services/audio_service.dart';
 import 'package:project_zerotype/services/image_service.dart';
 import 'package:project_zerotype/services/storage_service.dart';
+import 'package:project_zerotype/views/screens/catalog_screen.dart';
 import 'package:project_zerotype/views/widgets/bilingual_text.dart';
 
 void main() {
@@ -144,5 +148,74 @@ void main() {
 
     expect(find.text('Clay Pot'), findsOneWidget);
     expect(find.text('மண் பானை'), findsOneWidget);
+  });
+
+  testWidgets('CatalogScreen shows Crafting Time and hides edit controls when published', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'bazaarsetu_user_language': 'en',
+      'bazaarsetu_language_setup_done': true,
+    });
+    final languageCtrl = LanguageController(autoLoad: false);
+    await languageCtrl.setLanguagePreferences(
+      mode: LanguageDisplayMode.single,
+      primaryCode: 'en',
+    );
+    final catalogCtrl = CatalogController(
+      apiService: MockApiService(),
+      audioService: AudioService(),
+      storageService: StorageService(),
+    );
+    addTearDown(catalogCtrl.dispose);
+
+    final draftItem = CatalogItem(
+      id: 'craft_test_1',
+      createdAt: DateTime(2026, 11, 27),
+      status: CatalogStatus.draft,
+      titleEn: 'Clay Vase',
+      titleHi: 'मिट्टी का फूलदान',
+      descriptionEn: 'Handcrafted terracotta vase.',
+      descriptionHi: 'हस्तनिर्मित टेराकोटा फूलदान।',
+      craftAttributes: const CraftAttributes(
+        category: 'Pottery',
+        materials: ['Clay'],
+        laborDays: 2,
+      ),
+      pricing: PricingCorridor.compute(
+        rawMaterialCost: 100,
+        laborDays: 2,
+        sellerProposedPrice: 350,
+      ),
+    );
+    catalogCtrl.setItem(draftItem);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: languageCtrl),
+          ChangeNotifierProvider.value(value: catalogCtrl),
+          ChangeNotifierProvider(create: (_) => PricingController()),
+        ],
+        child: const MaterialApp(home: CatalogScreen()),
+      ),
+    );
+    await tester.pump();
+
+    // Draft renders Voice Edit button, edit pencil, Manual Edit, and Crafting Time spec
+    expect(find.text('Voice Edit'), findsOneWidget);
+    expect(find.byTooltip('Edit by voice or values'), findsOneWidget);
+    expect(find.byTooltip('Manual Edit'), findsOneWidget);
+    expect(find.text('Crafting Time'), findsOneWidget);
+    expect(find.text('2 days'), findsOneWidget);
+
+    // Once published, Voice Edit / Manual Edit / edit pencil are hidden
+    catalogCtrl.setItem(draftItem.copyWith(status: CatalogStatus.published));
+    await tester.pump();
+
+    expect(find.text('Voice Edit'), findsNothing);
+    expect(find.byTooltip('Edit by voice or values'), findsNothing);
+    expect(find.byTooltip('Manual Edit'), findsNothing);
+    expect(find.byIcon(Icons.mic_rounded), findsNothing);
   });
 }
